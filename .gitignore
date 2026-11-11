@@ -1,0 +1,20 @@
+# Local game data and SavedVariables
+WTF/
+**/SavedVariables/
+*.lua.bak
+
+# Local packages and build output
+*.zip
+*.7z
+*.tar
+*.tar.gz
+/build/
+/dist/
+
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+*api-key*
+*apikey*
+*secret*
