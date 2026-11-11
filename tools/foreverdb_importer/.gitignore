@@ -1,0 +1,12 @@
+captures/
+imports/
+outputs/
+normalized/
+build/
+__pycache__/
+*.pyc
+.env
+.env.*
+*api-key*
+*apikey*
+*secret*

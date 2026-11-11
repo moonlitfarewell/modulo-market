@@ -1,4 +1,4 @@
-# Modulo Market 0.5.2
+# Modulo Market 0.5.3
 
 **Current player milestone:** seven distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
 
@@ -8,9 +8,34 @@ Modulo Market is a separate optional child addon under MODULO.
 
 Source repository: https://github.com/moonlitfarewell/modulo-market
 
-When ForeverDB data is imported and displayed, Market will visibly credit [ForeverDB.net](https://foreverdb.net) wherever that data is shown, as required by its API terms. ForeverDB API keys are build-time importer credentials only and must never be committed to this repository or distributed inside the addon. No ForeverDB API key or API dataset is included in this source snapshot.
+Market 0.5.3 includes a reviewed ForeverDB recipe dataset from client build `1.60.1.70862`. The in-game Market window visibly credits [ForeverDB.net](https://foreverdb.net). ForeverDB API keys are build-time importer credentials only and are not committed or distributed inside the addon. The raw capture and normalized canonical dataset are retained under `data/` for provenance and reproducible builds.
 
  It depends on `Modulo`; MODULO does not depend on Market. Auctionator and ProfessionMaster remain independent addons and are not runtime dependencies.
+
+
+## Current 0.5.3 milestone — ForeverDB recipe data integration
+
+The 11 November 2026 ForeverDB capture is complete and verified: 34 API responses, 12 professions and 2,493 recipe records for build `1.60.1.70862`. The canonical normalized JSON is retained in `data/`; the user-supplied raw capture remains a separate input and is not committed to the public repository. `AddOns/ModuloMarket/ForeverDBData.lua` is generated from the canonical file by the developer importer.
+
+The addon loads the imported catalogue only when `GetBuildInfo()` matches the exact dataset build (`1.60.1.70862`). Craft economics also requires the saved Browse/Replicate market snapshot's `clientVersion.clientBuild` to match the current client build. A missing or mismatched build blocks imported candidates or price joins rather than silently using stale data. The existing optional LibProfessionDB adapter is used only when no bundled ForeverDB dataset exists.
+
+### Data and evidence rules
+
+- Recipe structure, item outputs, `makes.count`, reagent item IDs/counts and client skill thresholds are labelled `FOREVER_CLIENT`.
+- Trainer/vendor rows with `seenInForever=true` are `FOREVER_OBSERVED`; rows with `seenInForever=false` are `CLASSIC_BORROWED`.
+- Inferred trainer teaching edges, drops and quests without per-row observation evidence, and recipe-item acquisition paths without an obtainable source are retained as `UNKNOWN`.
+- Automatic learning is retained as a client acquisition signal.
+- Orange skill-up thresholds sourced from Classic remain `CLASSIC_BORROWED`; they are never treated as trainer learning requirements.
+- The capture exposes one `makes.count` per item output, not separate random min/max ranges. The adapter records that count as a fixed captured count and does not invent a yield range.
+- The captured reagent arrays have one item/count per row and expose no optional or alternative flags. The adapter does not invent alternatives.
+- Speculative records remain in canonical source data but are excluded from the runtime craft catalogue. Enchantments and records without item outputs are not treated as item crafts.
+- Known character recipes are de-duplicated against the imported catalogue by profession/recipe ID and profession/output/name.
+
+The compact runtime file contains only the fields currently consumed by the recipe/material/economics layer. Full trainer, vendor, quest, drop and provenance detail remains in the canonical JSON. The current UI does not yet expose every trainer/vendor location or purchase-cost record.
+
+### Runtime and acceptance
+
+The importer, canonical adapter, compact compiler, exact-build gate and source-index integration have offline regression coverage. These are source/offline checks only. Forever runtime verification of the 0.5.3 data loader, client build gate, UI attribution and recipe economics remains **NOT RUN** until the user tests it in Forever.
 
 ## Open Market
 
@@ -357,7 +382,7 @@ The 0.5.2 source is provided for review and development. No open-source licence 
 
 The repository includes a standard-library Python importer under `tools/foreverdb_importer/`. It is not an addon dependency and is not loaded by WoW. It captures approved ForeverDB API responses to local raw JSON, records their SHA-256 hashes/build metadata, profiles the actual response shape, validates a provider-reviewed canonical recipe format, and compiles reviewed records to per-profession Lua build artifacts.
 
-The importer deliberately does not guess the raw API's nested recipe schema. The exact provider adapter remains blocked until ForeverDB approves API access and we can inspect a real response. API keys are read from the `FOREVERDB_API_KEY` environment variable only; do not commit them. Raw imports and generated files are ignored by Git.
+The 0.5.2 importer deliberately deferred the raw API mapper until an approved response was available. In 0.5.3, the reviewed 1.60.1.70862 capture is normalized by the provider-specific adapter and compiled into the build-gated addon dataset. API keys remain environment-only; do not commit them. Future raw imports and intermediate build outputs remain local.
 
 See [`tools/foreverdb_importer/README.md`](tools/foreverdb_importer/README.md) for setup, Windows PowerShell instructions, evidence rules and commands.
 
@@ -366,4 +391,4 @@ See [`tools/foreverdb_importer/README.md`](tools/foreverdb_importer/README.md) f
 
 - Fixed normalization of sparse scalar itemID-to-quantity reagent maps so positive item IDs below or equal to 100 are not discarded as array indexes. Contiguous 1-based scalar arrays are detected as positional arrays, while table-shaped records continue to prefer explicit `itemID` fields.
 - No new runtime dependency was added.
-- Developer-only ForeverDB importer preview 0.1.0 is included under `tools/foreverdb_importer/`; it does not load in WoW. It is ready for a raw capture after API approval, but its provider-specific nested recipe mapper is deliberately pending a real approved response sample.
+- Developer-only ForeverDB importer 0.2.0 is included under `tools/foreverdb_importer/`; it does not load in WoW. It captures, inspects, normalizes the reviewed response schema, validates canonical data and compiles compact runtime Lua.

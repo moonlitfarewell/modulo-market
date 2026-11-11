@@ -137,6 +137,11 @@ local function GetSnapshot()
     return nil
 end
 
+local function GetMarketPrice(itemID)
+    if UI.recipeMarketBuildCompatible == false then return nil end
+    return UI.catalogByID and UI.catalogByID[tonumber(itemID)] or nil
+end
+
 local function GetItemName(item)
     local name = type(item.itemName) == "string" and item.itemName or nil
     if not name or name == "" then return "Item #" .. tostring(item.itemID or "?") end
@@ -293,7 +298,7 @@ local function StepEconomicsIndex()
         if not recipe.sourceUnknown and not recipe.borrowedSources then
             economics = MM.Recipes and MM.Recipes.BuildEconomics
                 and MM.Recipes.BuildEconomics(recipe, function(itemID)
-                    return UI.catalogByID and UI.catalogByID[tonumber(itemID)]
+                    return GetMarketPrice(itemID)
                 end, build.cut)
         end
         local itemID = tonumber(recipe.outputItemID or recipe.craftedItemId)
@@ -625,6 +630,17 @@ end
 
 local function StartCatalog(snapshot)
     UI.catalogSnapshot = snapshot
+    UI.recipeMarketBuildCompatible = true
+    UI.recipeMarketSnapshotBuild = nil
+    UI.recipeMarketCurrentBuild = nil
+    if MM.ProfessionData and type(MM.ProfessionData.IsMarketSnapshotCompatible) == "function" then
+        local compatible, snapshotBuild = MM.ProfessionData.IsMarketSnapshotCompatible(snapshot)
+        UI.recipeMarketBuildCompatible = compatible == true
+        UI.recipeMarketSnapshotBuild = snapshotBuild
+        local provider = MM.ProfessionData.GetFutureProviderStatus
+            and MM.ProfessionData.GetFutureProviderStatus() or nil
+        UI.recipeMarketCurrentBuild = provider and provider.currentBuild or nil
+    end
     UI.economicsByItemID = nil
     UI.economicsIndexBuild = nil
     UI.catalog = {}
@@ -732,7 +748,7 @@ local function StepView()
         local isCrafting = build.tab == "crafting" or build.tab == "allcrafts"
         if isCrafting and MM.Recipes then
             item = MM.Recipes.BuildEconomics(sourceItem, function(itemID)
-                return UI.catalogByID and UI.catalogByID[tonumber(itemID)]
+                return GetMarketPrice(itemID)
             end, cut)
             if item then
                 item.recipeKey = tostring(sourceItem.professionID or "") .. ":" .. tostring(sourceItem.recipeID or "")
@@ -845,7 +861,25 @@ function UI.FinishView(rows)
     local provider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
         and MM.ProfessionData.GetFutureProviderStatus()
     if provider then
-        if provider.available then
+        if provider.available and provider.dataSource == "ForeverDB.net" then
+            if UI.recipeMarketBuildCompatible == false then
+                if not UI.catalogSnapshot then
+                    SetStatus("Craft profitability disabled: no market snapshot for current client build "
+                        .. tostring(provider.currentBuild or "UNKNOWN"))
+                else
+                    SetStatus(string.format(
+                        "Craft profitability disabled: market snapshot build %s does not match current client build %s",
+                        tostring(UI.recipeMarketSnapshotBuild or "UNKNOWN"),
+                        tostring(provider.currentBuild or "UNKNOWN")))
+                end
+            else
+                SetStatus(string.format(
+                    "ForeverDB build %s · %d observed/automatic-source unlearned crafts · %d Classic-borrowed · %d unverified · %d speculative and %d non-item/unknown-output excluded",
+                    tostring(provider.datasetBuild or "UNKNOWN"), provider.count or 0,
+                    provider.borrowedSourceCount or 0, provider.unknownSourceCount or 0,
+                    provider.speculativeCount or 0, provider.nonItemCount or 0))
+            end
+        elseif provider.available then
             SetStatus(string.format("%d unlearned craft candidates · %d borrowed-source · %d unknown-source",
                 provider.count or 0, provider.borrowedSourceCount or 0, provider.unknownSourceCount or 0))
         else
@@ -1184,7 +1218,7 @@ local function RenderMarketRecipeContext(item)
         end
         if creates or consumes then
             local summary = MM.Recipes.BuildEconomics(recipe, function(id)
-                return UI.catalogByID and UI.catalogByID[tonumber(id)]
+                return GetMarketPrice(id)
             end, cut)
             local label = tostring(recipe.recipeName or "Recipe") .. " · " .. tostring(recipe.professionName or "Profession")
             if summary and summary.profitCopper ~= nil then
@@ -1223,7 +1257,7 @@ local function RenderMarketRecipeContext(item)
         end
         if creates or consumes then
             local summary = MM.Recipes.BuildEconomics(recipe, function(id)
-                return UI.catalogByID and UI.catalogByID[tonumber(id)]
+                return GetMarketPrice(id)
             end, cut)
             local sourceLabel = recipe.borrowedSources and " · source unconfirmed"
                 or (recipe.sourceUnknown and " · source unknown" or " · unlearned")
@@ -1629,7 +1663,12 @@ local function CreateUI()
     end
 
     UI.metadata = AddLabel(frame, "Loading market data…", 18, -36, 980, 18, "GameFontNormal")
-    UI.status = AddLabel(frame, "Ready", 18, -58, 980, 18, "GameFontDisableSmall")
+    UI.status = AddLabel(frame, "Ready", 18, -58, 1120, 18, "GameFontDisableSmall")
+    if MM.ForeverDBData and MM.ForeverDBData.meta then
+        UI.attribution = AddLabel(frame,
+            "|cff66ccffData from ForeverDB.net — https://foreverdb.net|r",
+            18, -738, 650, 14, "GameFontDisableSmall")
+    end
     UI.scanButton = AddButton(frame, "Update full market", 145, 18, -82, function()
         if MM.Replicate then MM.Replicate.Prepare() end
         UI.RefreshActions()
@@ -1968,7 +2007,7 @@ local function CreateUI()
 end
 
 function UI.GetMarketItemByID(itemID)
-    return UI.catalogByID and UI.catalogByID[tonumber(itemID)] or nil
+    return GetMarketPrice(itemID) or nil
 end
 
 function UI.OnRecipesUpdated()

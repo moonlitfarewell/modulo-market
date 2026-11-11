@@ -207,6 +207,224 @@ local function NormalizeLibraryReagents(source)
     return result, totalEntries == 0 or #result == totalEntries
 end
 
+
+local function ComposeClientBuild(version, build)
+    if type(version) ~= "string" or version == "" or build == nil then return nil end
+    local suffix = "." .. tostring(build)
+    if string.sub(version, -#suffix) == suffix then return version end
+    return version .. suffix
+end
+
+local function CurrentClientBuild()
+    if type(_G.GetBuildInfo) ~= "function" then return nil end
+    local ok, version, build = pcall(_G.GetBuildInfo)
+    if not ok then return nil end
+    return ComposeClientBuild(version, build)
+end
+
+local function AddForeverDBRecipes()
+    local dataset = MM.ForeverDBData
+    if type(dataset) ~= "table" then return false end
+
+    local meta = type(dataset.meta) == "table" and dataset.meta or {}
+    local datasetBuild = type(meta.clientBuild) == "string" and meta.clientBuild or nil
+    local currentBuild = CurrentClientBuild()
+    futureProvider = {
+        available = false,
+        status = "ForeverDB data build could not be checked",
+        count = 0,
+        unknownSourceCount = 0,
+        borrowedSourceCount = 0,
+        recipeCount = 0,
+        speculativeCount = 0,
+        nonItemCount = 0,
+        excludedKnownCount = 0,
+        dataSource = "ForeverDB.net",
+        datasetBuild = datasetBuild,
+        currentBuild = currentBuild,
+    }
+    if not currentBuild then
+        futureProvider.status = "Cannot verify this client's build; ForeverDB recipes are not loaded"
+        return true
+    end
+    if not datasetBuild or datasetBuild ~= currentBuild then
+        futureProvider.status = string.format(
+            "ForeverDB data build mismatch (data %s; client %s); imported recipes are not loaded",
+            tostring(datasetBuild or "UNKNOWN"), currentBuild)
+        return true
+    end
+
+    local learned, learnedByOutput = {}, {}
+    if MM.Recipes and type(MM.Recipes.GetAllRecipes) == "function" then
+        local ok, recipes = pcall(MM.Recipes.GetAllRecipes)
+        if ok and type(recipes) == "table" then
+            for _, recipe in ipairs(recipes) do
+                local pid, rid = tonumber(recipe.professionID), tonumber(recipe.recipeID)
+                local outputID = tonumber(recipe.outputItemID)
+                if pid and rid then
+                    learned[pid] = learned[pid] or {}
+                    learned[pid][rid] = true
+                end
+                if pid and outputID then
+                    learnedByOutput[pid] = learnedByOutput[pid] or {}
+                    learnedByOutput[pid][outputID] = learnedByOutput[pid][outputID] or {}
+                    learnedByOutput[pid][outputID][#learnedByOutput[pid][outputID] + 1] = recipe.recipeName
+                end
+            end
+        end
+    end
+
+    local function NormalizeName(value)
+        if type(value) ~= "string" then return nil end
+        value = string.lower(value):gsub("%s+", " ")
+        value = value:gsub("^%s+", ""):gsub("%s+$", "")
+        return value ~= "" and value or nil
+    end
+
+    local totalCount, speculativeCount, nonItemCount = 0, 0, 0
+    local knownCount, borrowedCount, unknownCount, excludedKnownCount = 0, 0, 0, 0
+    local providerProfessions = type(dataset.professions) == "table" and dataset.professions or {}
+    for slug, profession in pairs(providerProfessions) do
+        if type(profession) == "table" then
+            local professionID = tonumber(profession.professionID)
+            local professionName = type(profession.name) == "string" and profession.name
+                or (professionID and PROFESSION_NAMES[professionID])
+                or tostring(slug)
+            if professionID then professions[professionID] = professionName end
+            for _, sourceRecipe in ipairs(type(profession.recipes) == "table" and profession.recipes or {}) do
+                if type(sourceRecipe) == "table" then
+                    totalCount = totalCount + 1
+                    if sourceRecipe.speculative == true then
+                        speculativeCount = speculativeCount + 1
+                    else
+                        local recipeID = tonumber(sourceRecipe.recipeID or sourceRecipe.id)
+                        local outputRows = type(sourceRecipe.outputs) == "table" and sourceRecipe.outputs or {}
+                        local output = outputRows[1]
+                        local outputID = type(output) == "table" and tonumber(output.itemID or output.id) or nil
+                        local recipeName = type(sourceRecipe.recipeName or sourceRecipe.name) == "string"
+                            and (sourceRecipe.recipeName or sourceRecipe.name) or "Unknown recipe"
+                        local alreadyKnown = recipeID and learned[professionID]
+                            and learned[professionID][recipeID] == true or false
+                        if outputID and sourceRecipe.kind ~= "enchantment"
+                            and sourceRecipe.kind ~= "service" then
+                            local normalizedName = NormalizeName(recipeName)
+                            if not alreadyKnown and learnedByOutput[professionID]
+                                and learnedByOutput[professionID][outputID] and normalizedName then
+                                for _, knownName in ipairs(learnedByOutput[professionID][outputID]) do
+                                    if NormalizeName(knownName) == normalizedName then
+                                        alreadyKnown = true
+                                        break
+                                    end
+                                end
+                            end
+                            if alreadyKnown then
+                                excludedKnownCount = excludedKnownCount + 1
+                            else
+                                local reagentSlots = {}
+                                for _, group in ipairs(type(sourceRecipe.reagents) == "table" and sourceRecipe.reagents or {}) do
+                                    if type(group) == "table" then
+                                        local choices = {}
+                                        for _, choice in ipairs(type(group.choices) == "table" and group.choices or {}) do
+                                            local itemID = type(choice) == "table" and tonumber(choice.itemID or choice.id)
+                                            if itemID and itemID > 0 then
+                                                choices[#choices + 1] = {
+                                                    itemID = itemID,
+                                                    name = type(choice.name) == "string" and choice.name or nil,
+                                                }
+                                            end
+                                        end
+                                        local qmin, qmax = tonumber(group.quantityMin or group.min),
+                                            tonumber(group.quantityMax or group.max)
+                                        reagentSlots[#reagentSlots + 1] = {
+                                            quantity = qmin,
+                                            choices = choices,
+                                            variable = qmin == nil or qmax == nil or qmax > qmin,
+                                            required = group.required ~= false,
+                                        }
+                                    end
+                                end
+                                local outputMin = tonumber(output.quantityMin or output.min)
+                                local outputMax = tonumber(output.quantityMax or output.max)
+                                local sourceKnown = sourceRecipe.sourceKnown == true
+                                local borrowedSources = sourceRecipe.borrowedSources == true and not sourceKnown
+                                local sourceUnknown = not sourceKnown and not borrowedSources
+                                local future = {
+                                    recipeID = recipeID,
+                                    recipeName = recipeName,
+                                    professionID = professionID,
+                                    professionName = professionName,
+                                    outputItemID = outputID,
+                                    quantityMin = outputMin,
+                                    quantityMax = outputMax,
+                                    hasSingleItemOutput = outputMin == 1 and outputMax == 1,
+                                    reagents = reagentSlots,
+                                    reagentDataAvailable = sourceRecipe.reagentDataAvailable == true,
+                                    learned = false,
+                                    craftable = false,
+                                    sourceKnown = sourceKnown,
+                                    sourceUnknown = sourceUnknown,
+                                    borrowedSources = borrowedSources,
+                                    automatic = sourceRecipe.automatic == true,
+                                    observedSourceTypes = sourceRecipe.observedSourceTypes or {},
+                                    borrowedSourceTypes = sourceRecipe.borrowedSourceTypes or {},
+                                    skillThresholds = sourceRecipe.skill or {},
+                                    newInForever = sourceRecipe.newInForever == true,
+                                    changedFromClassic = sourceRecipe.changedFromClassic,
+                                    sourceProvider = "ForeverDB.net",
+                                    sourceBuild = datasetBuild,
+                                }
+                                allFutureRecipes[#allFutureRecipes + 1] = future
+                                AddProfession(outputID, professionID, professionName)
+                                local outputEntry = EnsureItem(outputID)
+                                if outputEntry then
+                                    if sourceUnknown then
+                                        outputEntry.unknownFutureCrafts[#outputEntry.unknownFutureCrafts + 1] = future
+                                    else
+                                        outputEntry.futureCrafts[#outputEntry.futureCrafts + 1] = future
+                                    end
+                                    if not outputEntry.itemName and type(output.name) == "string" then
+                                        outputEntry.itemName = output.name
+                                    end
+                                end
+                                for _, slot in ipairs(reagentSlots) do
+                                    for _, choice in ipairs(slot.choices) do
+                                        AddProfession(choice.itemID, professionID, professionName)
+                                        local material = EnsureItem(choice.itemID)
+                                        if material then
+                                            material.materialForCraft = true
+                                            material.materialProfessions[professionID] = professionName
+                                            if not material.itemName and type(choice.name) == "string" then
+                                                material.itemName = choice.name
+                                            end
+                                        end
+                                    end
+                                end
+                                if sourceKnown then knownCount = knownCount + 1
+                                elseif borrowedSources then borrowedCount = borrowedCount + 1
+                                else unknownCount = unknownCount + 1 end
+                            end
+                        else
+                            nonItemCount = nonItemCount + 1
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    futureProvider.available = true
+    futureProvider.status = "ForeverDB recipes loaded · build " .. datasetBuild
+    futureProvider.count = knownCount
+    futureProvider.borrowedSourceCount = borrowedCount
+    futureProvider.unknownSourceCount = unknownCount
+    futureProvider.recipeCount = totalCount
+    futureProvider.speculativeCount = speculativeCount
+    futureProvider.nonItemCount = nonItemCount
+    futureProvider.excludedKnownCount = excludedKnownCount
+    return true
+end
+
+
 local function AddFutureRecipes()
     local db = GetProfessionDB()
     if not db then
@@ -401,7 +619,9 @@ function Data.Refresh()
     end
 
     AddKnownRecipes()
-    AddFutureRecipes()
+    if not AddForeverDBRecipes() then
+        AddFutureRecipes()
+    end
     AddGatheringItems(knownProfessions)
 end
 
@@ -466,7 +686,27 @@ function Data.GetFutureProviderStatus()
         count = futureProvider.count,
         unknownSourceCount = futureProvider.unknownSourceCount,
         borrowedSourceCount = futureProvider.borrowedSourceCount,
+        recipeCount = futureProvider.recipeCount,
+        speculativeCount = futureProvider.speculativeCount,
+        nonItemCount = futureProvider.nonItemCount,
+        excludedKnownCount = futureProvider.excludedKnownCount,
+        dataSource = futureProvider.dataSource,
+        datasetBuild = futureProvider.datasetBuild,
+        currentBuild = futureProvider.currentBuild,
     }
+end
+
+function Data.IsMarketSnapshotCompatible(snapshot)
+    if futureProvider.dataSource ~= "ForeverDB.net" then return true, nil end
+    if type(snapshot) ~= "table" then return false, nil end
+    local version = type(snapshot.clientVersion) == "string" and snapshot.clientVersion or nil
+    local build = snapshot.clientBuild
+    if not version or version == "" or version == "unknown" or build == nil then return false, nil end
+    build = tostring(build)
+    if build == "" or build == "unknown" then return false, nil end
+    local snapshotBuild = ComposeClientBuild(version, build)
+    return snapshotBuild ~= nil and futureProvider.currentBuild ~= nil
+        and snapshotBuild == futureProvider.currentBuild, snapshotBuild
 end
 
 function Data.Matches(itemID, professionID, role)

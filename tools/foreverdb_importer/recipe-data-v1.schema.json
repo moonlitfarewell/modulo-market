@@ -4,89 +4,581 @@
   "title": "Modulo Market canonical recipe data v1",
   "description": "Provider-neutral staging contract populated only after raw provider schema and provenance have been reviewed. It is not the ForeverDB API response schema.",
   "type": "object",
-  "required": ["schema_version", "provider", "provider_url", "client_build", "retrieved_at_utc", "attribution_required", "professions"],
+  "required": [
+    "schema_version",
+    "provider",
+    "provider_url",
+    "client_build",
+    "retrieved_at_utc",
+    "attribution_required",
+    "professions"
+  ],
   "properties": {
-    "schema_version": {"const": 1},
-    "provider": {"const": "ForeverDB.net"},
-    "provider_url": {"const": "https://foreverdb.net"},
-    "client_build": {"type": "string", "minLength": 1},
-    "locale": {"type": ["string", "null"]},
-    "retrieved_at_utc": {"type": "string", "format": "date-time"},
-    "attribution_required": {"const": true},
-    "synthetic_fixture": {"type": "boolean"},
+    "schema_version": {
+      "const": 1
+    },
+    "provider": {
+      "const": "ForeverDB.net"
+    },
+    "provider_url": {
+      "const": "https://foreverdb.net"
+    },
+    "client_build": {
+      "type": "string",
+      "minLength": 1
+    },
+    "locale": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "retrieved_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "attribution_required": {
+      "const": true
+    },
+    "synthetic_fixture": {
+      "type": "boolean"
+    },
     "professions": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["slug", "profession_id", "name", "recipes"],
+        "required": [
+          "slug",
+          "profession_id",
+          "name",
+          "recipes"
+        ],
         "properties": {
-          "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
-          "profession_id": {"type": "integer", "minimum": 1},
-          "name": {"type": "string", "minLength": 1},
-          "skill_cap": {"type": ["integer", "null"], "minimum": 1},
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "profession_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "skill_cap": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
           "recipes": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["recipe_id", "name", "structure_evidence", "output_kind", "outputs", "reagent_groups"],
+              "required": [
+                "recipe_id",
+                "name",
+                "structure_evidence",
+                "output_kind",
+                "outputs",
+                "reagent_groups"
+              ],
               "properties": {
-                "recipe_id": {"type": "integer", "minimum": 1},
-                "name": {"type": "string", "minLength": 1},
-                "category": {"type": ["string", "null"]},
-                "structure_evidence": {"enum": ["FOREVER_CLIENT", "FOREVER_OBSERVED", "FOREVERTOME_CLIENT_ARCHIVE", "LIBPROFESSIONDB", "CLASSIC_BORROWED", "UNKNOWN"]},
-                "output_kind": {"enum": ["item", "enchantment", "service", "unknown"]},
-                "outputs": {"type": "array", "items": {"$ref": "#/$defs/output"}},
-                "reagent_groups": {"type": "array", "items": {"$ref": "#/$defs/reagentGroup"}},
-                "skill": {"type": "object"},
-                "acquisition_sources": {"type": "array", "items": {"$ref": "#/$defs/acquisitionSource"}}
+                "recipe_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "category": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "structure_evidence": {
+                  "enum": [
+                    "FOREVER_CLIENT",
+                    "FOREVER_OBSERVED",
+                    "FOREVERTOME_CLIENT_ARCHIVE",
+                    "LIBPROFESSIONDB",
+                    "CLASSIC_BORROWED",
+                    "UNKNOWN"
+                  ]
+                },
+                "output_kind": {
+                  "enum": [
+                    "item",
+                    "enchantment",
+                    "service",
+                    "unknown"
+                  ]
+                },
+                "outputs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/output"
+                  }
+                },
+                "reagent_groups": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/reagentGroup"
+                  }
+                },
+                "skill": {
+                  "type": "object",
+                  "properties": {
+                    "orange": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "yellow": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "green": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "grey": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "orange_classic": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "orange_source": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "orange_evidence": {
+                      "$ref": "#/$defs/evidence"
+                    },
+                    "other_threshold_evidence": {
+                      "$ref": "#/$defs/evidence"
+                    },
+                    "threshold_evidence": {
+                      "$ref": "#/$defs/evidence"
+                    }
+                  }
+                },
+                "acquisition_sources": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/acquisitionSource"
+                  }
+                },
+                "category_id": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "category_parent": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "provider_metadata": {
+                  "type": "object"
+                }
               }
             }
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ranks": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "trainers": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "recipe_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "new_in_forever_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "changed_from_classic_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "trainer_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "trainers_seen_in_forever_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
           }
         }
       }
+    },
+    "attribution_text": {
+      "type": "string"
+    },
+    "provider_notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "provider_disclaimer": {
+      "type": "string"
+    },
+    "source_capture": {
+      "type": "object"
+    },
+    "normalization_summary": {
+      "type": "object"
+    },
+    "provider_meta": {
+      "type": "object"
     }
   },
   "$defs": {
-    "evidence": {"enum": ["FOREVER_CLIENT", "FOREVER_OBSERVED", "FOREVERTOME_CLIENT_ARCHIVE", "LIBPROFESSIONDB", "CLASSIC_BORROWED", "UNKNOWN"]},
-    "quantity": {"type": ["integer", "null"], "minimum": 1},
+    "evidence": {
+      "enum": [
+        "FOREVER_CLIENT",
+        "FOREVER_OBSERVED",
+        "FOREVERTOME_CLIENT_ARCHIVE",
+        "LIBPROFESSIONDB",
+        "CLASSIC_BORROWED",
+        "UNKNOWN"
+      ]
+    },
+    "quantity": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
     "output": {
       "type": "object",
-      "required": ["item_id", "quantity_min", "quantity_max", "quantity_evidence"],
+      "required": [
+        "item_id",
+        "quantity_min",
+        "quantity_max",
+        "quantity_evidence"
+      ],
       "properties": {
-        "item_id": {"type": "integer", "minimum": 1},
-        "name": {"type": ["string", "null"]},
-        "quantity_min": {"$ref": "#/$defs/quantity"},
-        "quantity_max": {"$ref": "#/$defs/quantity"},
-        "quantity_evidence": {"$ref": "#/$defs/evidence"}
+        "item_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quantity_min": {
+          "$ref": "#/$defs/quantity"
+        },
+        "quantity_max": {
+          "$ref": "#/$defs/quantity"
+        },
+        "quantity_evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "quality": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        }
       }
     },
     "reagentChoice": {
       "type": "object",
-      "required": ["item_id"],
-      "properties": {"item_id": {"type": "integer", "minimum": 1}, "name": {"type": ["string", "null"]}}
+      "required": [
+        "item_id"
+      ],
+      "properties": {
+        "item_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
     },
     "reagentGroup": {
       "type": "object",
-      "required": ["required", "quantity_min", "quantity_max", "quantity_evidence", "choices"],
+      "required": [
+        "required",
+        "quantity_min",
+        "quantity_max",
+        "quantity_evidence",
+        "choices"
+      ],
       "properties": {
-        "required": {"type": "boolean"},
-        "quantity_min": {"$ref": "#/$defs/quantity"},
-        "quantity_max": {"$ref": "#/$defs/quantity"},
-        "quantity_evidence": {"$ref": "#/$defs/evidence"},
-        "choices": {"type": "array", "items": {"$ref": "#/$defs/reagentChoice"}}
+        "required": {
+          "type": "boolean"
+        },
+        "quantity_min": {
+          "$ref": "#/$defs/quantity"
+        },
+        "quantity_max": {
+          "$ref": "#/$defs/quantity"
+        },
+        "quantity_evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reagentChoice"
+          }
+        }
       }
     },
     "acquisitionSource": {
       "type": "object",
-      "required": ["type", "seen_in_forever", "evidence"],
+      "required": [
+        "type",
+        "seen_in_forever",
+        "evidence"
+      ],
       "properties": {
-        "type": {"type": "string"},
-        "name": {"type": ["string", "null"]},
-        "faction": {"type": ["string", "null"]},
-        "price_copper": {"type": ["integer", "null"], "minimum": 0},
-        "seen_in_forever": {"type": ["boolean", "null"]},
-        "evidence": {"$ref": "#/$defs/evidence"}
+        "type": {
+          "type": "string"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "faction": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "price_copper": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "seen_in_forever": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "npc_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "item_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "quest_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "zone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "map_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "x": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "y": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "inferred": {
+          "type": "boolean"
+        },
+        "entity_evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "place_evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "price_per_item_copper": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "stack_size": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "costs": {
+          "type": "array"
+        },
+        "limited_stock": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "limited_stock_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "not_on_list_players_saw": {
+          "type": "boolean"
+        },
+        "reputation_faction": {},
+        "chance_percent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "in_forever_client": {
+          "type": "boolean"
+        },
+        "visibility": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        }
       }
     }
   }

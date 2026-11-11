@@ -110,3 +110,33 @@ The previously observed client evidence refers to `1.60.1.70862`; the currently 
 - Live Forever runtime verification of imported data and recipe economics: NOT RUN.
 
 Do not claim ForeverDB import or Forever recipe completeness until these gates pass.
+
+
+---
+
+## 2026-11-11 — approved ForeverDB capture reviewed; first integration slice implemented
+
+**Supersedes the pending-access/raw-adapter status above for the 0.5.3 baseline.** The historical 0.5.2 audit remains unchanged.
+
+### Evidence received
+
+The user supplied `capture-20261111-122719.zip` after running the Windows importer with Python installed. The capture is COMPLETE for client build `1.60.1.70862`: 34 responses, all hashes/byte counts valid, 12 profession slugs, 2,493 recipe records. Each profession's actual nested `data.recipes` count matches its manifest total. The exact response shape is now known and recorded in `docs/FOREVERDB-DATA-REVIEW-2026-11-11.md`.
+
+### Implemented in 0.5.3
+
+- `normalize-capture` verifies the raw capture and maps the observed ForeverDB schema into canonical v1.
+- `compile-runtime` emits a compact `ForeverDBData.lua` for the current addon data consumer.
+- The canonical JSON and original raw capture ZIP are retained under `data/`.
+- `ProfessionData.lua` prefers the bundled ForeverDB catalogue when present and only loads it when `GetBuildInfo()` exactly matches the dataset build; Market also requires the saved auction snapshot's `clientVersion.clientBuild` to match the current client before joining its prices to recipe data.
+- Learned recipes are de-duplicated; speculative recipes and non-item outputs are excluded from item craft economics.
+- Observed/automatic, Classic-borrowed and unknown acquisition sources remain distinct.
+- The existing optional LibProfessionDB path remains only when no ForeverDB dataset is bundled; a present but mismatched ForeverDB dataset is blocked rather than silently substituted.
+- Market UI displays the required ForeverDB credit and source/build counts.
+
+### Mapping limits
+
+The capture exposes `makes.count`, not separate output min/max values, and reagent arrays have no optional/alternative flags. No random yield ranges or reagent alternatives are inferred. Drop and quest rows lack per-row Forever observation evidence in this capture and remain UNKNOWN. Trainer/vendor rows retain their own `seenInForever` distinction. Orange skill thresholds remain separate from trainer learning requirements.
+
+### Acceptance still open
+
+Offline source/harness tests do not prove target-client behavior. Forever 1.60.1.70862 runtime acceptance remains NOT RUN. The user must verify addon load, exact build detection, recipe/material indexing, known-recipe de-duplication, source-status presentation, profitability withholding for incomplete data and visible attribution in the actual client. Full trainer/vendor source presentation and runtime memory/load impact remain future work.

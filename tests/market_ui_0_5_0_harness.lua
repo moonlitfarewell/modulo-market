@@ -416,4 +416,4 @@ local visibleBars = 0
 for _, bar in ipairs(ui.historyBars) do if bar.shown then visibleBars = visibleBars + 1 end end
 assert(visibleBars == 2, "History graph should render its two available points")
 
-print("ModuloMarket 0.5.2 UI harness passed")
+print("ModuloMarket 0.5.3 UI harness passed")

@@ -1,14 +1,14 @@
-# Modulo Market ForeverDB importer (developer tool preview 0.1.0)
+# Modulo Market ForeverDB importer (developer tool 0.2.0)
 
 This is a **developer-side, offline-first tool**. It is not loaded by WoW and does not load in WoW. The current addon source baseline is ModuloMarket 0.5.2.
 
-It prepares the approved ForeverDB API workflow without assuming the response schema before we can inspect a real approved response. The first stage captures and archives raw read-only API responses. The next stage validates a provider-reviewed canonical dataset and can compile that dataset to Lua files for a later addon release.
+It captures raw read-only API responses, inspects and verifies their hashes, normalizes the reviewed ForeverDB profession response shape into canonical v1, validates the canonical data, and compiles compact addon runtime data. The raw-schema adapter was implemented against the user's complete 11 November 2026 capture for client build `1.60.1.70862`; if a future capture changes shape, normalization fails closed and requires review.
 
 ## Why the importer is split into stages
 
 ForeverDB documents an envelope of `{ data, meta }`, a `/meta` endpoint, a profession index, and `/professions/{slug}` recipe data. The profession endpoint exposes recipe outputs (including min/max for variable yields), reagents, skill colours, acquisition sources, faction-specific vendors/trainers, price data and `seenInForever` evidence. However, its public documentation does not provide a complete example response for every nested recipe/source shape.
 
-Therefore this tool **does not guess the live response mapping**. It archives the raw response, records its hash and build metadata, and provides an inspector. A provider adapter will only be added after we have an approved response sample and have checked every mapped field against its actual JSON shape.
+The normalizer maps only fields present in the reviewed capture shape. It checks the capture manifest, every response hash/byte count, provider build, profession list, page totals and recipe IDs before emitting canonical v1. It does not infer optional/alternative reagents, random output ranges, trainer learning requirements, or source observation where the response has no per-row evidence.
 
 Official documentation: https://foreverdb.net/developers
 
@@ -16,7 +16,7 @@ Official documentation: https://foreverdb.net/developers
 
 - Python 3.10 or newer.
 - Standard library only; no third-party Python packages are required.
-- An approved ForeverDB API key for the `capture` command. The user application is currently pending approval; do not attempt capture until a key has been issued.
+- An approved ForeverDB API key for the `capture` command. Existing captures can be normalized, validated and compiled offline without a key.
 
 ## API-key handling
 
@@ -71,6 +71,28 @@ This validates response hashes and prints the JSON shape (object keys, array cou
 
 If a profession endpoint returns a rank/skill-wrapped response rather than a direct recipe page, the capture preserves it and marks pagination as schema-unknown. It does not fabricate missing pages or infer recipe structure.
 
+## Normalize a verified capture and compile addon data
+
+After inspecting a complete capture, normalize it:
+
+```text
+python tools/foreverdb_importer/market_data_importer.py normalize-capture ./captures/capture-YYYYMMDD-HHMMSS --output ./normalized/ForeverDB-Canonical.json
+```
+
+Validate the canonical file:
+
+```text
+python tools/foreverdb_importer/market_data_importer.py validate ./normalized/ForeverDB-Canonical.json
+```
+
+Compile the compact addon runtime data:
+
+```text
+python tools/foreverdb_importer/market_data_importer.py compile-runtime ./normalized/ForeverDB-Canonical.json --output ./build/ForeverDBData.lua
+```
+
+`compile-runtime` emits only the recipe/output/reagent/source-status fields consumed by the current addon. The canonical JSON retains the fuller trainer, vendor, drop, quest, recipe-item and provenance detail. The addon must still be build-gated and visibly credit ForeverDB.net.
+
 ## Canonical recipe data contract
 
 `recipe-data-v1.schema.json` defines our staging format. It is **our internal contract, not ForeverDB's API response schema**. A provider adapter must map real fields into it only after review.
@@ -106,7 +128,7 @@ python tools/foreverdb_importer/market_data_importer.py compile path/to/foreverd
 
 The compiler refuses incomplete/invalid metadata and duplicates. It emits one Lua file per profession plus an index. The index includes the required visible credit text and URL: **Data from ForeverDB.net** / `https://foreverdb.net`.
 
-The generated files are **not automatically added to the addon TOC**. They are build artifacts until the recipe adapter, runtime data model, attribution UI and client-build compatibility checks are reviewed and accepted in a later Market capability release.
+The legacy `compile` command's per-profession files are build artifacts and are not automatically added to the TOC. The 0.2.0 `compile-runtime` command emits the compact `ForeverDBData.lua` file used by the 0.5.3 addon; that file is added to the TOC before `ProfessionData.lua` and is exact-build gated at runtime.
 
 A synthetic example is included for tests only. The compiler refuses `synthetic_fixture: true` unless `--allow-fixture` is explicitly supplied. Fixture output must never be shipped to players.
 
@@ -118,7 +140,7 @@ ForeverDB remains the primary target because its API explicitly separates client
 
 ## Current implementation status
 
-- Implemented: raw API capture client, secret-safe environment key handling, conservative rate limiting, page safety caps, retry handling, raw JSON preservation, response hashes, schema inspector, canonical schema, strict validator, Lua compiler, synthetic fixtures and offline tests.
-- Not implemented yet: exact ForeverDB raw-response adapter. It is blocked only on the approved API key and a real response sample; the public documentation does not expose enough nested JSON examples to safely map all fields.
-- Not implemented yet: generated data wired into ModuloMarket runtime/UI. That needs a separate addon capability slice, client-build compatibility evidence and visible attribution placement.
-- No ForeverDB data, developer ID, account credential or API key is included in this repository.
+- Implemented: raw API capture client, secret-safe environment key handling, conservative rate limiting, page safety caps, retry handling, raw JSON preservation, response hashes, schema inspector, reviewed raw-response normalizer, canonical validator, full-data compiler, compact runtime compiler and offline tests.
+- Implemented for the reviewed 1.60.1.70862 capture: `normalize-capture` and `compile-runtime`. Unknown/future response shapes still require review and may be rejected.
+- Addon integration is present in ModuloMarket 0.5.3 with an exact `GetBuildInfo()` gate and visible ForeverDB attribution. Forever runtime acceptance remains NOT RUN.
+- No ForeverDB API key, account credential or developer ID is included in this repository. The canonical normalized dataset is retained under `data/`; the raw capture archive is kept separate from the public repository and its hash is recorded in the review audit.
