@@ -13,9 +13,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_050_version_and_separate_child_boundary():
-    assert 'MM.version = "0.5.6"' in CORE
-    assert re.search(r"^## Version: 0\.5\.6$", TOC, re.M)
-    assert MANIFEST["version"] == "0.5.6"
+    assert 'MM.version = "0.5.7"' in CORE
+    assert re.search(r"^## Version: 0\.5\.7$", TOC, re.M)
+    assert MANIFEST["version"] == "0.5.7"
     assert "## Dependencies: Modulo" in TOC
     assert "ModuloMarket" not in (ROOT / "AddOns/Modulo/Modulo.toc").read_text() if (ROOT / "AddOns/Modulo/Modulo.toc").exists() else True
 
@@ -102,7 +102,7 @@ def test_050_history_shows_change_and_four_point_graph():
 def test_050_tab_tooltips_are_raised_above_market():
     assert "local function RaiseMarketTooltip" in UI
     assert 'GameTooltip:SetFrameStrata("TOOLTIP")' in UI
-    assert "(UI.frame:GetFrameLevel() or 1) + 100" in UI
+    assert "ownerLevel + 100" in UI
 
 
 def test_050_catalogue_render_stays_virtualized_and_incremental():

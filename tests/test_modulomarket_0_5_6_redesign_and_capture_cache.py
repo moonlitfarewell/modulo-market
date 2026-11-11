@@ -50,7 +50,7 @@ def test_profession_capture_caches_unchanged_recipe_lists():
     assert 'Recipes.CaptureCurrentProfession(forceNow)' in ENGINE
 
 
-def test_patch_version_and_manifest_are_0_5_6():
-    assert 'MM.version = "0.5.6"' in CORE
-    assert '## Version: 0.5.6' in TOC
-    assert MANIFEST["version"] == "0.5.6"
+def test_patch_version_and_manifest_are_0_5_7():
+    assert 'MM.version = "0.5.7"' in CORE
+    assert '## Version: 0.5.7' in TOC
+    assert MANIFEST["version"] == "0.5.7"

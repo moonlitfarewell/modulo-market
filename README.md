@@ -1,4 +1,4 @@
-# Modulo Market 0.5.6
+# Modulo Market 0.5.7
 
 **Current player milestone:** seven distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
 
@@ -12,6 +12,15 @@ Market 0.5.3 includes a reviewed ForeverDB recipe dataset from client build `1.6
 
  It depends on `Modulo`; MODULO does not depend on Market. Auctionator and ProfessionMaster remain independent addons and are not runtime dependencies.
 
+
+## Current 0.5.7 milestone — hover inspection, true window opacity and tab-specific columns
+
+- The Market frame uses DIALOG strata while GameTooltip and dropdown menus use TOOLTIP strata, so hover help is not trapped behind the Market window.
+- Hovering recipe/item rows opens item or recipe spell tooltips when the client exposes the relevant tooltip API; the selected-entry name and recipe metadata also have dedicated hover targets.
+- Search, profession and recipe-source/item-role controls expose explanatory hover text; future/borrowed/unknown option definitions remain available on their dropdown entries.
+- The opacity slider now applies alpha to the entire Market window (panels, controls, text and frame contents), not only template background textures. Tooltips remain independent overlays.
+- Materials no longer spends a table column on Listings; Best Craft Profit moves into that column. Other tabs retain their own listing information.
+- Subtle bronze panel outlines reinforce the Dark Foundry three-column workspace without changing any tab's underlying data model.
 
 ## Current 0.5.6 milestone — Dark Foundry workspace and profession capture cache
 

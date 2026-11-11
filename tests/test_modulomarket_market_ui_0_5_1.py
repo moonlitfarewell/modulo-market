@@ -40,5 +40,5 @@ def test_item_role_dropdown_explains_exclusive_categories():
 
 
 def test_patch_version_is_consistent():
-    assert 'MM.version = "0.5.6"' in CORE
-    assert "## Version: 0.5.6" in TOC
+    assert 'MM.version = "0.5.7"' in CORE
+    assert "## Version: 0.5.7" in TOC

@@ -29,7 +29,7 @@ def test_sort_direction_uses_texture_arrows_not_font_glyphs():
 
 def test_background_opacity_is_adjustable_and_persisted():
     assert "UI.opacitySlider = CreateFrame(\"Slider\"" in UI
-    assert "SetMinMaxValues(0.15, 0.85)" in UI
+    assert "SetMinMaxValues(0.35, 1.0)" in UI
     assert "MM.db.backgroundOpacity = alpha" in UI
     assert "ApplyBackgroundOpacity(frame, value)" in UI
 
@@ -50,5 +50,5 @@ def test_auction_house_launcher_retries_on_lifecycle_events():
 
 
 def test_version_is_aligned():
-    assert re.search(r"^## Version: 0\.5\.6$", TOC, re.M)
-    assert 'MM.version = "0.5.6"' in CORE
+    assert re.search(r"^## Version: 0\.5\.7$", TOC, re.M)
+    assert 'MM.version = "0.5.7"' in CORE

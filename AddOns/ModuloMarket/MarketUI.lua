@@ -407,6 +407,21 @@ local function RefreshProfessionOptions()
     return options
 end
 
+local function RaiseMarketTooltip(owner, title, body)
+    if not _G.GameTooltip then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    if type(GameTooltip.SetFrameStrata) == "function" then GameTooltip:SetFrameStrata("TOOLTIP") end
+    if type(GameTooltip.SetFrameLevel) == "function" then
+        local ownerLevel = owner and type(owner.GetFrameLevel) == "function" and owner:GetFrameLevel() or 1
+        local tooltipLevel = type(GameTooltip.GetFrameLevel) == "function" and GameTooltip:GetFrameLevel() or 1
+        GameTooltip:SetFrameLevel(math.max(tooltipLevel, ownerLevel + 100))
+    end
+    if type(GameTooltip.ClearLines) == "function" then GameTooltip:ClearLines() end
+    GameTooltip:SetText(title or "")
+    if body and body ~= "" then GameTooltip:AddLine(body, 1, 1, 1, true) end
+    GameTooltip:Show()
+end
+
 local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChanged)
     -- Use an explicit button + popup rather than UIDropDownMenuTemplate.
     -- The stock dropdown menu has been visible but inert on the target Forever
@@ -507,10 +522,7 @@ local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChang
             end)
             if option.tooltipText and type(GameTooltip) == "table" then
                 optionButton:SetScript("OnEnter", function(self)
-                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                    if option.tooltipTitle then GameTooltip:SetText(option.tooltipTitle) end
-                    GameTooltip:AddLine(option.tooltipText, 1, 1, 1, true)
-                    GameTooltip:Show()
+                    RaiseMarketTooltip(self, option.tooltipTitle or option.text, option.tooltipText)
                 end)
                 optionButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
             else
@@ -1533,16 +1545,59 @@ local function UpdateHeaderIndicators()
     end
 end
 
-local function RaiseMarketTooltip(owner, title, body)
-    if not _G.GameTooltip then return end
-    GameTooltip:SetOwner(owner, "ANCHOR_TOP")
+
+local function ShowMarketItemTooltip(owner, item, showRecipe)
+    if not _G.GameTooltip or type(item) ~= "table" then return end
+    local itemID = tonumber(item.itemID)
+    local recipeID = tonumber(item.recipeID)
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     if type(GameTooltip.SetFrameStrata) == "function" then GameTooltip:SetFrameStrata("TOOLTIP") end
-    if UI.frame and type(GameTooltip.SetFrameLevel) == "function" then
-        GameTooltip:SetFrameLevel((UI.frame:GetFrameLevel() or 1) + 100)
+    if type(GameTooltip.SetFrameLevel) == "function" then
+        local ownerLevel = owner and type(owner.GetFrameLevel) == "function" and owner:GetFrameLevel() or 1
+        local tooltipLevel = type(GameTooltip.GetFrameLevel) == "function" and GameTooltip:GetFrameLevel() or 1
+        GameTooltip:SetFrameLevel(math.max(tooltipLevel, ownerLevel + 100))
     end
-    GameTooltip:SetText(title or "")
-    if body and body ~= "" then GameTooltip:AddLine(body, 1, 1, 1, true) end
+    local shown = false
+    if showRecipe and recipeID then
+        if type(GameTooltip.SetSpellByID) == "function" then
+            local ok = pcall(GameTooltip.SetSpellByID, GameTooltip, recipeID)
+            shown = ok and type(GameTooltip.NumLines) == "function" and (GameTooltip:NumLines() or 0) > 0
+        end
+        if not shown and type(GameTooltip.SetHyperlink) == "function" then
+            local ok = pcall(GameTooltip.SetHyperlink, GameTooltip, "spell:" .. recipeID)
+            shown = ok and type(GameTooltip.NumLines) == "function" and (GameTooltip:NumLines() or 0) > 0
+        end
+    end
+    if not shown and itemID then
+        if type(GameTooltip.SetItemByID) == "function" then
+            local ok = pcall(GameTooltip.SetItemByID, GameTooltip, itemID)
+            shown = ok and type(GameTooltip.NumLines) == "function" and (GameTooltip:NumLines() or 0) > 0
+        end
+        if not shown and type(GameTooltip.SetHyperlink) == "function" then
+            local ok = pcall(GameTooltip.SetHyperlink, GameTooltip, "item:" .. itemID)
+            shown = ok and type(GameTooltip.NumLines) == "function" and (GameTooltip:NumLines() or 0) > 0
+        end
+    end
+    if not shown then
+        GameTooltip:ClearLines()
+        GameTooltip:SetText(GetItemName(item))
+    end
+    if showRecipe and recipeID then
+        GameTooltip:AddLine("Recipe ID: " .. tostring(recipeID), 0.85, 0.75, 0.5, true)
+        if item.professionName then
+            GameTooltip:AddLine(tostring(item.professionName)
+                .. " · Skill " .. tostring(item.professionSkill or "?"), 0.8, 0.8, 0.8, true)
+        end
+    elseif item.recipeID then
+        GameTooltip:AddLine("Recipe: " .. tostring(item.recipeName or item.recipeID), 0.8, 0.8, 0.8, true)
+    end
     GameTooltip:Show()
+end
+
+local function AttachFilterTooltip(region, title, body)
+    if not region or not body then return end
+    region:SetScript("OnEnter", function(self) RaiseMarketTooltip(self, title, body) end)
+    region:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
 end
 
 local function SetTab(tab)
@@ -1582,6 +1637,9 @@ local function SetTab(tab)
         keys = { "name", "price", "materials", "depth", "total", "profit" }
     elseif tab == "economics" then
         labels = { "Item", "Sale / Unit", "Materials", "At Price", "Total", "Profit / Loss" }
+    elseif tab == "materials" then
+        labels = { "Item", "Cheapest", "At Price", "Total Units", "Best Craft Profit" }
+        keys = { "name", "price", "depth", "total", "profit" }
     elseif tab == "low" then
         labels = { "Item", "Cheapest", "At Price", "Total Units", "Listings", "Best Craft Profit" }
         keys = { "name", "price", "depth", "total", "total", "profit" }
@@ -1593,10 +1651,34 @@ local function SetTab(tab)
         keys = { "name", "price", "depth", "total", "total", "profit" }
     end
     for i = 1, #UI.headerButtons do
-        UI.headerButtons[i].baseLabel = labels[i]
-        UI.headerButtons[i].label:SetText(labels[i])
-        UI.headerButtons[i].sortKey = keys[i]
-        if i >= 1 and i <= 6 then UI.headerButtons[i]:Show() else UI.headerButtons[i]:Hide() end
+        local header = UI.headerButtons[i]
+        header.baseLabel = labels[i]
+        header.label:SetText(labels[i] or "")
+        header.sortKey = keys[i]
+        if labels[i] then header:Show() else header:Hide() end
+    end
+    if tab == "materials" then
+        UI.headerButtons[5]:ClearAllPoints()
+        UI.headerButtons[5]:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", 817, -218)
+        UI.headerButtons[5]:SetWidth(145)
+        UI.headerButtons[6]:Hide()
+        for _, row in ipairs(UI.rows or {}) do
+            row.total:Hide()
+            row.profit:ClearAllPoints()
+            row.profit:SetPoint("RIGHT", row, "RIGHT", 519, 0)
+        end
+    else
+        UI.headerButtons[5]:ClearAllPoints()
+        UI.headerButtons[5]:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", 817, -218)
+        UI.headerButtons[5]:SetWidth(82)
+        UI.headerButtons[6]:ClearAllPoints()
+        UI.headerButtons[6]:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", 904, -218)
+        UI.headerButtons[6]:SetWidth(145)
+        for _, row in ipairs(UI.rows or {}) do
+            row.total:Show()
+            row.profit:ClearAllPoints()
+            row.profit:SetPoint("RIGHT", row, "RIGHT", 606, 0)
+        end
     end
     UpdateHeaderIndicators()
 
@@ -1624,24 +1706,11 @@ local function SetTab(tab)
 end
 
 local function ApplyBackgroundOpacity(frame, alpha)
-    alpha = math.max(0.15, math.min(0.85, tonumber(alpha) or 0.48))
+    -- This is intentionally whole-window opacity: panels, borders, controls,
+    -- text and data all fade together. Tooltips are independent UI elements.
+    alpha = math.max(0.35, math.min(1.0, tonumber(alpha) or 0.85))
     if type(MM.db) == "table" then MM.db.backgroundOpacity = alpha end
-    if frame then
-        if type(frame.SetBackdropColor) == "function" then
-            frame:SetBackdropColor(0.015, 0.012, 0.01, alpha)
-        end
-        -- BasicFrameTemplateWithInset exposes its tiled inner panel as
-        -- frame.InsetBg (parentKey), not frame.Inset.Bg. The old code missed
-        -- this texture, leaving the dominant dark panel fully opaque.
-        if frame.Bg and type(frame.Bg.SetAlpha) == "function" then frame.Bg:SetAlpha(alpha) end
-        if frame.InsetBg and type(frame.InsetBg.SetAlpha) == "function" then
-            frame.InsetBg:SetAlpha(alpha)
-        end
-        -- Retain compatibility with clients/templates that nest the inset.
-        if frame.Inset and frame.Inset.Bg and type(frame.Inset.Bg.SetAlpha) == "function" then
-            frame.Inset.Bg:SetAlpha(alpha)
-        end
-    end
+    if frame and type(frame.SetAlpha) == "function" then frame:SetAlpha(alpha) end
     if UI.opacityValue then UI.opacityValue:SetText(string.format("%d%%", math.floor(alpha * 100 + 0.5))) end
     return alpha
 end
@@ -1649,11 +1718,11 @@ end
 local function CreateUI()
     if UI.frame then return UI.frame end
     local frame = CreateFrame("Frame", "ModuloMarketMainFrame", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetFrameStrata("TOOLTIP")
+    frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
     frame:SetClampedToScreen(true)
     local initialOpacity = ApplyBackgroundOpacity(frame,
-        MM.db and MM.db.backgroundOpacity or 0.48)
+        MM.db and MM.db.backgroundOpacity or 0.85)
     frame:SetSize(1460, 850)
     if type(_G.GetScreenWidth) == "function" and type(_G.GetScreenHeight) == "function" then
         local screenWidth, screenHeight = _G.GetScreenWidth(), _G.GetScreenHeight()
@@ -1716,12 +1785,12 @@ local function CreateUI()
     end)
     AddButton(frame, "Close", 80, 645, -62, function() frame:Hide() end)
 
-    AddLabel(frame, "Background", 790, -62, 68, 18, "GameFontNormalSmall")
+    AddLabel(frame, "Window opacity", 790, -62, 92, 18, "GameFontNormalSmall")
     UI.opacitySlider = CreateFrame("Slider", nil, frame)
     UI.opacitySlider:SetSize(170, 14)
     UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 860, -67)
     UI.opacitySlider:SetOrientation("HORIZONTAL")
-    UI.opacitySlider:SetMinMaxValues(0.15, 0.85)
+    UI.opacitySlider:SetMinMaxValues(0.35, 1.0)
     UI.opacitySlider:SetValueStep(0.05)
     UI.opacitySlider:SetObeyStepOnDrag(true)
     UI.opacitySlider:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
@@ -1817,6 +1886,20 @@ local function CreateUI()
     rightPanel:SetColorTexture(0.035, 0.032, 0.028, 0.92)
     rightPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 1072, -158)
     rightPanel:SetSize(354, 650)
+    local function AddPanelBorder(x, y, width, height)
+        local color = { 0.43, 0.32, 0.17, 0.72 }
+        local top = frame:CreateTexture(nil, "BORDER")
+        top:SetColorTexture(unpack(color)); top:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y); top:SetSize(width, 1)
+        local bottom = frame:CreateTexture(nil, "BORDER")
+        bottom:SetColorTexture(unpack(color)); bottom:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y - height); bottom:SetSize(width, 1)
+        local left = frame:CreateTexture(nil, "BORDER")
+        left:SetColorTexture(unpack(color)); left:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y); left:SetSize(1, height)
+        local right = frame:CreateTexture(nil, "BORDER")
+        right:SetColorTexture(unpack(color)); right:SetPoint("TOPLEFT", frame, "TOPLEFT", x + width, y); right:SetSize(1, height)
+    end
+    AddPanelBorder(18, -158, 260, 650)
+    AddPanelBorder(286, -158, 780, 650)
+    AddPanelBorder(1072, -158, 354, 650)
     UI.filterHeading = AddLabel(frame, "Filters — All Items", 30, -170, 230, 24, "GameFontNormalLarge")
     AddLabel(frame, "Search", 30, -198, 230, 18, "GameFontNormalSmall")
     UI.search = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
@@ -1825,6 +1908,7 @@ local function CreateUI()
     UI.search:SetAutoFocus(false)
     UI.search:SetMaxLetters(80)
     UI.search:SetScript("OnTextChanged", function() UI.StartViewBuild() end)
+    AttachFilterTooltip(UI.search, "Search", "Filter the active tab by item name, recipe name, profession or supported numeric ID.")
 
     RefreshProfessionOptions()
     UI.professionDropdown = CreateDropdown(frame, 230, 32, -284,
@@ -1834,7 +1918,8 @@ local function CreateUI()
             UI.professionFilter = tonumber(value) or 0
             UI.StartViewBuild()
         end)
-    AddLabel(frame, "Profession", 30, -252, 230, 18, "GameFontNormalSmall")
+    UI.professionLabel = AddLabel(frame, "Profession", 30, -252, 230, 18, "GameFontNormalSmall")
+    AttachFilterTooltip(UI.professionDropdown, "Profession", "Limit the active view to one profession. All professions keeps every supported profession in the results.")
     local function GetRoleOptions()
         local futureProvider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
             and MM.ProfessionData.GetFutureProviderStatus()
@@ -1896,7 +1981,8 @@ local function CreateUI()
             UI.itemRoleFilter = value
             UI.StartViewBuild()
         end)
-    AddLabel(frame, "Recipe source / item role", 30, -334, 230, 18, "GameFontNormalSmall")
+    UI.roleLabel = AddLabel(frame, "Recipe source / item role", 30, -334, 230, 18, "GameFontNormalSmall")
+    AttachFilterTooltip(UI.roleDropdown, "Recipe source / item role", "Choose known, future, borrowed, unknown, gathering or material roles where supported. Hover individual menu options for their evidence definitions.")
     UI.tabFilterState[UI.activeTab] = { search = "", profession = 0, role = "all" }
     UI.resultCount = AddLabel(frame, "", 930, -184, 120, 18, "GameFontNormalSmall")
     UI.resultCount:SetWordWrap(false)
@@ -1974,6 +2060,22 @@ local function CreateUI()
             return fs
         end
         row.name = RowText("LEFT", 4, 205, "LEFT")
+        row.nameHit = CreateFrame("Button", nil, row)
+        row.nameHit:SetPoint("LEFT", row, "LEFT", 0, 0)
+        row.nameHit:SetSize(205, UI.rowHeight)
+        row.nameHit:SetFrameLevel(row:GetFrameLevel() + 2)
+        row.nameHit:SetScript("OnEnter", function(self)
+            local selected = UI.visibleRows[slot]
+            if selected then
+                local craftingRow = UI.activeTab == "crafting" or UI.activeTab == "allcrafts"
+                ShowMarketItemTooltip(self, selected, craftingRow and selected.recipeID ~= nil)
+            end
+        end)
+        row.nameHit:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
+        row.nameHit:SetScript("OnClick", function()
+            local selected = UI.visibleRows[slot]
+            if selected then SelectItem(selected) end
+        end)
         row.price = RowText("LEFT", 212, 105, "RIGHT")
         row.depth = RowText("LEFT", 322, 105, "RIGHT")
         row.atPrice = RowText("LEFT", 432, 82, "RIGHT")
@@ -1998,6 +2100,22 @@ local function CreateUI()
     AddLabel(frame, "Total listed", 1090, -278, 145, 18, "GameFontNormalSmall")
     UI.detailSupply = AddLabel(frame, "—", 1240, -278, 170, 18, "GameFontHighlight")
     UI.detailVariants = AddLabel(frame, "", 1090, -304, 320, 28, "GameFontDisableSmall")
+    UI.detailItemTooltip = CreateFrame("Button", nil, frame)
+    UI.detailItemTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1090, -205)
+    UI.detailItemTooltip:SetSize(320, 26)
+    UI.detailItemTooltip:SetFrameLevel(frame:GetFrameLevel() + 2)
+    UI.detailItemTooltip:SetScript("OnEnter", function(self)
+        if UI.selectedItem then ShowMarketItemTooltip(self, UI.selectedItem, false) end
+    end)
+    UI.detailItemTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
+    UI.detailRecipeTooltip = CreateFrame("Button", nil, frame)
+    UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1090, -300)
+    UI.detailRecipeTooltip:SetSize(320, 30)
+    UI.detailRecipeTooltip:SetFrameLevel(frame:GetFrameLevel() + 2)
+    UI.detailRecipeTooltip:SetScript("OnEnter", function(self)
+        if UI.selectedItem then ShowMarketItemTooltip(self, UI.selectedItem, true) end
+    end)
+    UI.detailRecipeTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
     UI.detailEconomics = AddLabel(frame,
         "Open each profession window once. Market records your known recipes automatically. Install LibProfessionDB 1.9.1 to identify supported unlearned recipes.",
         1090, -340, 320, 350, "GameFontHighlightSmall")
@@ -2016,7 +2134,7 @@ local function CreateUI()
     end
 
     frame:SetScript("OnShow", function(self)
-        self:SetFrameStrata("TOOLTIP")
+        self:SetFrameStrata("DIALOG")
         self:SetToplevel(true)
         if type(self.Raise) == "function" then self:Raise() end
         if MM.ProfessionData and MM.ProfessionData.Refresh then

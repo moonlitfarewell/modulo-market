@@ -10,14 +10,14 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_042_version_agreement():
-    assert 'MM.version = "0.5.6"' in CORE
-    assert re.search(r"^## Version: 0\.5\.6$", TOC, re.M)
-    assert MANIFEST["version"] == "0.5.6"
+    assert 'MM.version = "0.5.7"' in CORE
+    assert re.search(r"^## Version: 0\.5\.7$", TOC, re.M)
+    assert MANIFEST["version"] == "0.5.7"
 
 
-def test_042_opacity_targets_real_inset_parent_key():
-    assert "frame.InsetBg:SetAlpha(alpha)" in UI
-    assert "frame.Bg:SetAlpha(alpha)" in UI
+def test_042_opacity_applies_to_whole_window():
+    assert "frame:SetAlpha(alpha)" in UI
+    assert "whole-window opacity" in UI
 
 
 def test_042_dropdowns_use_click_driven_local_popup():
@@ -28,7 +28,7 @@ def test_042_dropdowns_use_click_driven_local_popup():
 
 
 def test_042_visual_and_dropdown_fixes_are_preserved_in_050():
-    assert "frame.InsetBg:SetAlpha(alpha)" in UI
+    assert "frame:SetAlpha(alpha)" in UI
     assert "dropdown.ToggleMenu = function()" in UI
     assert "Only recipes you have learned" in UI
     assert "All recipe candidates" in UI
