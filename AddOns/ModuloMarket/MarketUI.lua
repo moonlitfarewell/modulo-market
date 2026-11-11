@@ -19,6 +19,7 @@ local UI = {
     rankSort = nil,
     activeTab = "market",
     professionFilter = 0,
+    tabFilterState = {},
     economicsByItemID = nil,
     vendorPriceCache = {},
     vendorPriceRequested = {},
@@ -990,6 +991,7 @@ function UI.RenderRows()
         button:SetPoint("TOPLEFT", UI.scrollChild, "TOPLEFT", 0, -((index - 1) * UI.rowHeight))
         UI.visibleRows[i] = item
         if item then
+            local profitText = "—"
             if isCrafting then
                 local status = item.craftSourceStatus or "known"
                 local color = status == "known" and "|cff8ee6a2"
@@ -1000,11 +1002,13 @@ function UI.RenderRows()
                 button.name:SetText(marker .. color .. GetItemName(item) .. "|r")
                 button.price:SetText(item.salePriceCopper and FormatMoney(item.salePriceCopper) or "—")
                 button.depth:SetText(item.materialCostCopper and FormatMoney(item.materialCostCopper) or "—")
+                button.atPrice:SetText(item.minPriceQuantity ~= nil and tostring(item.minPriceQuantity) or "—")
+                button.total:SetText(item.totalQuantity ~= nil and tostring(item.totalQuantity) or "—")
                 if item.profitCopper ~= nil then
                     local profitColor = item.profitCopper >= 0 and "|cff55dd77" or "|cffff6666"
-                    button.total:SetText(profitColor .. FormatMoney(item.profitCopper) .. "|r")
-                else
-                    button.total:SetText(item.costComplete == false and "|cff999999Incomplete|r" or "—")
+                    profitText = profitColor .. FormatMoney(item.profitCopper) .. "|r"
+                elseif item.costComplete == false then
+                    profitText = "|cff999999Incomplete|r"
                 end
             elseif UI.activeTab == "economics" then
                 local economics = item.economics
@@ -1014,30 +1018,33 @@ function UI.RenderRows()
                     or (vendorPrice and FormatMoney(vendorPrice) or "—"))
                 button.depth:SetText(economics and economics.materialCostCopper
                     and FormatMoney(economics.materialCostCopper) or "—")
+                button.atPrice:SetText(item.minPriceQuantity ~= nil and tostring(item.minPriceQuantity) or "—")
+                button.total:SetText(tostring(item.totalQuantity or 0))
                 if economics and economics.profitCopper ~= nil then
                     local profitColor = economics.profitCopper >= 0 and "|cff55dd77" or "|cffff6666"
-                    button.total:SetText(profitColor .. FormatMoney(economics.profitCopper) .. "|r")
-                elseif economics then
-                    button.total:SetText("|cff999999Incomplete|r")
-                else
-                    button.total:SetText("—")
-                end
+                    profitText = profitColor .. FormatMoney(economics.profitCopper) .. "|r"
+                elseif economics then profitText = "|cff999999Incomplete|r" end
             else
                 button.name:SetText(GetItemDisplayName(item))
                 button.price:SetText(item.minPriceCopper and FormatMoney(item.minPriceCopper) or "No buyout")
-                if UI.activeTab == "low" then
-                    button.depth:SetText(tostring(item.totalQuantity or 0) .. " units")
-                    button.total:SetText(item.auctionCountKnown and tostring(item.auctionCount or 0) or "—")
-                elseif UI.activeTab == "history" then
+                button.depth:SetText(item.minPriceQuantity ~= nil and tostring(item.minPriceQuantity) or "—")
+                button.atPrice:SetText(tostring(item.totalQuantity or 0))
+                button.total:SetText(item.auctionCountKnown and tostring(item.auctionCount or 0) or "—")
+                if UI.activeTab == "history" then
                     button.depth:SetText(item.historyDeltaCopper ~= nil
                         and ((item.historyDeltaCopper > 0 and "|cff55dd77+" or (item.historyDeltaCopper < 0 and "|cffff6666" or "|cffffffff"))
                             .. FormatMoney(math.abs(item.historyDeltaCopper)) .. "|r") or "—")
                     button.total:SetText(tostring(item.totalQuantity or 0))
-                else
-                    button.depth:SetText(tostring(item.minPriceQuantity or "—"))
-                    button.total:SetText(tostring(item.totalQuantity or 0))
+                elseif UI.activeTab == "low" then
+                    button.depth:SetText(item.minPriceQuantity ~= nil and tostring(item.minPriceQuantity) or "—")
+                end
+                local best = UI.economicsByItemID and UI.economicsByItemID[tonumber(item.itemID)]
+                if best and best.profitCopper ~= nil then
+                    local profitColor = best.profitCopper >= 0 and "|cff55dd77" or "|cffff6666"
+                    profitText = profitColor .. FormatMoney(best.profitCopper) .. "|r"
                 end
             end
+            button.profit:SetText(profitText)
             local selected = UI.selectedItem
             local same = selected and (isCrafting
                 and selected.recipeKey == item.recipeKey
@@ -1539,10 +1546,22 @@ local function RaiseMarketTooltip(owner, title, body)
 end
 
 local function SetTab(tab)
+    local previousTab = UI.activeTab
+    UI.tabFilterState[previousTab] = UI.tabFilterState[previousTab] or {}
+    UI.tabFilterState[previousTab].search = UI.search and UI.search:GetText() or ""
+    UI.tabFilterState[previousTab].profession = UI.professionFilter
+    UI.tabFilterState[previousTab].role = UI.itemRoleFilter
     UI.activeTab = tab
     if tab ~= "economics" then UI.economicsIndexBuild = nil end
-    UI.itemRoleFilter = "all"
+    local saved = UI.tabFilterState[tab] or {}
+    UI.professionFilter = tonumber(saved.profession) or 0
+    UI.itemRoleFilter = saved.role or "all"
     UI.selectedItem = nil
+    if UI.search then UI.search:SetText(saved.search or "") end
+    if UI.filterHeading then UI.filterHeading:SetText("Filters — " .. (tab == "allcrafts" and "All Crafts"
+        or (tab == "crafting" and "My Crafts" or (tab == "market" and "All Items"
+        or (tab == "low" and "Low Supply" or (tab:gsub("^%l", string.upper))))))) end
+    if UI.professionDropdown and UI.professionDropdown.RefreshText then UI.professionDropdown.RefreshText() end
     for name, button in pairs(UI.tabs) do
         if name == tab then
             button:Disable()
@@ -1556,50 +1575,29 @@ local function SetTab(tab)
     end
 
     local craftTab = tab == "crafting" or tab == "allcrafts"
+    local labels = { "Item / Recipe", "Cheapest", "Materials", "At Price", "Total", "Profit / Craft" }
+    local keys = { "name", "price", "materials", "depth", "total", "profit" }
     if craftTab then
-        UI.headerButtons[2].sortKey = "price"
-        UI.headerButtons[3].sortKey = "materials"
-        UI.headerButtons[4].sortKey = "profit"
-        UI.priceHeader:SetText("Sale / unit")
-        UI.depthHeader:SetText("Materials")
-        UI.totalHeader:SetText(tab == "allcrafts" and "Profit / craft" or "Profit / craft")
+        labels = { "Recipe", "Sale / Unit", "Materials", "At Price", "Total", "Profit / Craft" }
+        keys = { "name", "price", "materials", "depth", "total", "profit" }
     elseif tab == "economics" then
-        UI.headerButtons[2].sortKey = "price"
-        UI.headerButtons[3].sortKey = "materials"
-        UI.headerButtons[4].sortKey = "profit"
-        UI.priceHeader:SetText("Sale / unit")
-        UI.depthHeader:SetText("Materials")
-        UI.totalHeader:SetText("Profit / loss")
+        labels = { "Item", "Sale / Unit", "Materials", "At Price", "Total", "Profit / Loss" }
     elseif tab == "low" then
-        UI.headerButtons[2].sortKey = "price"
-        UI.headerButtons[3].sortKey = "depth"
-        UI.headerButtons[4].sortKey = "total"
-        UI.priceHeader:SetText("Cheapest")
-        UI.depthHeader:SetText("Units")
-        UI.totalHeader:SetText("Listings")
+        labels = { "Item", "Cheapest", "At Price", "Total Units", "Listings", "Best Craft Profit" }
+        keys = { "name", "price", "depth", "total", "total", "profit" }
     elseif tab == "history" then
-        UI.headerButtons[2].sortKey = "price"
-        UI.headerButtons[3].sortKey = "change"
-        UI.headerButtons[4].sortKey = "total"
-        UI.priceHeader:SetText("Cheapest")
-        UI.depthHeader:SetText("Change")
-        UI.totalHeader:SetText("Total")
+        labels = { "Item", "Cheapest", "Price Change", "Latest Units", "Total", "Best Craft Profit" }
+        keys = { "name", "price", "change", "total", "total", "profit" }
     else
-        UI.headerButtons[2].sortKey = "price"
-        UI.headerButtons[3].sortKey = "depth"
-        UI.headerButtons[4].sortKey = "total"
-        UI.priceHeader:SetText("Cheapest")
-        UI.depthHeader:SetText(tab == "materials" and "At price" or "At price")
-        UI.totalHeader:SetText("Total")
+        labels = { "Item", "Cheapest", "At Price", "Total Units", "Listings", "Best Craft Profit" }
+        keys = { "name", "price", "depth", "total", "total", "profit" }
     end
-    UI.headerButtons[1].baseLabel = "Item"
-    UI.headerButtons[2].baseLabel = (craftTab or tab == "economics") and "Sale / unit" or "Cheapest"
-    UI.headerButtons[3].baseLabel = craftTab and "Materials"
-        or (tab == "economics" and "Materials"
-        or (tab == "low" and "Units" or (tab == "history" and "Change" or "At price")))
-    UI.headerButtons[4].baseLabel = craftTab and "Profit / craft"
-        or (tab == "economics" and "Profit / loss"
-        or (tab == "low" and "Listings" or "Total"))
+    for i = 1, #UI.headerButtons do
+        UI.headerButtons[i].baseLabel = labels[i]
+        UI.headerButtons[i].label:SetText(labels[i])
+        UI.headerButtons[i].sortKey = keys[i]
+        if i >= 1 and i <= 6 then UI.headerButtons[i]:Show() else UI.headerButtons[i]:Hide() end
+    end
     UpdateHeaderIndicators()
 
     if UI.roleDropdown then
@@ -1656,7 +1654,14 @@ local function CreateUI()
     frame:SetClampedToScreen(true)
     local initialOpacity = ApplyBackgroundOpacity(frame,
         MM.db and MM.db.backgroundOpacity or 0.48)
-    frame:SetSize(1220, 760)
+    frame:SetSize(1460, 850)
+    if type(_G.GetScreenWidth) == "function" and type(_G.GetScreenHeight) == "function" then
+        local screenWidth, screenHeight = _G.GetScreenWidth(), _G.GetScreenHeight()
+        if tonumber(screenWidth) and tonumber(screenHeight) then
+            local fitScale = math.min(1, (screenWidth - 40) / 1460, (screenHeight - 40) / 850)
+            frame:SetScale(math.max(0.70, fitScale))
+        end
+    end
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -1674,12 +1679,12 @@ local function CreateUI()
         _G.UISpecialFrames[#_G.UISpecialFrames + 1] = "ModuloMarketMainFrame"
     end
 
-    UI.metadata = AddLabel(frame, "Loading market data…", 18, -36, 980, 18, "GameFontNormal")
-    UI.status = AddLabel(frame, "Ready", 18, -58, 1120, 18, "GameFontDisableSmall")
+    UI.metadata = AddLabel(frame, "Loading market data…", 24, -36, 760, 18, "GameFontNormal")
+    UI.status = AddLabel(frame, "Ready", 24, -92, 900, 18, "GameFontDisableSmall")
     if MM.ForeverDBData and MM.ForeverDBData.meta then
         UI.attribution = AddLabel(frame,
             "|cff66ccffData from ForeverDB.net — https://foreverdb.net|r",
-            18, -738, 650, 14, "GameFontDisableSmall")
+            24, -830, 650, 14, "GameFontDisableSmall")
     end
     local clientVersion, clientBuild
     if type(_G.GetBuildInfo) == "function" then
@@ -1690,31 +1695,31 @@ local function CreateUI()
     if clientVersion and clientBuild then
         versionLabel = versionLabel .. string.format(" · Client %s build %s", clientVersion, tostring(clientBuild))
     end
-    UI.versionLabel = AddLabel(frame, versionLabel, 790, -738, 390, 14, "GameFontDisableSmall")
-    UI.scanButton = AddButton(frame, "Update full market", 145, 18, -82, function()
+    UI.versionLabel = AddLabel(frame, versionLabel, 1085, -830, 340, 14, "GameFontDisableSmall")
+    UI.scanButton = AddButton(frame, "Update Full Market", 190, 24, -62, function()
         if MM.Replicate then MM.Replicate.Prepare() end
         UI.RefreshActions()
     end)
-    UI.confirmButton = AddButton(frame, "Confirm full scan", 125, 170, -82, function()
+    UI.confirmButton = AddButton(frame, "Confirm full scan", 150, 225, -62, function()
         if MM.Replicate then MM.Replicate.Confirm() end
         UI.RefreshActions()
     end)
-    UI.cancelButton = AddButton(frame, "Cancel", 70, 300, -82, function()
+    UI.cancelButton = AddButton(frame, "Cancel", 80, 385, -62, function()
         if MM.Replicate then MM.Replicate.CancelPrepare() end
         UI.RefreshActions()
     end)
     UI.confirmButton:Hide()
     UI.cancelButton:Hide()
-    UI.browseButton = AddButton(frame, "Browse scan", 105, 380, -82, function()
+    UI.browseButton = AddButton(frame, "Browse Scan", 150, 485, -62, function()
         frame:Hide()
         if MM.Scanner and MM.Scanner.Toggle then MM.Scanner.Toggle() end
     end)
-    AddButton(frame, "Close", 70, 495, -82, function() frame:Hide() end)
+    AddButton(frame, "Close", 80, 645, -62, function() frame:Hide() end)
 
-    AddLabel(frame, "Background", 600, -82, 68, 18, "GameFontNormalSmall")
+    AddLabel(frame, "Background", 790, -62, 68, 18, "GameFontNormalSmall")
     UI.opacitySlider = CreateFrame("Slider", nil, frame)
     UI.opacitySlider:SetSize(170, 14)
-    UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 670, -87)
+    UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 860, -67)
     UI.opacitySlider:SetOrientation("HORIZONTAL")
     UI.opacitySlider:SetMinMaxValues(0.15, 0.85)
     UI.opacitySlider:SetValueStep(0.05)
@@ -1725,7 +1730,7 @@ local function CreateUI()
     opacityTrack:SetPoint("LEFT", UI.opacitySlider, "LEFT", 0, 0)
     opacityTrack:SetPoint("RIGHT", UI.opacitySlider, "RIGHT", 0, 0)
     opacityTrack:SetHeight(6)
-    UI.opacityValue = AddLabel(frame, "", 850, -82, 48, 18, "GameFontHighlightSmall")
+    UI.opacityValue = AddLabel(frame, "", 1040, -62, 48, 18, "GameFontHighlightSmall")
     ApplyBackgroundOpacity(frame, initialOpacity)
     UI.opacitySlider:SetValue(initialOpacity)
     UI.opacitySlider:SetScript("OnValueChanged", function(_, value)
@@ -1734,24 +1739,24 @@ local function CreateUI()
 
     local tabStrip = frame:CreateTexture(nil, "BACKGROUND")
     tabStrip:SetColorTexture(0.045, 0.035, 0.025, 0.95)
-    tabStrip:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -108)
-    tabStrip:SetSize(735, 30)
+    tabStrip:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -112)
+    tabStrip:SetSize(1424, 34)
     UI.tabs = {}
     local tabSpecs = {
-        { "market", "All Items", 92 },
-        { "economics", "Economics", 96 },
-        { "crafting", "My Crafts", 92 },
-        { "allcrafts", "All Crafts", 92 },
-        { "materials", "Materials", 92 },
-        { "low", "Low Supply", 92 },
-        { "history", "History", 92 },
+        { "market", "All Items", 194 },
+        { "economics", "Economics", 194 },
+        { "crafting", "My Crafts", 194 },
+        { "allcrafts", "All Crafts", 194 },
+        { "materials", "Materials", 194 },
+        { "low", "Low Supply", 194 },
+        { "history", "History", 194 },
     }
-    local tabX = 20
+    local tabX = 22
     for _, spec in ipairs(tabSpecs) do
         local key, label, width = spec[1], spec[2], spec[3]
         local button = CreateFrame("Button", nil, frame)
-        button:SetSize(width, 26)
-        button:SetPoint("TOPLEFT", frame, "TOPLEFT", tabX, -110)
+        button:SetSize(width, 30)
+        button:SetPoint("TOPLEFT", frame, "TOPLEFT", tabX, -114)
         button.background = button:CreateTexture(nil, "BACKGROUND")
         button.background:SetAllPoints(button)
         button.background:SetColorTexture(0.12, 0.085, 0.045, 0.95)
@@ -1800,22 +1805,36 @@ local function CreateUI()
         tabX = tabX + width + 4
     end
 
-    AddLabel(frame, "Search", 18, -148, 55, 18, "GameFontNormalSmall")
+    local leftPanel = frame:CreateTexture(nil, "BACKGROUND")
+    leftPanel:SetColorTexture(0.035, 0.032, 0.028, 0.92)
+    leftPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -158)
+    leftPanel:SetSize(260, 650)
+    local centerPanel = frame:CreateTexture(nil, "BACKGROUND")
+    centerPanel:SetColorTexture(0.025, 0.026, 0.028, 0.90)
+    centerPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 286, -158)
+    centerPanel:SetSize(780, 650)
+    local rightPanel = frame:CreateTexture(nil, "BACKGROUND")
+    rightPanel:SetColorTexture(0.035, 0.032, 0.028, 0.92)
+    rightPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 1072, -158)
+    rightPanel:SetSize(354, 650)
+    UI.filterHeading = AddLabel(frame, "Filters — All Items", 30, -170, 230, 24, "GameFontNormalLarge")
+    AddLabel(frame, "Search", 30, -198, 230, 18, "GameFontNormalSmall")
     UI.search = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
-    UI.search:SetSize(200, 24)
-    UI.search:SetPoint("TOPLEFT", frame, "TOPLEFT", 70, -144)
+    UI.search:SetSize(230, 24)
+    UI.search:SetPoint("TOPLEFT", frame, "TOPLEFT", 32, -220)
     UI.search:SetAutoFocus(false)
     UI.search:SetMaxLetters(80)
     UI.search:SetScript("OnTextChanged", function() UI.StartViewBuild() end)
 
     RefreshProfessionOptions()
-    UI.professionDropdown = CreateDropdown(frame, 125, 275, -140,
+    UI.professionDropdown = CreateDropdown(frame, 230, 32, -284,
         function() return UI.professionOptions end,
         function() return UI.professionFilter end,
         function(value)
             UI.professionFilter = tonumber(value) or 0
             UI.StartViewBuild()
         end)
+    AddLabel(frame, "Profession", 30, -252, 230, 18, "GameFontNormalSmall")
     local function GetRoleOptions()
         local futureProvider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
             and MM.ProfessionData.GetFutureProviderStatus()
@@ -1870,28 +1889,32 @@ local function CreateUI()
         }
         return options
     end
-    UI.roleDropdown = CreateDropdown(frame, 185, 420, -140,
+    UI.roleDropdown = CreateDropdown(frame, 230, 32, -366,
         GetRoleOptions,
         function() return UI.itemRoleFilter end,
         function(value)
             UI.itemRoleFilter = value
             UI.StartViewBuild()
         end)
-    UI.resultCount = AddLabel(frame, "", 620, -148, 140, 18, "GameFontNormalSmall")
+    AddLabel(frame, "Recipe source / item role", 30, -334, 230, 18, "GameFontNormalSmall")
+    UI.tabFilterState[UI.activeTab] = { search = "", profession = 0, role = "all" }
+    UI.resultCount = AddLabel(frame, "", 930, -184, 120, 18, "GameFontNormalSmall")
     UI.resultCount:SetWordWrap(false)
 
     UI.headerButtons = {}
     local headers = {
-        { "Item", 18, 320, "LEFT", "name" },
-        { "Cheapest", 355, 150, "RIGHT", "price" },
-        { "At price", 520, 105, "RIGHT", "depth" },
-        { "Total", 645, 95, "RIGHT", "total" },
+        { "Recipe / Item", 302, 205, "LEFT", "name" },
+        { "Sale / Unit", 510, 105, "RIGHT", "price" },
+        { "Materials", 620, 105, "RIGHT", "materials" },
+        { "At Price", 730, 82, "RIGHT", "depth" },
+        { "Total", 817, 82, "RIGHT", "total" },
+        { "Profit / Craft", 904, 145, "RIGHT", "profit" },
     }
     for i = 1, #headers do
         local h = headers[i]
         local header = CreateFrame("Button", nil, frame)
         header:SetSize(h[3], 18)
-        header:SetPoint("TOPLEFT", frame, "TOPLEFT", h[2], -178)
+        header:SetPoint("TOPLEFT", frame, "TOPLEFT", h[2], -218)
         header.label = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         header.label:SetPoint("LEFT", header, "LEFT", 0, 0)
         header.label:SetWidth(h[3] - 14)
@@ -1917,17 +1940,20 @@ local function CreateUI()
             UI.StartViewBuild()
         end)
         UI.headerButtons[i] = header
-        if i == 2 then UI.priceHeader = header.label
-        elseif i == 3 then UI.depthHeader = header.label
-        elseif i == 4 then UI.totalHeader = header.label end
     end
+    UI.priceHeader = UI.headerButtons[2].label
+    UI.depthHeader = UI.headerButtons[4].label
+    UI.totalHeader = UI.headerButtons[6].label
+    UI.materialHeader = UI.headerButtons[3].label
+    UI.atPriceHeader = UI.headerButtons[4].label
+    UI.totalQuantityHeader = UI.headerButtons[5].label
     UpdateHeaderIndicators()
 
     UI.scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
-    UI.scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -198)
-    UI.scroll:SetSize(735, 510)
+    UI.scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 298, -242)
+    UI.scroll:SetSize(758, 555)
     UI.scrollChild = CreateFrame("Frame", nil, UI.scroll)
-    UI.scrollChild:SetSize(710, 1)
+    UI.scrollChild:SetSize(758, 1)
     UI.scroll:SetScrollChild(UI.scrollChild)
     UI.scroll:SetScript("OnVerticalScroll", function(_, offset)
         UI.listOffset = offset
@@ -1937,29 +1963,22 @@ local function CreateUI()
     for i = 1, UI.visibleCount do
         local slot = i
         local row = CreateFrame("Button", nil, UI.scrollChild)
-        row:SetSize(710, UI.rowHeight)
+        row:SetSize(758, UI.rowHeight)
         row:SetPoint("TOPLEFT", UI.scrollChild, "TOPLEFT", 0, -((i - 1) * UI.rowHeight))
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
-        row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        row.name:SetPoint("LEFT", row, "LEFT", 4, 0)
-        row.name:SetWidth(315)
-        row.name:SetWordWrap(false)
-        row.name:SetJustifyH("LEFT")
-        row.price = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        row.price:SetPoint("LEFT", row, "LEFT", 340, 0)
-        row.price:SetWidth(155)
-        row.price:SetJustifyH("RIGHT")
-        row.price:SetWordWrap(false)
-        row.depth = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        row.depth:SetPoint("LEFT", row, "LEFT", 510, 0)
-        row.depth:SetWidth(105)
-        row.depth:SetJustifyH("RIGHT")
-        row.depth:SetWordWrap(false)
-        row.total = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        row.total:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-        row.total:SetWidth(90)
-        row.total:SetJustifyH("RIGHT")
-        row.total:SetWordWrap(false)
+        local function RowText(anchor, x, width, justify)
+            local fs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            if anchor == "LEFT" then fs:SetPoint("LEFT", row, "LEFT", x, 0)
+            else fs:SetPoint("RIGHT", row, "RIGHT", x, 0) end
+            fs:SetWidth(width); fs:SetJustifyH(justify); fs:SetWordWrap(false)
+            return fs
+        end
+        row.name = RowText("LEFT", 4, 205, "LEFT")
+        row.price = RowText("LEFT", 212, 105, "RIGHT")
+        row.depth = RowText("LEFT", 322, 105, "RIGHT")
+        row.atPrice = RowText("LEFT", 432, 82, "RIGHT")
+        row.total = RowText("LEFT", 519, 82, "RIGHT")
+        row.profit = RowText("LEFT", 606, 145, "RIGHT")
         row:SetScript("OnClick", function()
             local selected = UI.visibleRows[slot]
             if selected then SelectItem(selected) end
@@ -1969,26 +1988,26 @@ local function CreateUI()
 
     local divider = frame:CreateTexture(nil, "ARTWORK")
     divider:SetColorTexture(0.45, 0.40, 0.30, 0.8)
-    divider:SetSize(1, 600)
-    divider:SetPoint("TOPLEFT", frame, "TOPLEFT", 770, -108)
+    divider:SetSize(1, 650)
+    divider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1065, -158)
 
-    AddLabel(frame, "Selected item", 790, -112, 390, 22, "GameFontNormalLarge")
-    UI.detailName = AddLabel(frame, "Choose an item", 790, -140, 390, 24, "GameFontHighlight")
-    AddLabel(frame, "Sale price / unit", 790, -182, 160, 18, "GameFontNormalSmall")
-    UI.detailPrice = AddLabel(frame, "—", 960, -182, 210, 18, "GameFontHighlight")
-    AddLabel(frame, "Total listed", 790, -208, 160, 18, "GameFontNormalSmall")
-    UI.detailSupply = AddLabel(frame, "—", 960, -208, 210, 18, "GameFontHighlight")
-    UI.detailVariants = AddLabel(frame, "", 790, -234, 390, 28, "GameFontDisableSmall")
+    AddLabel(frame, "Selected item", 1090, -180, 320, 22, "GameFontNormalLarge")
+    UI.detailName = AddLabel(frame, "Choose an item", 1090, -210, 320, 24, "GameFontHighlight")
+    AddLabel(frame, "Sale price / unit", 1090, -252, 145, 18, "GameFontNormalSmall")
+    UI.detailPrice = AddLabel(frame, "—", 1240, -252, 170, 18, "GameFontHighlight")
+    AddLabel(frame, "Total listed", 1090, -278, 145, 18, "GameFontNormalSmall")
+    UI.detailSupply = AddLabel(frame, "—", 1240, -278, 170, 18, "GameFontHighlight")
+    UI.detailVariants = AddLabel(frame, "", 1090, -304, 320, 28, "GameFontDisableSmall")
     UI.detailEconomics = AddLabel(frame,
         "Open each profession window once. Market records your known recipes automatically. Install LibProfessionDB 1.9.1 to identify supported unlearned recipes.",
-        790, -274, 390, 310, "GameFontHighlightSmall")
+        1090, -340, 320, 350, "GameFontHighlightSmall")
     UI.detailEconomics:SetWordWrap(true)
-    UI.detailProfit = AddLabel(frame, "Automatic recipe valuation", 790, -610, 390, 28, "GameFontNormalLarge")
-    UI.historyText = AddLabel(frame, "", 790, -650, 390, 62, "GameFontHighlightSmall")
+    UI.detailProfit = AddLabel(frame, "Automatic recipe valuation", 1090, -710, 320, 28, "GameFontNormalLarge")
+    UI.historyText = AddLabel(frame, "", 1090, -744, 320, 62, "GameFontHighlightSmall")
     UI.historyText:SetWordWrap(true)
     UI.historyGraph = CreateFrame("Frame", nil, frame)
-    UI.historyGraph:SetPoint("TOPLEFT", frame, "TOPLEFT", 790, -710)
-    UI.historyGraph:SetSize(250, 48)
+    UI.historyGraph:SetPoint("TOPLEFT", frame, "TOPLEFT", 1090, -790)
+    UI.historyGraph:SetSize(250, 35)
     for i = 1, 4 do
         local bar = UI.historyGraph:CreateTexture(nil, "ARTWORK")
         bar:SetColorTexture(0.72, 0.62, 0.36, 0.95)

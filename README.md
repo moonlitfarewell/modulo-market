@@ -1,4 +1,4 @@
-# Modulo Market 0.5.5
+# Modulo Market 0.5.6
 
 **Current player milestone:** seven distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
 
@@ -12,6 +12,15 @@ Market 0.5.3 includes a reviewed ForeverDB recipe dataset from client build `1.6
 
  It depends on `Modulo`; MODULO does not depend on Market. Auctionator and ProfessionMaster remain independent addons and are not runtime dependencies.
 
+
+## Current 0.5.6 milestone — Dark Foundry workspace and profession capture cache
+
+- Market window reorganized into a persistent three-column workspace: global market toolbar, seven full-width tabs, contextual left filters, full-width tab data in the centre, and selected-entry inspection on the right.
+- Existing tab views, market actions, recipe provenance and exact-current-build auction snapshot gating are retained.
+- All Crafts now has distinct Sale / Unit, Materials, At Price, Total and Profit / Craft columns. At Price shows quantity available at the lowest ask; Total shows total listed quantity.
+- Search, profession and item-role filters are retained independently per tab.
+- Known-profession capture stores a signature of the profession recipe-ID list. Repeated trade-skill events with an unchanged list no longer start a full schematic capture or repeat the capture chat message. A changed list triggers capture so newly learned recipes remain detectable.
+- Capture events are coalesced over a short delay; the persisted signature is character- and profession-scoped in the existing profession SavedVariables store.
 
 ## Current 0.5.5 milestone — baseline-plus-delta ForeverDB compatibility
 

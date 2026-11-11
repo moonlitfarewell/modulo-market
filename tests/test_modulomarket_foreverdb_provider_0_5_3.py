@@ -25,8 +25,8 @@ def test_foreverdb_data_load_order_build_gate_and_visible_credit():
     core = (root / "AddOns/ModuloMarket/Core.lua").read_text()
     profession = (root / "AddOns/ModuloMarket/ProfessionData.lua").read_text()
     ui = (root / "AddOns/ModuloMarket/MarketUI.lua").read_text()
-    assert "## Version: 0.5.5" in toc
-    assert 'MM.version = "0.5.5"' in core
+    assert "## Version: 0.5.6" in toc
+    assert 'MM.version = "0.5.6"' in core
     assert toc.index("ForeverDBData.lua") < toc.index("ProfessionData.lua") < toc.index("MarketUI.lua")
     assert "GetBuildInfo" in profession and "FOREVERDB_HOTFIX_WATCH" in profession
     assert 'freshnessStatus = hotfixWatch and "review" or "baseline"' in profession

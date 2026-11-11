@@ -10,7 +10,7 @@ TOC = (ADDON / "ModuloMarket.toc").read_text()
 
 
 def test_versions_and_complete_recipe_capture_are_not_capped_at_twenty():
-    assert re.search(r"^## Version: 0\.5\.5$", TOC, re.M)
+    assert re.search(r"^## Version: 0\.5\.6$", TOC, re.M)
     assert "state.index + 19" in ENGINE  # bounded batch, not a total limit
     assert "if state.index <= #state.recipeIDs then" in ENGINE
     assert "for id, oldRecipe in pairs(previous.recipes)" in ENGINE
@@ -29,9 +29,8 @@ def test_market_search_is_tokenized_and_searches_relevant_item_and_recipe_fields
 def test_sortable_headers_cover_all_items_and_crafts():
     assert "UI.headerButtons" in UI
     assert 'market = { key = "name", ascending = true }' in UI
-    assert 'sortKey = "price"' in UI
-    assert 'sortKey = "depth"' in UI
-    assert 'sortKey = "profit"' in UI
+    assert "header.sortKey = h[5]" in UI
+    assert '"price"' in UI and '"depth"' in UI and '"profit"' in UI
     assert "ComesBefore(a, b, key, ascending)" in UI
     assert "UI.sortByTab" in UI
     assert "UpdateHeaderIndicators" in UI
@@ -54,7 +53,7 @@ def test_market_background_is_translucent_without_fading_controls():
 
 def test_manifest_inventory_includes_new_audit_and_tests():
     manifest = json.loads((ROOT / "MANIFEST.json").read_text())
-    assert manifest["version"] == "0.5.5"
+    assert manifest["version"] == "0.5.6"
     assert "MODULOMARKET-RUNTIME-AUDIT-0.4.0.md" in manifest["files"]
     assert "tests/test_modulomarket_market_ui_0_3_1.py" in manifest["files"]
     actual = sorted(

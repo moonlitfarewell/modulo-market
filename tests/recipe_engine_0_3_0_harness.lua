@@ -112,3 +112,26 @@ assert(unknown.materialCostCopper == nil, "Missing reagent price must not be tre
 assert(unknown.profitCopper == nil, "Profit must remain unknown when reagent price is missing")
 
 print("recipe_engine_0_3_0_harness: PASS")
+
+-- Repeated profession-list events with an unchanged recipe-ID set must not
+-- launch another full schematic capture or print another capture message.
+local captureMessages = 0
+ModuloMarket.Print = function(message)
+    if string.find(message, "Captured known", 1, true) then captureMessages = captureMessages + 1 end
+end
+local repeated, repeatedReason = ModuloMarket.Recipes.CaptureCurrentProfession()
+assert(repeated == false and repeatedReason == "RECIPE_LIST_UNCHANGED",
+    "Unchanged profession recipe list should be served from cache")
+assert(captureMessages == 0, "Unchanged recipe list must not emit capture chat")
+
+-- The all-recipe ID list also contains unlearned recipes. Learning one can
+-- leave that ID list unchanged, so the NEW_RECIPE_LEARNED signal must force
+-- a capture even when the signature is identical.
+recipes[102].learned = true
+local changed, changedReason = ModuloMarket.Recipes.CaptureCurrentProfession(true)
+assert(changed == true, "NEW_RECIPE_LEARNED must force capture: " .. tostring(changedReason))
+while captureFrame.scripts.OnUpdate do captureFrame.scripts.OnUpdate(captureFrame, 0.016) end
+local refreshed = ModuloMarket.Recipes.GetProfessionSummary()
+assert(refreshed.recipeCount == 4, "Newly learned recipe was not captured")
+assert(captureMessages == 1, "Only the newly learned recipe should emit one capture message")
+print("recipe_engine_capture_cache_0_5_6: PASS")

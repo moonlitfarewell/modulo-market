@@ -13,9 +13,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_050_version_and_separate_child_boundary():
-    assert 'MM.version = "0.5.5"' in CORE
-    assert re.search(r"^## Version: 0\.5\.5$", TOC, re.M)
-    assert MANIFEST["version"] == "0.5.5"
+    assert 'MM.version = "0.5.6"' in CORE
+    assert re.search(r"^## Version: 0\.5\.6$", TOC, re.M)
+    assert MANIFEST["version"] == "0.5.6"
     assert "## Dependencies: Modulo" in TOC
     assert "ModuloMarket" not in (ROOT / "AddOns/Modulo/Modulo.toc").read_text() if (ROOT / "AddOns/Modulo/Modulo.toc").exists() else True
 
@@ -86,13 +86,13 @@ def test_050_low_supply_is_role_adjusted_and_distinguishes_units_from_listings()
     assert "local function GetLowSupplyThreshold(item)" in UI
     assert "return base * 5" in UI
     assert "return base * 2" in UI
-    assert 'UI.totalHeader:SetText("Listings")' in UI
+    assert '"Listings", "Best Craft Profit"' in UI and 'item.auctionCountKnown and tostring(item.auctionCount or 0)' in UI
     assert "item.auctionCountKnown and tostring(item.auctionCount or 0)" in UI
 
 
 def test_050_history_shows_change_and_four_point_graph():
     assert "return found[1] - found[2]" in UI
-    assert 'UI.headerButtons[3].sortKey = "change"' in UI
+    assert 'keys = { "name", "price", "change", "total", "total", "profit" }' in UI
     assert "UI.historyGraph" in UI
     assert "for i = 1, 4 do" in UI
     assert "bar:SetColorTexture(0.22, 0.72, 0.38, 0.95)" in UI

@@ -84,6 +84,10 @@ local captureFrame = CreateFrame("Frame")
 local captureState
 local captureGeneration = 0
 local captureScheduled = false
+local skippedUnchangedCaptures = 0
+local lastCaptureReason = "none"
+local captureForceRequested = false
+local captureQueuedForce = false
 
 local function GetCharacterStore()
     if type(MM.db) ~= "table" then return nil end
@@ -163,6 +167,7 @@ local function CaptureBatch()
             capturedAt = state.capturedAt,
             source = "C_TradeSkillUI",
             listComplete = state.listComplete,
+            recipeListSignature = state.recipeListSignature,
             recipes = recipes,
             recipeCount = (function()
                 local count = 0
@@ -177,6 +182,7 @@ local function CaptureBatch()
     if MM.MarketUI and MM.MarketUI.OnRecipesUpdated then
         MM.MarketUI.OnRecipesUpdated()
     end
+    lastCaptureReason = "recipe-list-changed"
     if MM.Print then
         MM.Print(string.format("Captured known %s recipes (%d).",
             state.profession.professionName, (function()
@@ -185,9 +191,25 @@ local function CaptureBatch()
                 return count
             end)()))
     end
+    if captureQueuedForce then
+        captureQueuedForce = false
+        Recipes.ScheduleCapture(true)
+    end
 end
 
-function Recipes.CaptureCurrentProfession()
+local function RecipeListSignature(recipeIDs)
+    local ids = {}
+    for _, value in ipairs(recipeIDs or {}) do
+        local id = tonumber(value)
+        if id then ids[#ids + 1] = id end
+    end
+    table.sort(ids)
+    local parts = {}
+    for i = 1, #ids do parts[i] = tostring(ids[i]) end
+    return table.concat(parts, ","), #ids
+end
+
+function Recipes.CaptureCurrentProfession(force)
     local api = _G.C_TradeSkillUI
     if type(api) ~= "table" then return false, "TRADE_SKILL_API_UNAVAILABLE" end
     local profession = CurrentProfessionInfo()
@@ -207,11 +229,30 @@ function Recipes.CaptureCurrentProfession()
         return false, "RECIPE_LIST_UNAVAILABLE"
     end
 
+    local signature, signatureCount = RecipeListSignature(recipeIDs)
+    if signatureCount == 0 then return false, "RECIPE_LIST_UNAVAILABLE" end
+    local store = GetCharacterStore()
+    local previous = store and store[profession.professionID]
+    if captureState and captureState.profession.professionID == profession.professionID
+        and captureState.recipeListSignature == signature then
+        if force == true then captureQueuedForce = true end
+        skippedUnchangedCaptures = skippedUnchangedCaptures + 1
+        lastCaptureReason = "duplicate-event-during-capture"
+        return false, "CAPTURE_ALREADY_RUNNING"
+    end
+    if force ~= true and type(previous) == "table" and previous.recipeListSignature == signature
+        and type(previous.recipes) == "table" then
+        skippedUnchangedCaptures = skippedUnchangedCaptures + 1
+        lastCaptureReason = "recipe-list-unchanged"
+        return false, "RECIPE_LIST_UNCHANGED"
+    end
+
     captureGeneration = captureGeneration + 1
     captureState = {
         generation = captureGeneration,
         profession = profession,
         recipeIDs = recipeIDs,
+        recipeListSignature = signature,
         listComplete = listComplete,
         index = 1,
         recipes = {},
@@ -226,15 +267,18 @@ function Recipes.CaptureCurrentProfession()
     return true
 end
 
-function Recipes.ScheduleCapture()
+function Recipes.ScheduleCapture(force)
+    if force == true then captureForceRequested = true end
     if captureScheduled then return end
     captureScheduled = true
     local function run()
         captureScheduled = false
-        Recipes.CaptureCurrentProfession()
+        local forceNow = captureForceRequested
+        captureForceRequested = false
+        Recipes.CaptureCurrentProfession(forceNow)
     end
     if _G.C_Timer and type(_G.C_Timer.After) == "function" then
-        _G.C_Timer.After(0.25, run)
+        _G.C_Timer.After(0.50, run)
     else
         run()
     end
@@ -411,7 +455,8 @@ end
 local events = CreateFrame("Frame")
 local registered = false
 Recipes.registeredEvents = {}
-for _, event in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_DATA_SOURCE_CHANGED" }) do
+for _, event in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE",
+    "TRADE_SKILL_DATA_SOURCE_CHANGED", "NEW_RECIPE_LEARNED" }) do
     local ok = pcall(events.RegisterEvent, events, event)
     Recipes.registeredEvents[event] = ok == true
     if ok then registered = true end
@@ -425,13 +470,19 @@ function Recipes.GetCaptureStatus()
         professionName = state and state.profession.professionName or nil,
         processed = state and math.min(state.index - 1, #state.recipeIDs) or nil,
         total = state and #state.recipeIDs or nil,
+        skippedUnchanged = skippedUnchangedCaptures,
+        lastCaptureReason = lastCaptureReason,
     }
 end
 if registered then
     events:SetScript("OnEvent", function(_, event)
-        if event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_LIST_UPDATE"
+        if event == "NEW_RECIPE_LEARNED" then
+            -- GetAllRecipeIDs includes learned and unlearned entries; the ID
+            -- list itself may not change when an existing entry becomes learned.
+            Recipes.ScheduleCapture(true)
+        elseif event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_LIST_UPDATE"
             or event == "TRADE_SKILL_DATA_SOURCE_CHANGED" then
-            Recipes.ScheduleCapture()
+            Recipes.ScheduleCapture(false)
         end
     end)
 end

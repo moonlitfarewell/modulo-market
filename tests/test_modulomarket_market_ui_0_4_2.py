@@ -10,9 +10,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_042_version_agreement():
-    assert 'MM.version = "0.5.5"' in CORE
-    assert re.search(r"^## Version: 0\.5\.5$", TOC, re.M)
-    assert MANIFEST["version"] == "0.5.5"
+    assert 'MM.version = "0.5.6"' in CORE
+    assert re.search(r"^## Version: 0\.5\.6$", TOC, re.M)
+    assert MANIFEST["version"] == "0.5.6"
 
 
 def test_042_opacity_targets_real_inset_parent_key():

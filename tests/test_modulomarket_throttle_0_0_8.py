@@ -7,7 +7,7 @@ TOC = ROOT / "AddOns" / "ModuloMarket" / "ModuloMarket.toc"
 
 
 def test_version_is_008():
-    assert re.search(r"^## Version: 0\.5\.5$", TOC.read_text(), re.M)
+    assert re.search(r"^## Version: 0\.5\.6$", TOC.read_text(), re.M)
 
 
 def test_only_client_throttle_readiness_gates_requests():
