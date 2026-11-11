@@ -95,14 +95,14 @@ local professions = data.GetProfessions()
 assert(#professions == 12, "all 12 professions should be exposed")
 assert(data.GetFutureProviderStatus().dataSource == "ForeverDB.net", "provider identity should be exposed")
 
-_G.GetBuildInfo = function() return "1.60.1", "70755", "test", 16001 end
+_G.GetBuildInfo = function() return "1.60.1", "70888", "test", 16001 end
 data.Refresh()
 local mismatch = data.GetFutureProviderStatus()
 assert(mismatch.available == false, "mismatched build must not load the dataset")
 assert(string.find(mismatch.status, "build mismatch", 1, true), "mismatch reason must be explicit")
 assert(data.IsMarketSnapshotCompatible({
     clientVersion = "1.60.1", clientBuild = "70862",
-}) == false, "snapshot must match current client even when it matches stale dataset build")
+}) == false, "snapshot must match current client even when it matches stale dataset build 70862")
 assert(#data.GetAllFutureRecipes() == 0, "mismatched build must not expose stale recipe candidates")
 
 print("ModuloMarket 0.5.3 ForeverDB provider harness passed")

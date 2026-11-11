@@ -41,6 +41,6 @@ def test_ui_scroll_child_is_executable_code():
 
 
 def test_version_agreement():
-    assert re.search(r"^## Version: 0\.5\.3$", TOC.read_text(), re.M)
-    assert 'MM.version = "0.5.3"' in CORE.read_text()
-    assert '"version": "0.5.3"' in (ROOT / "MANIFEST.json").read_text()
+    assert re.search(r"^## Version: 0\.5\.4$", TOC.read_text(), re.M)
+    assert 'MM.version = "0.5.4"' in CORE.read_text()
+    assert '"version": "0.5.4"' in (ROOT / "MANIFEST.json").read_text()

@@ -140,3 +140,34 @@ The capture exposes `makes.count`, not separate output min/max values, and reage
 ### Acceptance still open
 
 Offline source/harness tests do not prove target-client behavior. Forever 1.60.1.70862 runtime acceptance remains NOT RUN. The user must verify addon load, exact build detection, recipe/material indexing, known-recipe de-duplication, source-status presentation, profitability withholding for incomplete data and visible attribution in the actual client. Full trainer/vendor source presentation and runtime memory/load impact remain future work.
+
+
+---
+
+## 2026-11-11 — 0.5.4 client-build update review and safety decision
+
+The user's Forever client reports `GetBuildInfo() = 1.60.1, 70888, Nov 9 2026, 16001`. The bundled canonical capture and generated runtime data remain from `1.60.1.70862`.
+
+### External comparison evidence
+
+- The Forever client-build comparison for `70862 → 70888` reports no profession-table changes in the client files: https://theforeverera.com/en/builds/70862-70888/
+- Separate November 10 server hotfix reporting identifies profession-related changes, including Coarse Grinding Stone skill-up range, Journeyman Campfire Kit placement requirement, Minor Arcane Elixir sell price and Iron Grenade vendor price: https://allthings.how/wow-forever-hotfixes-patch-notes/
+- Therefore, unchanged client profession records do not establish unchanged server-side profession behavior or acquisition/economic metadata.
+
+### Decision
+
+Do not relax the exact-build gate and do not relabel the `70862` capture as `70888`. Keep imported recipes blocked on `70888` until a fresh ForeverDB capture is obtained, inspected, normalized and compared. A fresh capture requires the user's approved ForeverDB API key in the local `FOREVERDB_API_KEY` environment variable; no key is included in the supplied files or addon. The key must not be sent in chat or committed.
+
+### 0.5.4 capability delivered
+
+- Login announces `ModuloMarket v0.5.4` and the detected client version/build.
+- `/mmversion` reports addon version, client version/build and ForeverDB dataset build/load state.
+- Market footer shows the addon version and client build.
+- Existing exact-build dataset gate and auction-snapshot compatibility gate are retained.
+
+### Acceptance state
+
+- Offline tests and Lua syntax checks: recorded in the 0.5.4 standalone audit.
+- Forever client runtime verification of the new announcement/footer/command: NOT RUN; requires player retest.
+- Fresh ForeverDB capture for `70888`: NOT RUN; blocked on API key availability and capture.
+- Server-hotfix parity for all 2,493 recipe/source/economic rows: UNKNOWN until fresh capture and sample comparison.

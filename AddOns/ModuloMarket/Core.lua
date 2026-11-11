@@ -3,7 +3,7 @@ local MM = _G.ModuloMarket or {}
 _G.ModuloMarket = MM
 
 MM.name = ADDON_NAME or "ModuloMarket"
-MM.version = "0.5.3"
+MM.version = "0.5.4"
 MM.debugPrefix = "|cff66ccffModuloMarket:|r "
 
 local function Print(message)
@@ -11,6 +11,27 @@ local function Print(message)
 end
 
 MM.Print = Print
+
+local function GetClientBuildLabel()
+    if type(_G.GetBuildInfo) ~= "function" then return "client build UNKNOWN" end
+    local ok, version, build = pcall(_G.GetBuildInfo)
+    if not ok or type(version) ~= "string" or version == "" or build == nil then
+        return "client build UNKNOWN"
+    end
+    return string.format("client %s build %s", version, tostring(build))
+end
+
+local function PrintVersion()
+    local label = "ModuloMarket v" .. MM.version .. " | " .. GetClientBuildLabel()
+    local provider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
+        and MM.ProfessionData.GetFutureProviderStatus()
+    if provider and provider.dataSource == "ForeverDB.net" then
+        label = label .. string.format(" | ForeverDB data %s: %s",
+            tostring(provider.datasetBuild or "UNKNOWN"),
+            provider.available and "loaded" or "not loaded")
+    end
+    Print(label)
+end
 
 local function InitializeDB()
     if type(_G.ModuloMarketDB) ~= "table" then
@@ -51,6 +72,8 @@ loader:SetScript("OnEvent", function(_, event, loadedName)
                 Print("Diagnostics UI is not ready.")
             end
         end
-        Print("MODULO Market by Wells loaded. Type /mm for market and automatic crafting economics, /mmscan for Browse snapshots, or /mmdebug for diagnostics.")
+        SLASH_MODULOMARKETVERSION1 = "/mmversion"
+        SlashCmdList.MODULOMARKETVERSION = PrintVersion
+        Print("Loaded v" .. MM.version .. " (" .. GetClientBuildLabel() .. "). Type /mm for Market, /mmscan for Browse snapshots, /mmdebug for diagnostics, or /mmversion for version details.")
     end
 end)

@@ -1669,6 +1669,16 @@ local function CreateUI()
             "|cff66ccffData from ForeverDB.net — https://foreverdb.net|r",
             18, -738, 650, 14, "GameFontDisableSmall")
     end
+    local clientVersion, clientBuild
+    if type(_G.GetBuildInfo) == "function" then
+        local ok, version, build = pcall(_G.GetBuildInfo)
+        if ok then clientVersion, clientBuild = version, build end
+    end
+    local versionLabel = "ModuloMarket v" .. tostring(MM.version or "UNKNOWN")
+    if clientVersion and clientBuild then
+        versionLabel = versionLabel .. string.format(" · Client %s build %s", clientVersion, tostring(clientBuild))
+    end
+    UI.versionLabel = AddLabel(frame, versionLabel, 790, -738, 390, 14, "GameFontDisableSmall")
     UI.scanButton = AddButton(frame, "Update full market", 145, 18, -82, function()
         if MM.Replicate then MM.Replicate.Prepare() end
         UI.RefreshActions()

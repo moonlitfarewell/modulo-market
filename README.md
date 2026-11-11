@@ -1,4 +1,4 @@
-# Modulo Market 0.5.3
+# Modulo Market 0.5.4
 
 **Current player milestone:** seven distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
 
@@ -13,7 +13,14 @@ Market 0.5.3 includes a reviewed ForeverDB recipe dataset from client build `1.6
  It depends on `Modulo`; MODULO does not depend on Market. Auctionator and ProfessionMaster remain independent addons and are not runtime dependencies.
 
 
-## Current 0.5.3 milestone — ForeverDB recipe data integration
+## Current 0.5.4 milestone — version visibility and build-safety maintenance
+
+- Login chat announces the installed ModuloMarket version and current client build.
+- `/mmversion` prints the addon version, client build and ForeverDB dataset load state.
+- The Market footer displays the addon version and detected client build.
+- The bundled ForeverDB 1.60.1.70862 dataset remains blocked on client build 1.60.1.70888 pending a fresh, reviewed capture; no compatibility exception is introduced.
+
+## 0.5.3 milestone — ForeverDB recipe data integration
 
 The 11 November 2026 ForeverDB capture is complete and verified: 34 API responses, 12 professions and 2,493 recipe records for build `1.60.1.70862`. The canonical normalized JSON is retained in `data/`; the user-supplied raw capture remains a separate input and is not committed to the public repository. `AddOns/ModuloMarket/ForeverDBData.lua` is generated from the canonical file by the developer importer.
 
@@ -46,6 +53,7 @@ The importer, canonical adapter, compact compiler, exact-build gate and source-i
 - The window uses the TOOLTIP frame strata and is raised when opened, placing it above normal addon panels.
 - `/mmscan` opens the retained Browse-summary scanner and JSON export tools.
 - `/mmdebug` opens read-only API/profession diagnostics.
+- `/mmversion` prints the installed ModuloMarket version, current client build and ForeverDB dataset load state.
 
 ## 0.3.0 player experience
 
