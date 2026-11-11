@@ -1,4 +1,4 @@
-# Modulo Market 0.5.4
+# Modulo Market 0.5.5
 
 **Current player milestone:** seven distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
 
@@ -13,18 +13,20 @@ Market 0.5.3 includes a reviewed ForeverDB recipe dataset from client build `1.6
  It depends on `Modulo`; MODULO does not depend on Market. Auctionator and ProfessionMaster remain independent addons and are not runtime dependencies.
 
 
-## Current 0.5.4 milestone — version visibility and build-safety maintenance
+## Current 0.5.5 milestone — baseline-plus-delta ForeverDB compatibility
 
 - Login chat announces the installed ModuloMarket version and current client build.
 - `/mmversion` prints the addon version, client build and ForeverDB dataset load state.
 - The Market footer displays the addon version and detected client build.
-- The bundled ForeverDB 1.60.1.70862 dataset remains blocked on client build 1.60.1.70888 pending a fresh, reviewed capture; no compatibility exception is introduced.
+- The bundled ForeverDB 1.60.1.70862 dataset loads as a clearly labelled baseline on client build 1.60.1.70888; the original source build is never relabelled.
+- Four recipe records associated with reported November hotfixes are individually flagged for review; unrelated records remain usable baseline data. These flags are advisory and do not assert that the whole recipe is wrong.
+- Auction snapshot pricing remains gated to the exact current client build, so old auction prices are never reused on a newer build.
 
 ## 0.5.3 milestone — ForeverDB recipe data integration
 
 The 11 November 2026 ForeverDB capture is complete and verified: 34 API responses, 12 professions and 2,493 recipe records for build `1.60.1.70862`. The canonical normalized JSON is retained in `data/`; the user-supplied raw capture remains a separate input and is not committed to the public repository. `AddOns/ModuloMarket/ForeverDBData.lua` is generated from the canonical file by the developer importer.
 
-The addon loads the imported catalogue only when `GetBuildInfo()` matches the exact dataset build (`1.60.1.70862`). Craft economics also requires the saved Browse/Replicate market snapshot's `clientVersion.clientBuild` to match the current client build. A missing or mismatched build blocks imported candidates or price joins rather than silently using stale data. The existing optional LibProfessionDB adapter is used only when no bundled ForeverDB dataset exists.
+Historical 0.5.3 behavior required an exact dataset/client build match. Since 0.5.5, the imported catalogue loads as a provenance-preserving baseline when the client build is identifiable; a build difference no longer invalidates every recipe. Individually identified hotfix-linked records are flagged for review. Craft economics still requires the saved Browse/Replicate market snapshot's `clientVersion.clientBuild` to match the current client build, so old auction prices are never joined to a newer client. The optional LibProfessionDB adapter is used only when no bundled ForeverDB dataset exists.
 
 ### Data and evidence rules
 
@@ -42,7 +44,7 @@ The compact runtime file contains only the fields currently consumed by the reci
 
 ### Runtime and acceptance
 
-The importer, canonical adapter, compact compiler, exact-build gate and source-index integration have offline regression coverage. These are source/offline checks only. Forever runtime verification of the 0.5.3 data loader, client build gate, UI attribution and recipe economics remains **NOT RUN** until the user tests it in Forever.
+The importer, canonical adapter, compact compiler, baseline-plus-delta loader and source-index integration have offline regression coverage. These are source/offline checks only. Forever runtime verification of the data loader, baseline warning, UI attribution and recipe economics remains **NOT RUN** until the user tests it in Forever.
 
 ## Open Market
 

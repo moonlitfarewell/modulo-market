@@ -9,7 +9,7 @@ TOC = (ADDON / "ModuloMarket.toc").read_text()
 
 
 def test_recipe_engine_is_loaded_before_market_ui_and_is_market_owned():
-    assert re.search(r"^## Version: 0\.5\.4$", TOC, re.M)
+    assert re.search(r"^## Version: 0\.5\.5$", TOC, re.M)
     assert TOC.index("RecipeEngine.lua") < TOC.index("MarketUI.lua")
     assert "MM.Recipes = Recipes" in ENGINE
     assert "api.GetAllRecipeIDs" in ENGINE

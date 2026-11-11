@@ -144,7 +144,7 @@ Offline source/harness tests do not prove target-client behavior. Forever 1.60.1
 
 ---
 
-## 2026-11-11 — 0.5.4 client-build update review and safety decision
+## 2026-11-11 — 0.5.4 client-build update review and safety decision (historical; superseded by 0.5.5)
 
 The user's Forever client reports `GetBuildInfo() = 1.60.1, 70888, Nov 9 2026, 16001`. The bundled canonical capture and generated runtime data remain from `1.60.1.70862`.
 
@@ -154,9 +154,9 @@ The user's Forever client reports `GetBuildInfo() = 1.60.1, 70888, Nov 9 2026, 1
 - Separate November 10 server hotfix reporting identifies profession-related changes, including Coarse Grinding Stone skill-up range, Journeyman Campfire Kit placement requirement, Minor Arcane Elixir sell price and Iron Grenade vendor price: https://allthings.how/wow-forever-hotfixes-patch-notes/
 - Therefore, unchanged client profession records do not establish unchanged server-side profession behavior or acquisition/economic metadata.
 
-### Decision
+### Historical 0.5.4 decision (superseded)
 
-Do not relax the exact-build gate and do not relabel the `70862` capture as `70888`. Keep imported recipes blocked on `70888` until a fresh ForeverDB capture is obtained, inspected, normalized and compared. A fresh capture requires the user's approved ForeverDB API key in the local `FOREVERDB_API_KEY` environment variable; no key is included in the supplied files or addon. The key must not be sent in chat or committed.
+0.5.4 retained the exact-build gate and blocked imported recipes on `70888`. The 0.5.5 baseline-plus-delta decision below supersedes that all-or-nothing recipe-catalogue behavior. The `70862` capture is still never relabelled as `70888`; a fresh capture is required before claiming a matched 70888 dataset. The user's approved API key remains local in `FOREVERDB_API_KEY` and must never be sent in chat or committed.
 
 ### 0.5.4 capability delivered
 
@@ -171,3 +171,12 @@ Do not relax the exact-build gate and do not relabel the `70862` capture as `708
 - Forever client runtime verification of the new announcement/footer/command: NOT RUN; requires player retest.
 - Fresh ForeverDB capture for `70888`: NOT RUN; blocked on API key availability and capture.
 - Server-hotfix parity for all 2,493 recipe/source/economic rows: UNKNOWN until fresh capture and sample comparison.
+
+
+## 2026-11-11 — 0.5.5 baseline-plus-delta decision
+
+The earlier exact dataset/client build gate is superseded for recipe catalogue availability. The reviewed 1.60.1.70862 dataset remains the provenance-preserving baseline and is loaded on newer clients when its build metadata is present and the client build can be identified. It is never relabelled as the newer build.
+
+The runtime marks only individually identified hotfix-linked recipe records for review (recipe IDs 3326, 1283400, 1245246 and 3962). Their flags are advisory and field-scoped: skill-up range, placement requirement, sell price and vendor price. They are not claims that the complete recipes are confirmed stale. Other records remain baseline, not globally unknown.
+
+The exact current-client market snapshot gate remains unchanged. Craft economics may only join recipe data to a Browse/Replicate snapshot whose version and build match the running client. This keeps old auction prices out of new-client calculations. Structural/API/data validation and Forever runtime acceptance remain separate checks.

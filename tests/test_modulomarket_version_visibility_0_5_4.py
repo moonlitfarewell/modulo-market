@@ -9,9 +9,9 @@ def test_version_is_consistent_across_toc_core_and_manifest():
     toc = (ADDON / "ModuloMarket.toc").read_text()
     core = (ADDON / "Core.lua").read_text()
     manifest = json.loads((ROOT / "MANIFEST.json").read_text())
-    assert "## Version: 0.5.4" in toc
-    assert 'MM.version = "0.5.4"' in core
-    assert manifest["version"] == "0.5.4"
+    assert "## Version: 0.5.5" in toc
+    assert 'MM.version = "0.5.5"' in core
+    assert manifest["version"] == "0.5.5"
 
 
 def test_login_announcement_and_version_command_include_build():
@@ -30,7 +30,9 @@ def test_market_footer_shows_addon_and_client_version():
     assert "UI.versionLabel = AddLabel" in ui
 
 
-def test_old_foreverdb_dataset_is_not_unlocked_for_70888():
+def test_old_foreverdb_dataset_loads_as_baseline_with_targeted_review_flags():
     profession = (ADDON / "ProfessionData.lua").read_text()
-    assert 'datasetBuild ~= currentBuild' in profession
-    assert "imported recipes are not loaded" in profession
+    assert 'FOREVERDB_HOTFIX_WATCH' in profession
+    assert 'freshnessStatus = hotfixWatch and "review" or "baseline"' in profession
+    assert "dataBuildMatchesClient" in profession
+    assert "datasetBuild ~= currentBuild" not in profession

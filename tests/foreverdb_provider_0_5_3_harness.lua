@@ -97,12 +97,34 @@ assert(data.GetFutureProviderStatus().dataSource == "ForeverDB.net", "provider i
 
 _G.GetBuildInfo = function() return "1.60.1", "70888", "test", 16001 end
 data.Refresh()
-local mismatch = data.GetFutureProviderStatus()
-assert(mismatch.available == false, "mismatched build must not load the dataset")
-assert(string.find(mismatch.status, "build mismatch", 1, true), "mismatch reason must be explicit")
+local baseline = data.GetFutureProviderStatus()
+assert(baseline.available == true, "older build dataset must remain available as a labelled baseline")
+assert(baseline.datasetBuild == "1.60.1.70862", "baseline provenance must not be relabelled")
+assert(baseline.currentBuild == "1.60.1.70888", "current client build must remain visible")
+assert(baseline.dataBuildMatchesClient == false, "different build must be labelled as a baseline, not a match")
+assert(baseline.reviewWatchCount == 4, "only the four hotfix-linked recipes should be flagged for review")
+assert(#data.GetAllFutureRecipes() > 0, "baseline recipe candidates must remain available on a newer client")
+local freshness = {}
+for _, recipe in ipairs(data.GetAllFutureRecipes()) do
+    freshness[recipe.recipeID] = recipe.freshnessStatus
+    if recipe.recipeID == 3326 then
+        assert(recipe.freshnessField == "skill-up range", "Blacksmithing hotfix must be scoped to its reported field")
+    end
+end
+assert(freshness[3326] == "review", "Coarse Grinding Stone should be in the targeted review watch")
+assert(freshness[1283400] == "review", "Journeyman Campfire should be in the targeted review watch")
+assert(freshness[1245246] == "review", "Minor Arcane Elixir should be in the targeted review watch")
+assert(freshness[3962] == "review", "Iron Grenade should be in the targeted review watch")
+local hasUnrelatedBaseline = false
+for _, recipe in ipairs(data.GetAllFutureRecipes()) do
+    if recipe.freshnessStatus == "baseline" then hasUnrelatedBaseline = true; break end
+end
+assert(hasUnrelatedBaseline, "unrelated recipes must remain baseline rather than review/unknown")
+assert(data.IsMarketSnapshotCompatible({
+    clientVersion = "1.60.1", clientBuild = "70888",
+}) == true, "market snapshots from the current client build should remain compatible")
 assert(data.IsMarketSnapshotCompatible({
     clientVersion = "1.60.1", clientBuild = "70862",
-}) == false, "snapshot must match current client even when it matches stale dataset build 70862")
-assert(#data.GetAllFutureRecipes() == 0, "mismatched build must not expose stale recipe candidates")
+}) == false, "old market snapshots must still be blocked for current-client recipe economics")
 
-print("ModuloMarket 0.5.3 ForeverDB provider harness passed")
+print("ModuloMarket baseline-plus-delta provider harness passed")

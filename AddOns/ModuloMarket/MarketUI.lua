@@ -863,21 +863,29 @@ function UI.FinishView(rows)
     if provider then
         if provider.available and provider.dataSource == "ForeverDB.net" then
             if UI.recipeMarketBuildCompatible == false then
+                local baselineNote = provider.dataBuildMatchesClient and "" or string.format(
+                    " · ForeverDB baseline %s remains loaded; %d hotfix-linked records flagged for review",
+                    tostring(provider.datasetBuild or "UNKNOWN"), provider.reviewWatchCount or 0)
                 if not UI.catalogSnapshot then
                     SetStatus("Craft profitability disabled: no market snapshot for current client build "
-                        .. tostring(provider.currentBuild or "UNKNOWN"))
+                        .. tostring(provider.currentBuild or "UNKNOWN") .. baselineNote)
                 else
                     SetStatus(string.format(
                         "Craft profitability disabled: market snapshot build %s does not match current client build %s",
                         tostring(UI.recipeMarketSnapshotBuild or "UNKNOWN"),
-                        tostring(provider.currentBuild or "UNKNOWN")))
+                        tostring(provider.currentBuild or "UNKNOWN")) .. baselineNote)
                 end
             else
+                local freshness = provider.dataBuildMatchesClient and "build matched"
+                    or string.format("baseline from %s; client %s",
+                        tostring(provider.datasetBuild or "UNKNOWN"), tostring(provider.currentBuild or "UNKNOWN"))
+                local review = (provider.reviewWatchCount or 0) > 0
+                    and string.format(" · %d hotfix-linked records flagged for review", provider.reviewWatchCount) or ""
                 SetStatus(string.format(
-                    "ForeverDB build %s · %d observed/automatic-source unlearned crafts · %d Classic-borrowed · %d unverified · %d speculative and %d non-item/unknown-output excluded",
-                    tostring(provider.datasetBuild or "UNKNOWN"), provider.count or 0,
-                    provider.borrowedSourceCount or 0, provider.unknownSourceCount or 0,
-                    provider.speculativeCount or 0, provider.nonItemCount or 0))
+                    "ForeverDB %s · %d observed/automatic-source unlearned crafts · %d Classic-borrowed · %d unverified · %d speculative and %d non-item/unknown-output excluded%s",
+                    freshness, provider.count or 0, provider.borrowedSourceCount or 0,
+                    provider.unknownSourceCount or 0, provider.speculativeCount or 0,
+                    provider.nonItemCount or 0, review))
             end
         elseif provider.available then
             SetStatus(string.format("%d unlearned craft candidates · %d borrowed-source · %d unknown-source",
@@ -1261,8 +1269,10 @@ local function RenderMarketRecipeContext(item)
             end, cut)
             local sourceLabel = recipe.borrowedSources and " · source unconfirmed"
                 or (recipe.sourceUnknown and " · source unknown" or " · unlearned")
+            local freshnessLabel = recipe.freshnessStatus == "review"
+                and (" · REVIEW: " .. tostring(recipe.freshnessField or "hotfix-linked field")) or ""
             local label = tostring(recipe.recipeName or "Recipe") .. " · "
-                .. tostring(recipe.professionName or "Profession") .. sourceLabel
+                .. tostring(recipe.professionName or "Profession") .. sourceLabel .. freshnessLabel
             if summary and summary.profitCopper ~= nil then
                 local color = summary.profitCopper >= 0 and "|cff55dd77" or "|cffff6666"
                 label = label .. " · " .. color .. FormatMoney(summary.profitCopper) .. "/craft|r"
@@ -1313,8 +1323,10 @@ local function RenderMarketRecipeContext(item)
             local note = future.borrowedSources and " · source borrowed from Vanilla" or ""
             local skill = future.requiredSkill and (" · Skill " .. future.requiredSkill)
                 or (future.borrowedSkill and " · skill estimate unconfirmed" or "")
+            local freshness = future.freshnessStatus == "review"
+                and (" · REVIEW: " .. tostring(future.freshnessField or "hotfix-linked field")) or ""
             lines[#lines + 1] = tostring(future.recipeName) .. " · "
-                .. tostring(future.professionName or "Profession") .. skill .. note
+                .. tostring(future.professionName or "Profession") .. skill .. note .. freshness
         end
         if #professionData.unknownFutureCrafts > 0 then
             lines[#lines + 1] = string.format("+ %d additional unlearned recipes have unknown acquisition sources",

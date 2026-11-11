@@ -32,6 +32,18 @@ local futureProvider = {
     borrowedSourceCount = 0,
 }
 
+-- Targeted review watch from the November 10, 2026 Forever hotfix report:
+-- https://allthings.how/wow-forever-hotfixes-patch-notes/
+-- These are advisory field-level flags, not proof that the whole recipe is stale.
+-- Client-file comparison: https://theforeverera.com/en/builds/70862-70888/
+-- That comparison does not rule out server-side hotfixes.
+local FOREVERDB_HOTFIX_WATCH = {
+    [3326] = { field = "skill-up range", note = "Blacksmithing skill-up range was reported changed; verify thresholds." },
+    [1283400] = { field = "placement requirement", note = "Journeyman Campfire placement requirement was reported changed; verify nearby/tool requirements." },
+    [1245246] = { field = "sell price", note = "Minor Arcane Elixir sell price was reported changed; use current live item pricing." },
+    [3962] = { field = "vendor price", note = "Iron Grenade vendor price was reported changed; verify vendor pricing before using it." },
+}
+
 local function EnsureItem(itemID)
     itemID = tonumber(itemID)
     if not itemID or itemID <= 0 then return nil end
@@ -242,15 +254,16 @@ local function AddForeverDBRecipes()
         dataSource = "ForeverDB.net",
         datasetBuild = datasetBuild,
         currentBuild = currentBuild,
+        dataBuildMatchesClient = datasetBuild ~= nil and currentBuild ~= nil and datasetBuild == currentBuild,
+        reviewWatchCount = 0,
+        baselineCount = 0,
     }
     if not currentBuild then
-        futureProvider.status = "Cannot verify this client's build; ForeverDB recipes are not loaded"
+        futureProvider.status = "Cannot identify this client's build; ForeverDB baseline is not loaded"
         return true
     end
-    if not datasetBuild or datasetBuild ~= currentBuild then
-        futureProvider.status = string.format(
-            "ForeverDB data build mismatch (data %s; client %s); imported recipes are not loaded",
-            tostring(datasetBuild or "UNKNOWN"), currentBuild)
+    if not datasetBuild then
+        futureProvider.status = "ForeverDB dataset has no build provenance; recipes are not loaded"
         return true
     end
 
@@ -348,6 +361,7 @@ local function AddForeverDBRecipes()
                                 local sourceKnown = sourceRecipe.sourceKnown == true
                                 local borrowedSources = sourceRecipe.borrowedSources == true and not sourceKnown
                                 local sourceUnknown = not sourceKnown and not borrowedSources
+                                local hotfixWatch = recipeID and FOREVERDB_HOTFIX_WATCH[recipeID] or nil
                                 local future = {
                                     recipeID = recipeID,
                                     recipeName = recipeName,
@@ -372,8 +386,16 @@ local function AddForeverDBRecipes()
                                     changedFromClassic = sourceRecipe.changedFromClassic,
                                     sourceProvider = "ForeverDB.net",
                                     sourceBuild = datasetBuild,
+                                    freshnessStatus = hotfixWatch and "review" or "baseline",
+                                    freshnessField = hotfixWatch and hotfixWatch.field or nil,
+                                    freshnessNote = hotfixWatch and hotfixWatch.note or nil,
                                 }
                                 allFutureRecipes[#allFutureRecipes + 1] = future
+                                if hotfixWatch then
+                                    futureProvider.reviewWatchCount = futureProvider.reviewWatchCount + 1
+                                else
+                                    futureProvider.baselineCount = futureProvider.baselineCount + 1
+                                end
                                 AddProfession(outputID, professionID, professionName)
                                 local outputEntry = EnsureItem(outputID)
                                 if outputEntry then
@@ -413,7 +435,13 @@ local function AddForeverDBRecipes()
     end
 
     futureProvider.available = true
-    futureProvider.status = "ForeverDB recipes loaded · build " .. datasetBuild
+    if futureProvider.dataBuildMatchesClient then
+        futureProvider.status = "ForeverDB recipes loaded · matching build " .. datasetBuild
+    else
+        futureProvider.status = string.format(
+            "ForeverDB baseline loaded · data %s on client %s · %d hotfix-linked records flagged for review",
+            datasetBuild, currentBuild, futureProvider.reviewWatchCount)
+    end
     futureProvider.count = knownCount
     futureProvider.borrowedSourceCount = borrowedCount
     futureProvider.unknownSourceCount = unknownCount
@@ -693,6 +721,9 @@ function Data.GetFutureProviderStatus()
         dataSource = futureProvider.dataSource,
         datasetBuild = futureProvider.datasetBuild,
         currentBuild = futureProvider.currentBuild,
+        dataBuildMatchesClient = futureProvider.dataBuildMatchesClient,
+        reviewWatchCount = futureProvider.reviewWatchCount,
+        baselineCount = futureProvider.baselineCount,
     }
 end
 

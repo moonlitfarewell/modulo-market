@@ -3,7 +3,7 @@ local MM = _G.ModuloMarket or {}
 _G.ModuloMarket = MM
 
 MM.name = ADDON_NAME or "ModuloMarket"
-MM.version = "0.5.4"
+MM.version = "0.5.5"
 MM.debugPrefix = "|cff66ccffModuloMarket:|r "
 
 local function Print(message)
@@ -26,9 +26,17 @@ local function PrintVersion()
     local provider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
         and MM.ProfessionData.GetFutureProviderStatus()
     if provider and provider.dataSource == "ForeverDB.net" then
+        local dataState = "not loaded"
+        if provider.available then
+            if provider.dataBuildMatchesClient == false then
+                dataState = string.format("loaded as baseline on client %s; %d records flagged for review",
+                    tostring(provider.currentBuild or "UNKNOWN"), provider.reviewWatchCount or 0)
+            else
+                dataState = "loaded (build match)"
+            end
+        end
         label = label .. string.format(" | ForeverDB data %s: %s",
-            tostring(provider.datasetBuild or "UNKNOWN"),
-            provider.available and "loaded" or "not loaded")
+            tostring(provider.datasetBuild or "UNKNOWN"), dataState)
     end
     Print(label)
 end
