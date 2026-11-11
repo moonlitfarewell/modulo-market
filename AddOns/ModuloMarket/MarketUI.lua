@@ -2193,7 +2193,9 @@ end
 
 function UI.Raise()
     local frame = CreateUI()
-    frame:SetFrameStrata("TOOLTIP")
+    -- Keep the Market below native GameTooltip and contextual tooltip frames.
+    -- Frame level cannot outrank another frame in a higher strata.
+    frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
     if type(frame.Raise) == "function" then frame:Raise() end
 end

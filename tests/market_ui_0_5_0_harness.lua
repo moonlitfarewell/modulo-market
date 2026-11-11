@@ -256,7 +256,7 @@ end
 
 ui.Toggle()
 assert(ui.frame and ui.frame:IsShown(), "Market UI should open")
-assert(ui.frame.strata == "TOOLTIP", "Market should remain frontmost")
+assert(ui.frame.strata == "DIALOG", "Market must remain below native tooltips")
 assert(UISpecialFrames[1] == "ModuloMarketMainFrame", "Escape-close registration should remain")
 drain()
 

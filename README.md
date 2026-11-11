@@ -1,4 +1,4 @@
-# Modulo Market 0.5.7
+# Modulo Market 0.5.8
 
 **Current player milestone:** seven distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
 
@@ -13,7 +13,13 @@ Market 0.5.3 includes a reviewed ForeverDB recipe dataset from client build `1.6
  It depends on `Modulo`; MODULO does not depend on Market. Auctionator and ProfessionMaster remain independent addons and are not runtime dependencies.
 
 
-## Current 0.5.7 milestone — hover inspection, true window opacity and tab-specific columns
+## Current 0.5.8 milestone — Market remains below native tooltips
+
+- Corrected the open/raise lifecycle: the Market is explicitly kept at DIALOG strata, while native and addon tooltips remain at TOOLTIP. The 0.5.7 `UI.Raise()` path had inadvertently promoted the Market to TOOLTIP after creation.
+- Added regression coverage for the complete raise path and corrected legacy harness expectations.
+- Forever runtime acceptance remains NOT RUN until tooltip-over-window behavior is confirmed in-game.
+
+## 0.5.7 milestone — hover inspection, true window opacity and tab-specific columns
 
 - The Market frame uses DIALOG strata while GameTooltip and dropdown menus use TOOLTIP strata, so hover help is not trapped behind the Market window.
 - Hovering recipe/item rows opens item or recipe spell tooltips when the client exposes the relevant tooltip API; the selected-entry name and recipe metadata also have dedicated hover targets.
@@ -70,7 +76,7 @@ The importer, canonical adapter, compact compiler, baseline-plus-delta loader an
 - A **Modulo Market** launcher button appears on the Auction House frame when its UI is available.
 - A draggable minimap coin button opens Market with a left-click.
 - The Market window is registered with `UISpecialFrames`, so Escape closes it.
-- The window uses the TOOLTIP frame strata and is raised when opened, placing it above normal addon panels.
+- The window uses DIALOG strata and is raised when opened, placing it above normal addon panels while keeping native TOOLTIP strata available to hover tooltips.
 - `/mmscan` opens the retained Browse-summary scanner and JSON export tools.
 - `/mmdebug` opens read-only API/profession diagnostics.
 - `/mmversion` prints the installed ModuloMarket version, current client build and ForeverDB dataset load state.

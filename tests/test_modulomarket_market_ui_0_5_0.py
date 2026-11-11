@@ -13,9 +13,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_050_version_and_separate_child_boundary():
-    assert 'MM.version = "0.5.7"' in CORE
-    assert re.search(r"^## Version: 0\.5\.7$", TOC, re.M)
-    assert MANIFEST["version"] == "0.5.7"
+    assert 'MM.version = "0.5.8"' in CORE
+    assert re.search(r"^## Version: 0\.5\.8$", TOC, re.M)
+    assert MANIFEST["version"] == "0.5.8"
     assert "## Dependencies: Modulo" in TOC
     assert "ModuloMarket" not in (ROOT / "AddOns/Modulo/Modulo.toc").read_text() if (ROOT / "AddOns/Modulo/Modulo.toc").exists() else True
 

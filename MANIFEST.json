@@ -15,8 +15,8 @@
     "market_material_recipe_relationships": "0.5.3_KNOWN_AND_BUILD_MATCHED_FOREVERDB_RECIPE_OUTPUTS_AND_REAGENTS; OBSERVED_BORROWED_UNKNOWN_SOURCE_LABELS; SPECULATIVE_AND_NONITEM_EXCLUDED; FOREVER_RUNTIME_NOT_RUN",
     "market_price_history": "0.5.0_LATEST_VS_PREVIOUS_SIGNED_PRICE_DELTA; FOUR_POINT_COMPACT_GRAPH; UP_TO_FOUR_COMPLETED_REPLICATE_SNAPSHOTS; FOREVER_RUNTIME_NOT_RUN",
     "market_search_and_item_detail": "0.1.0_SOURCE_IMPLEMENTED; NAME_SEARCH_USES_SNAPSHOT_OR_CLIENT_CACHED_ITEM_NAMES; FOREVER_RUNTIME_NOT_RUN",
-    "market_ui_layout": "0.5.7_DARK_FOUNDRY_THREE_COLUMN; TOOLTIP_STRATA_DIALOG_BELOW_TOOLTIP; MATERIALS_FIVE_COLUMNS; ALL_SEVEN_TABS_RETAINED; FOREVER_RUNTIME_NOT_RUN",
-    "market_ui_presentation": "0.5.7_DARK_FOUNDRY_REFINEMENT; WHOLE_WINDOW_OPACITY; ITEM_AND_RECIPE_HOVER_TOOLTIPS; FILTER_HELP; MATERIALS_NO_LISTINGS_COLUMN; FOREVER_RUNTIME_NOT_RUN",
+    "market_ui_layout": "0.5.8_DARK_FOUNDRY_THREE_COLUMN; MARKET_DIALOG_BELOW_TOOLTIP; MATERIALS_FIVE_COLUMNS; ALL_SEVEN_TABS_RETAINED; FOREVER_RUNTIME_NOT_RUN",
+    "market_ui_presentation": "0.5.7_DARK_FOUNDRY_REFINEMENT; WHOLE_WINDOW_OPACITY; ITEM_AND_RECIPE_HOVER_TOOLTIPS; FILTER_HELP; MATERIALS_NO_LISTINGS_COLUMN; 0.5.8_TOOLTIP_STRATA_RAISE_PATH_CORRECTED; FOREVER_RUNTIME_NOT_RUN",
     "market_window_accessibility": "0.5.0_AUCTION_HOUSE_LAUNCHER; DRAGGABLE_MINIMAP_BUTTON; TOOLTIP_STRATA_AND_FRAME_LEVEL; ESC_REGISTRATION; FOREVER_RUNTIME_NOT_RUN",
     "material_recipe_relationships": "0.3.0_SOURCE_IMPLEMENTED; CAPTURED_CHARACTER_RECIPES; FOREVER_RUNTIME_NOT_RUN",
     "persistent_last_known_good_browse_snapshot": "0.0.7_RELOAD_DEMONSTRATED; FULL_CLIENT_RESTART_NOT_RUN",
@@ -87,11 +87,13 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.5.5.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.5.6.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.5.7.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.5.8.md",
     "README.md",
     "data/ForeverDB-Canonical-1.60.1.70862.json",
     "data/README.md",
     "docs/FOREVERDB-DATA-REVIEW-2026-11-11.md",
     "docs/FOREVERDB-INTEGRATION-PLAN.md",
+    "docs/MODULOMARKET-TOOLTIP-STRATA-0.5.8.md",
     "docs/MODULOMARKET-UI-REDESIGN-0.5.6.md",
     "docs/MODULOMARKET-UI-REDESIGN-0.5.7.md",
     "tests/foreverdb_provider_0_5_3_harness.lua",
@@ -128,6 +130,7 @@
     "tests/test_modulomarket_snapshot_0_0_5.py",
     "tests/test_modulomarket_throttle_0_0_8.py",
     "tests/test_modulomarket_ui_0_5_7_hover_opacity_materials.py",
+    "tests/test_modulomarket_ui_0_5_8_tooltip_strata.py",
     "tests/test_modulomarket_version_reporting_harness_0_5_4.py",
     "tests/test_modulomarket_version_visibility_0_5_4.py",
     "tests/version_reporting_0_5_4_harness.lua",
@@ -210,14 +213,14 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.5.7_SOURCE_IMPLEMENTED; TOOLTIP_AND_OPACITY_FIXES_OFFLINE_CHECKED; MATERIALS_LISTINGS_COLUMN_REMOVED; FOREVER_RUNTIME_NOT_RUN",
+  "runtime_status": "0.5.8_SOURCE_CORRECTION; MARKET_RAISE_PATH_KEPT_AT_DIALOG; GAME_TOOLTIP_AND_POPUPS_AT_TOOLTIP; FOREVER_RUNTIME_NOT_RUN",
   "saved_variables": [
     "ModuloMarketDB"
   ],
   "supersedesChildBundle": "ModuloMarket-0.5.2.zip",
   "supersedesChildBytes": 51411,
   "supersedesChildSha256": "d32ecaaee1b05b19c898eacbf836d68b27defd69a264d32ade4fb9c891b80ad2",
-  "version": "0.5.7",
-  "file_count": 91,
+  "version": "0.5.8",
+  "file_count": 94,
   "developer_tools_version": "ForeverDB importer 0.2.0 (developer-only; environment-key capture, verified raw normalizer and compact runtime compiler)"
 }

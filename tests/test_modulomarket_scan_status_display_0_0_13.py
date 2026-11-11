@@ -47,8 +47,8 @@ def test_probe_still_requires_explicit_confirmation_and_never_auto_retries():
 
 
 def test_version_agreement():
-    assert re.search(r"^## Version: 0\.5\.7$", TOC.read_text(), re.M)
-    assert 'MM.version = "0.5.7"' in CORE.read_text()
+    assert re.search(r"^## Version: 0\.5\.8$", TOC.read_text(), re.M)
+    assert 'MM.version = "0.5.8"' in CORE.read_text()
     manifest = json.loads(MANIFEST.read_text())
-    assert manifest["version"] == "0.5.7"
+    assert manifest["version"] == "0.5.8"
     assert "tests/test_modulomarket_scan_status_display_0_0_13.py" in manifest["files"]

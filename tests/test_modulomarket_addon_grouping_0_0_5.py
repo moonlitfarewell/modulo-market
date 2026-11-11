@@ -13,7 +13,7 @@ def meta(key):
 def test_market_is_a_separate_grouped_child():
     assert ADDON.is_dir()
     assert meta("Title") == "Modulo Market"
-    assert meta("Version") == "0.5.7"
+    assert meta("Version") == "0.5.8"
     assert meta("Category") == "Modulo By Wells"
     assert meta("Group") == "Modulo"
     assert meta("Dependencies") == "Modulo"
