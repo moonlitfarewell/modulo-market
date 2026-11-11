@@ -15,8 +15,8 @@ MANIFEST = ROOT / "MANIFEST.json"
 def test_010_is_the_first_player_facing_market_product_release():
     toc = TOC.read_text()
     core = CORE.read_text()
-    assert re.search(r"^## Version: 0\.5\.1$", toc, re.M)
-    assert 'MM.version = "0.5.1"' in core
+    assert re.search(r"^## Version: 0\.5\.2$", toc, re.M)
+    assert 'MM.version = "0.5.2"' in core
     assert 'SLASH_MODULOMARKET1 = "/mm"' in core
     assert "MarketUI.Toggle()" in core
     assert 'SLASH_MODULOMARKETSCAN1 = "/mmscan"' in core
@@ -114,7 +114,7 @@ def test_browse_snapshot_keeps_full_item_key_dimensions_and_json_schema():
 
 def test_parent_and_child_provenance_agree():
     manifest = json.loads(MANIFEST.read_text())
-    assert manifest["version"] == "0.5.1"
+    assert manifest["version"] == "0.5.2"
     assert manifest["parentSourceBundle"] == "MODULO-Project-Source-1.0.48.zip"
     assert manifest["parentSourceKind"] == "project"
     assert manifest["parentUploader"] == "developer"
@@ -128,7 +128,7 @@ def test_parent_and_child_provenance_agree():
     assert "tests/test_modulomarket_market_engine_0_1_0.py" in manifest["files"]
     assert "MODULOMARKET-RUNTIME-AUDIT-0.4.0.md" in manifest["files"]
     readme = (ROOT / "README.md").read_text()
-    assert readme.startswith("# Modulo Market 0.5.1")
+    assert readme.startswith("# Modulo Market 0.5.2")
     actual = sorted(
         path.relative_to(ROOT).as_posix()
         for path in ROOT.rglob("*")

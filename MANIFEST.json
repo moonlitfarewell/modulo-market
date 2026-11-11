@@ -34,7 +34,11 @@
     "sale_price_scenarios": "0.2.0_LEGACY_HELPER_ONLY; TARGET_PRICE_INPUT_REMOVED_FROM_0.3.0_PLAYER_UI",
     "skill_progression_opportunities": "NOT_IMPLEMENTED; REQUIRES_UNLEARNED_RECIPE_CATALOGUE_AND_TRUSTWORTHY_LEARNING_REQUIREMENTS",
     "unlearned_recipe_catalogue": "0.5.1_OPTIONAL_LIBPROFESSIONDB_1.9.1_ADAPTER; KNOWN_DUPLICATES_EXCLUDED_BY_PROFESSION_RECIPE_ID_OR_PROFESSION_OUTPUT_NORMALIZED_NAME; KNOWN_FUTURE_BORROWED_AND_UNKNOWN_SOURCE_ROWS; REAGENTS_NORMALIZED_WHEN_SCHEMA_SUPPORTED; OUTPUT_QUANTITY_REQUIRED_FOR_PROFIT; LIBRARY_NOT_BUNDLED; FOREVER_RUNTIME_NOT_RUN",
-    "vendor_sale_value": "0.5.1_C_ITEM_GETITEMINFO_TABLE_AND_LEGACY_GETITEMINFO; GET_ITEM_INFO_RECEIVED_AND_ITEM_DATA_LOAD_RESULT; SELECTED_ITEM_ASYNC_CACHE_REQUEST_AND_DETAIL_REFRESH; VENDOR_CRAFT_ROUTE_COMPARISON_WHEN_QUANTITY_AND_COST_KNOWN; FOREVER_RUNTIME_NOT_RUN"
+    "vendor_sale_value": "0.5.1_C_ITEM_GETITEMINFO_TABLE_AND_LEGACY_GETITEMINFO; GET_ITEM_INFO_RECEIVED_AND_ITEM_DATA_LOAD_RESULT; SELECTED_ITEM_ASYNC_CACHE_REQUEST_AND_DETAIL_REFRESH; VENDOR_CRAFT_ROUTE_COMPARISON_WHEN_QUANTITY_AND_COST_KNOWN; FOREVER_RUNTIME_NOT_RUN",
+    "foreverdb_developer_importer": "0.1.0_RAW_CAPTURE_ENV_KEY_ONLY; API_KEY_NOT_PERSISTED; RATE_LIMIT_ENFORCED; RAW_RESPONSE_HASHES_AND_SCHEMA_INSPECTOR; CANONICAL_RECIPE_V1_VALIDATOR; PER_PROFESSION_LUA_COMPILER; NINE_OFFLINE_TESTS_PASS",
+    "foreverdb_recipe_data": "NOT_IMPORTED; API_APPROVAL_PENDING; RAW_SCHEMA_ADAPTER_PENDING_REAL_RESPONSE; NO_DATA_OR_API_KEY_BUNDLED; VISIBLE_ATTRIBUTION_REQUIRED_BEFORE_RUNTIME_DISPLAY",
+    "forevertome_fallback": "REFERENCE_ONLY_CLIENT_ARCHIVE_BUILD_1.60.1.70707; STRUCTURE_NOT_LIVE_AVAILABILITY; NO_REDISTRIBUTION_LICENSE_VERIFIED; NOT_BUNDLED; OLDER_THAN_PREVIOUS_OBSERVED_CLIENT_BUILD_1.60.1.70862",
+    "scalar_reagent_map_normalization": "0.5.2_SPARSE_SCALAR_ITEMID_QUANTITY_MAP_ACCEPTS_ANY_POSITIVE_ID; CONTIGUOUS_1_BASED_SCALAR_ARRAYS_RETAIN_POSITIONAL_SEMANTICS; TABLE_RECORDS_RETAIN_ARRAY_INDEX_GUARD; PROFESSION_DATA_HARNESS_PASS"
   },
   "category": "Modulo By Wells",
   "dependencies": [
@@ -51,6 +55,7 @@
     "AddOns/ModuloMarket/RecipeEngine.lua",
     "AddOns/ModuloMarket/Replicate.lua",
     "AddOns/ModuloMarket/Scanner.lua",
+    "MANIFEST.json",
     "MODULOMARKET-PERFORMANCE-RESEARCH-2026-11-10.md",
     "MODULOMARKET-REPLICATE-PROBE-RESULT-2026-11-10.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.0.10.md",
@@ -73,6 +78,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.4.2.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.5.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.5.1.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.5.2.md",
     "README.md",
     "docs/FOREVERDB-INTEGRATION-PLAN.md",
     "tests/market_engine_0_1_0_harness.lua",
@@ -85,6 +91,7 @@
     "tests/recipe_engine_0_3_0_harness.lua",
     "tests/replicate_probe_harness.lua",
     "tests/scanner_model_harness.lua",
+    "tests/test_foreverdb_importer.py",
     "tests/test_modulomarket_addon_grouping_0_0_5.py",
     "tests/test_modulomarket_load_0_0_9.py",
     "tests/test_modulomarket_market_engine_0_1_0.py",
@@ -102,7 +109,11 @@
     "tests/test_modulomarket_replicate_probe_0_0_10.py",
     "tests/test_modulomarket_scan_status_display_0_0_13.py",
     "tests/test_modulomarket_snapshot_0_0_5.py",
-    "tests/test_modulomarket_throttle_0_0_8.py"
+    "tests/test_modulomarket_throttle_0_0_8.py",
+    "tools/foreverdb_importer/README.md",
+    "tools/foreverdb_importer/fixtures/canonical-sample.synthetic.json",
+    "tools/foreverdb_importer/market_data_importer.py",
+    "tools/foreverdb_importer/recipe-data-v1.schema.json"
   ],
   "folder": "ModuloMarket",
   "group": "Modulo",
@@ -119,6 +130,11 @@
   "parentUploader": "developer",
   "parent_addon": "Modulo",
   "previousChildBundles": [
+    {
+      "bundle": "ModuloMarket-0.5.1.zip",
+      "bytes": 217308,
+      "sha256": "bb01b6373e3cb174d5c62453da2c0b7899efd90a997be9fec4c1924ada98aeab"
+    },
     {
       "bundle": "ModuloMarket-0.5.0.zip",
       "bytes": 208917,
@@ -165,14 +181,14 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.5.1_SOURCE_IMPLEMENTED; OFFLINE_REGRESSION_PASS; FOREVER_RUNTIME_NOT_RUN; KNOWN_RECIPE_DUPLICATES_SUPPRESSED; KNOWN_ITEM_ROLE_PRECEDENCE; DUAL_ITEM_DATA_API_AND_EVENT_VENDOR_CACHE; EXPLAINED_ITEM_ROLE_FILTERS; LIVE_ACCEPTANCE_PENDING; MODULO_PARENT_1.0.48_UNCHANGED",
+  "runtime_status": "0.5.2_SOURCE_IMPLEMENTED; SPARSE_SCALAR_REAGENT_MAP_PARSER_FIX; OFFLINE_REGRESSION_PASS; FOREVER_RUNTIME_NOT_RUN; DEVELOPER_IMPORTER_0.1.0_SOURCE_AND_OFFLINE_TESTS_PASS; FOREVERDB_API_APPROVAL_PENDING; RAW_API_ADAPTER_PENDING_REAL_RESPONSE",
   "saved_variables": [
     "ModuloMarketDB"
   ],
-  "supersedesChildBundle": "ModuloMarket-0.5.0.zip",
-  "supersedesChildBytes": 208917,
-  "supersedesChildProjectFileId": "file_000000005df081f4ba8e61e9564796e0",
-  "supersedesChildSha256": "5c4f02a1a6b2cc64fb3b1e8bf292a3a7248e4e36a7c4ba4df3a609ea2283f8d7",
-  "version": "0.5.1",
-  "file_count": 62
+  "supersedesChildBundle": "ModuloMarket-0.5.1.zip",
+  "supersedesChildBytes": 217308,
+  "supersedesChildSha256": "bb01b6373e3cb174d5c62453da2c0b7899efd90a997be9fec4c1924ada98aeab",
+  "version": "0.5.2",
+  "file_count": 69,
+  "developer_tools_version": "ForeverDB importer 0.1.0 (developer-only; not loaded by WoW; raw API mapping awaits approved real response)"
 }

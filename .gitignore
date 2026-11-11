@@ -18,3 +18,10 @@ WTF/
 *api-key*
 *apikey*
 *secret*
+
+# Local ForeverDB imports and generated developer output (never commit raw captures or keys)
+/imports/
+/tools/foreverdb_importer/outputs/
+/tools/foreverdb_importer/build/
+**/__pycache__/
+*.pyc

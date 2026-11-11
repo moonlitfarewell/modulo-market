@@ -7,6 +7,15 @@ local function object(isRegion)
   function o:RegisterEvent(name) self.registered[name] = true end
   function o:UnregisterEvent(name) self.registered[name] = nil end
   function o:SetSize(w, h) self.width, self.height = w, h end
+  function o:SetOrientation(v) self.orientation = v end
+  function o:SetTexture(v) self.texture = v end
+  function o:SetTexCoord(...) self.texCoord = {...} end
+  function o:SetMinMaxValues(a, b) self.minValue, self.maxValue = a, b end
+  function o:SetValue(v) self.value = v end
+  function o:SetValueStep(v) self.valueStep = v end
+  function o:SetObeyStepOnDrag(v) self.obeyStep = v end
+  function o:SetThumbTexture(v) self.thumbTexture = v end
+  function o:ClearAllPoints() self.points = nil end
   function o:SetPoint() end function o:SetMovable() end
   function o:SetBackdropColor(...) self.backdropColor = {...} end
   function o:SetFrameStrata(v) self.strata = v end function o:SetToplevel(v) self.toplevel = v end
@@ -169,14 +178,14 @@ while ui.catalogBuild or ui.viewBuild or ui.rankSort do
 end
 assert(frames > 50, "large catalog should be spread across multiple frames")
 assert(#ui.catalog == 4002, "catalog should collapse duplicate item variants into unique item IDs")
-assert(ui.resultCount:GetText() == "1-23 / 4002",
+assert(ui.resultCount:GetText() == "1-25 / 4002",
   "result range should make the full catalogue and current visible window explicit")
-ui.scroll.scripts.OnVerticalScroll(ui.scroll, 23 * ui.rowHeight)
-assert(ui.resultCount:GetText() == "24-46 / 4002",
-  "scrolling should advance the visible result range beyond the first twenty rows")
+ui.scroll.scripts.OnVerticalScroll(ui.scroll, 25 * ui.rowHeight)
+assert(ui.resultCount:GetText() == "26-50 / 4002",
+  "scrolling should advance the visible result range beyond the first twenty-five rows")
 local lastOffset = (#ui.viewRows - ui.visibleCount) * ui.rowHeight
 ui.scroll.scripts.OnVerticalScroll(ui.scroll, lastOffset)
-assert(ui.resultCount:GetText() == "3980-4002 / 4002",
+assert(ui.resultCount:GetText() == "3978-4002 / 4002",
   "scrolling should reach the final rows in the complete catalogue")
 ui.scroll.scripts.OnVerticalScroll(ui.scroll, 0)
 ui.frame:Hide()
@@ -207,9 +216,9 @@ ui.search.scripts.OnTextChanged(ui.search)
 while ui.viewBuild or ui.rankSort do ui.frame.scripts.OnUpdate(ui.frame, 0.016) end
 assert(ui.professionDropdown and ui.roleDropdown,
   "profession and item-role filters should be present")
-assert(ui.professionDropdown.dropdownText == "All professions",
+assert(ui.professionDropdown.label:GetText() == "All professions",
   "profession filter should default to all professions")
-assert(ui.roleDropdown.dropdownText == "All item roles",
+assert(ui.roleDropdown.label:GetText() == "All item types",
   "item-role filter should default to all item roles")
 ui.professionFilter = 197
 ui.StartViewBuild()
@@ -274,15 +283,22 @@ assert(ui.detailEconomics:GetText():find("REAGENTS", 1, true), "craft detail sho
 
 ui.search:SetText("")
 ui.search.scripts.OnTextChanged(ui.search)
-ui.tabs.opportunities.scripts.OnClick(ui.tabs.opportunities)
+assert(ui.tabs.allcrafts and ui.tabs.opportunities == nil,
+  "All Crafts replaces the overlapping Profitable tab and retains the full recipe catalogue")
+ui.tabs.allcrafts.scripts.OnClick(ui.tabs.allcrafts)
 while ui.viewBuild or ui.rankSort do ui.frame.scripts.OnUpdate(ui.frame, 0.016) end
-assert(#ui.viewRows == 1, "profitable tab should include only positive-profit crafts")
+assert(#ui.viewRows >= 2, "All Crafts should retain known recipes regardless of profit sign")
 
 ui.search:SetText("")
 ui.search.scripts.OnTextChanged(ui.search)
 ui.tabs.low.scripts.OnClick(ui.tabs.low)
 while ui.viewBuild or ui.rankSort do ui.frame.scripts.OnUpdate(ui.frame, 0.016) end
-assert(#ui.viewRows == 1 and ui.viewRows[1].itemID == 200, "low supply tab should filter total supply threshold")
+local hasLowSupplyOre = false
+for _, item in ipairs(ui.viewRows) do
+  if item.itemID == 200 then hasLowSupplyOre = true end
+end
+assert(#ui.viewRows >= 2 and hasLowSupplyOre,
+  "role-adjusted low-supply tab should include scarce materials and other low-quantity items")
 
 local scenario = ui.GetProfitScenario(copper, 2000, 2, 5, 5000)
 assert(scenario and scenario.totalProfitCopper == 5500, "custom target scenario math should include AH cut")

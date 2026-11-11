@@ -1,42 +1,112 @@
-# ForeverDB integration plan
+# ForeverDB integration plan and current implementation status
 
-**Status:** proposed; not implemented in ModuloMarket 0.5.1.
+**Addon baseline:** ModuloMarket 0.5.2 (developer importer preview 0.1.0 plus scalar reagent-key fix)  
+**Parent:** MODULO 1.0.48 (unchanged)  
+**Status:** offline importer foundation implemented and tested; ForeverDB API approval pending; raw response schema adapter NOT RUN/UNKNOWN.
 
-## Purpose
+## Player problem
 
-Use ForeverDB's read-only API as a source for a reviewed, offline-imported Forever-specific profession and item dataset. The addon itself will not make live Internet requests.
+Market currently has known recipes captured from the player's profession windows and an optional structural unlearned-recipe source. It still lacks a complete, authoritative Forever-specific recipe dataset for all professions, including correct output ranges and actual learning sources. Some recipes therefore show `output quantity unavailable`, and profit must be withheld rather than guessed.
 
-## Intended data
+## Ownership and dependency direction
 
-Subject to API access, endpoint availability and field-level validation:
+- ModuloMarket owns recipe economics, provenance, market joins and player presentation.
+- MODULO remains unchanged and must not depend on Market.
+- Auctionator and ProfessionMaster remain independent; Market reads neither private SavedVariables nor private runtime services.
+- ForeverDB is a build-time data source only. The addon will not make HTTP requests and will not contain an API key.
 
-- profession and recipe identities;
-- reagent item IDs and quantities;
-- output item IDs and output quantities, including ranges where supplied;
-- skill requirements and difficulty metadata;
-- trainers, vendors, quests, drops and other acquisition sources;
-- gathering relationships and relevant item properties.
+## Current source evidence
 
-## Evidence rules
+### ForeverDB API
 
-Every imported fact must retain its source and evidence status. In particular:
+Official API documentation: https://foreverdb.net/developers
 
-- Forever client-derived structure is not automatically proof that a recipe is currently obtainable;
-- observed Forever acquisition data must remain distinct from client-derived data;
-- Vanilla/Classic-derived learning sources must remain labelled borrowed or unconfirmed;
-- unknown quantities, sources and availability must remain unknown;
-- no profit calculation may invent missing output or reagent quantities.
+The documented API is read-only and requires an approved API key. Responses have a `{data, meta}` envelope; metadata identifies the game build and pagination information. Documented limits are 60 requests/minute and 10,000 requests/day per key. Keys are account-bound, and the API requires visible credit linking to https://foreverdb.net wherever its data is displayed. It prohibits reselling the data or presenting it as our own.
 
-## Import and distribution
+The profession index documents 12 profession slugs. A profession detail includes recipes, skill colours, reagents, output count/min/max, learning sources, faction-specific trainers/vendors and vendor costs. It distinguishes client-derived recipe structure from learning sources and trainer/vendor prices that are Classic-derived unless `seenInForever`/observation evidence is present.
 
-The intended workflow is an offline importer that validates IDs, quantities, provenance and source/build metadata, then emits versioned Lua data for inclusion in a later addon release. The addon will not contain an API key and will not contact ForeverDB at runtime.
+### ForeverTome (secondary structural reference only)
 
-No ForeverDB API key or API response data is included in this repository. Integration requires approved developer access and review of the current API terms, rate limits and attribution requirements.
+Public recipe archive: https://forevertome.com/professions
 
-## Attribution
+The site currently advertises 2,561 decoded client recipes across 15 professions from client build `1.60.1.70707`. Its own caveats are important: retained historical client recipes do not prove live availability; output counts are base client effect ranges; no hotfixes are applied; client minimum skill is not a verified trainer learning requirement; and trainer/vendor/drop/quest acquisition sources are not confirmed by that snapshot. The user's previously observed client build is `1.60.1.70862`, so `1.60.1.70707` must not be silently treated as current. A redistribution licence for that public JSON download has not been verified; do not bundle or redistribute it on the basis of being downloadable.
 
-If ForeverDB data is incorporated, provide visible credit and a link to [ForeverDB.net](https://foreverdb.net) wherever the data is displayed, in accordance with the API's requirements. The precise in-game attribution placement will be implemented before distributing any build containing ForeverDB data.
+### Existing LibProfessionDB fallback
 
-## Current limitation
+LibProfessionDB 1.9.1 remains an optional structural fallback. Its Forever-specific data and Classic-borrowed acquisition/skill fields must remain individually labelled. It is not a required runtime dependency and is not bundled by this tool preview.
 
-ModuloMarket 0.5.1 does not import or bundle ForeverDB data. This document records intended future work, not an implemented capability or a claim of Forever runtime verification.
+## Evidence model
+
+Evidence is retained per field/claim, not inferred from the provider name:
+
+- `FOREVER_CLIENT`: decoded from a named Forever client build. Recipe presence alone does not prove live learnability.
+- `FOREVER_OBSERVED`: a source or behavior observed by players on Forever, where the provider says it was seen.
+- `CLASSIC_BORROWED`: Classic/Vanilla-derived; not confirmed on Forever.
+- `FOREVERTOME_CLIENT_ARCHIVE`: client-archive data from that source/build; source and build are retained.
+- `LIBPROFESSIONDB`: data from that library; field-level borrowed status remains explicit.
+- `UNKNOWN`: not established.
+
+Client trivial/colour thresholds, trainer learning requirements and actual character learning are separate concepts. Do not label a client orange/yellow skill threshold as a trainer requirement. Do not make a future craft available solely because a client recipe exists.
+
+## Implemented developer tooling preview 0.1.0
+
+Location: `tools/foreverdb_importer/`
+
+- Standard-library Python 3.10+ tooling; no extra packages.
+- Sequential raw API capture using `X-API-Key` from `FOREVERDB_API_KEY` environment variable only.
+- Secret is never accepted on the command line, printed, or written to the capture manifest.
+- Minimum 1.05-second interval between requests; 500 request capture safety cap; API's maximum 100 rows/page is enforced; HTTP 429 `Retry-After` handling.
+- Raw response JSON is preserved with request path, timestamp, byte count and SHA-256. An in-progress/partial manifest survives an interrupted capture.
+- JSON response-shape inspector verifies the raw file hashes and prints nested keys/types/array lengths.
+- Canonical staging schema v1 separates output records, output quantity min/max, reagent groups/alternatives, skill evidence and acquisition-source evidence.
+- Strict validation and per-profession Lua compiler. Generated index includes the required ForeverDB visible attribution text and URL.
+- Synthetic test fixture proves fixed, variable and unknown output quantities are preserved. Fixture compilation requires an explicit `--allow-fixture` flag and must never be shipped.
+- Offline tests cover environment-only API key use, raw-response capture, hashes, explicit pagination, unknown nested-page preservation, validator failures, duplicate IDs and compiler attribution.
+
+The raw ForeverDB response adapter has deliberately NOT been implemented before API approval and a real response sample. The public documentation is sufficient to plan endpoints and evidence rules but not to safely assume every nested JSON field/path. This is a correctness gate, not unfinished guesswork.
+
+## Canonical recipe data contract
+
+See `tools/foreverdb_importer/recipe-data-v1.schema.json`.
+
+Each recipe retains:
+- stable profession/recipe IDs and name/category;
+- one or more output item records;
+- each output quantity's `min`, `max` and evidence;
+- required/optional reagent groups, quantity min/max, quantity evidence and alternative item choices;
+- skill threshold values with independent evidence source;
+- acquisition source type, name, faction, price, `seen_in_forever` and evidence;
+- exact source client build and retrieval timestamp.
+
+Missing quantity remains `null`. Random quantities remain a range; no expected value is invented without a documented distribution. Non-item outputs (enchantments/services) are not forced into fake item outputs. Variable/optional/alternative reagent semantics are preserved instead of flattening all entries into a sum.
+
+For a variable output, economics should report a conservative-to-maximum profit range where all required prices are known. For unknown output quantity, profit remains unavailable. Reagent alternatives are a choice group; only the chosen available alternative is costed. If some alternatives are unpriced, report price coverage/uncertainty rather than claiming the chosen option is the cheapest possible.
+
+## Capture workflow after access is approved
+
+1. Create an API key in the approved ForeverDB account; do not send it to ChatGPT or commit it.
+2. Set it temporarily in the shell environment, then run the importer `capture` command (see tooling README).
+3. Review `capture-manifest.json`, client build, each response shape and SHA-256 using `inspect`.
+4. Implement/update a raw-schema adapter only against the captured shape and the official API docs. Record every mapped field path and its evidence translation.
+5. Normalize to canonical v1; validate IDs, quantities, alternatives, outputs, skills, source evidence and build metadata.
+6. Compare a sample of recipes/materials against the live Forever profession UI and the client's captured known recipe schematic. Keep disagreements open; never silently choose an answer.
+7. Compile per-profession Lua data. Ensure attribution is visible in the in-game UI before any release includes ForeverDB data.
+8. Run offline tests and source-review the changed loader/UI/economics callers. Package only after the data is validated.
+
+## Compatibility and build gate
+
+Do not merge datasets across client builds. Every captured set records its exact client build and locale. Before joining recipe data to an auction snapshot, compare recipe-data build to the client build recorded by the user's Market scan. A stale build remains separately labelled and cannot silently override current client-captured data.
+
+The previously observed client evidence refers to `1.60.1.70862`; the currently published ForeverTome archive search result refers to `1.60.1.70707`. They are not interchangeable.
+
+## Not yet implemented / blockers
+
+- ForeverDB access approval and issued key: PENDING.
+- Actual ForeverDB API response capture: NOT RUN (awaiting access approval/key).
+- Exact raw API schema adapter: NOT RUN/UNKNOWN until a real response is available.
+- ForeverDB canonical dataset compiled from approved API responses: NOT RUN.
+- Generated Lua connected to addon loader/UI: NOT IMPLEMENTED.
+- Visible in-game ForeverDB attribution: NOT IMPLEMENTED; required before shipping any ForeverDB-sourced records.
+- Live Forever runtime verification of imported data and recipe economics: NOT RUN.
+
+Do not claim ForeverDB import or Forever recipe completeness until these gates pass.

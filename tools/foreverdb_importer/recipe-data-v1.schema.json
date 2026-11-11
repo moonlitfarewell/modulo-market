@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/moonlitfarewell/modulo-market/blob/main/tools/foreverdb_importer/recipe-data-v1.schema.json",
+  "title": "Modulo Market canonical recipe data v1",
+  "description": "Provider-neutral staging contract populated only after raw provider schema and provenance have been reviewed. It is not the ForeverDB API response schema.",
+  "type": "object",
+  "required": ["schema_version", "provider", "provider_url", "client_build", "retrieved_at_utc", "attribution_required", "professions"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "provider": {"const": "ForeverDB.net"},
+    "provider_url": {"const": "https://foreverdb.net"},
+    "client_build": {"type": "string", "minLength": 1},
+    "locale": {"type": ["string", "null"]},
+    "retrieved_at_utc": {"type": "string", "format": "date-time"},
+    "attribution_required": {"const": true},
+    "synthetic_fixture": {"type": "boolean"},
+    "professions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["slug", "profession_id", "name", "recipes"],
+        "properties": {
+          "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+          "profession_id": {"type": "integer", "minimum": 1},
+          "name": {"type": "string", "minLength": 1},
+          "skill_cap": {"type": ["integer", "null"], "minimum": 1},
+          "recipes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["recipe_id", "name", "structure_evidence", "output_kind", "outputs", "reagent_groups"],
+              "properties": {
+                "recipe_id": {"type": "integer", "minimum": 1},
+                "name": {"type": "string", "minLength": 1},
+                "category": {"type": ["string", "null"]},
+                "structure_evidence": {"enum": ["FOREVER_CLIENT", "FOREVER_OBSERVED", "FOREVERTOME_CLIENT_ARCHIVE", "LIBPROFESSIONDB", "CLASSIC_BORROWED", "UNKNOWN"]},
+                "output_kind": {"enum": ["item", "enchantment", "service", "unknown"]},
+                "outputs": {"type": "array", "items": {"$ref": "#/$defs/output"}},
+                "reagent_groups": {"type": "array", "items": {"$ref": "#/$defs/reagentGroup"}},
+                "skill": {"type": "object"},
+                "acquisition_sources": {"type": "array", "items": {"$ref": "#/$defs/acquisitionSource"}}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "evidence": {"enum": ["FOREVER_CLIENT", "FOREVER_OBSERVED", "FOREVERTOME_CLIENT_ARCHIVE", "LIBPROFESSIONDB", "CLASSIC_BORROWED", "UNKNOWN"]},
+    "quantity": {"type": ["integer", "null"], "minimum": 1},
+    "output": {
+      "type": "object",
+      "required": ["item_id", "quantity_min", "quantity_max", "quantity_evidence"],
+      "properties": {
+        "item_id": {"type": "integer", "minimum": 1},
+        "name": {"type": ["string", "null"]},
+        "quantity_min": {"$ref": "#/$defs/quantity"},
+        "quantity_max": {"$ref": "#/$defs/quantity"},
+        "quantity_evidence": {"$ref": "#/$defs/evidence"}
+      }
+    },
+    "reagentChoice": {
+      "type": "object",
+      "required": ["item_id"],
+      "properties": {"item_id": {"type": "integer", "minimum": 1}, "name": {"type": ["string", "null"]}}
+    },
+    "reagentGroup": {
+      "type": "object",
+      "required": ["required", "quantity_min", "quantity_max", "quantity_evidence", "choices"],
+      "properties": {
+        "required": {"type": "boolean"},
+        "quantity_min": {"$ref": "#/$defs/quantity"},
+        "quantity_max": {"$ref": "#/$defs/quantity"},
+        "quantity_evidence": {"$ref": "#/$defs/evidence"},
+        "choices": {"type": "array", "items": {"$ref": "#/$defs/reagentChoice"}}
+      }
+    },
+    "acquisitionSource": {
+      "type": "object",
+      "required": ["type", "seen_in_forever", "evidence"],
+      "properties": {
+        "type": {"type": "string"},
+        "name": {"type": ["string", "null"]},
+        "faction": {"type": ["string", "null"]},
+        "price_copper": {"type": ["integer", "null"], "minimum": 0},
+        "seen_in_forever": {"type": ["boolean", "null"]},
+        "evidence": {"$ref": "#/$defs/evidence"}
+      }
+    }
+  }
+}

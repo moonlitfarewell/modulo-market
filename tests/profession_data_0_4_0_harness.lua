@@ -20,6 +20,10 @@ local futureRows = {
         name = "Never implemented", craftedItemId = 996, requiredSkill = 250,
         reagents = {},
     } },
+    { professionID = 164, recipeID = 9005, entry = {
+        name = "Positional Scalar Reagent Array", craftedItemId = 995, requiredSkill = 250,
+        reagents = { 50001, 50002 },
+    } },
 }
 local db = {}
 function db:IsReady() return true end
@@ -86,7 +90,11 @@ assert(data.Matches(100, 171, "all"), "profession filter should include known fu
 assert(not data.Matches(100, 185, "all"), "profession filter should exclude unrelated professions")
 assert(data.HasGatheringData(), "known gathering professions should activate the gatherable filter")
 assert(data.Matches(2770, 186, "gather"), "Copper Ore should be marked gatherable for Mining skill 1")
-assert(not data.Matches(2771, 186, "gather"), "Tin Ore should remain unavailable below its skill threshold")
+assert(data.Matches(2771, 186, "gather"), "Tin Ore should remain classified as a Mining resource below its skill threshold")
+local tinGathering = data.GetGatheringInfo(2771)
+assert(tinGathering and tinGathering[186].requiredSkill == 65
+    and tinGathering[186].currentSkill == 1 and tinGathering[186].canGatherNow == false,
+    "Tin Ore should preserve the 65 skill requirement and report current ineligibility separately")
 assert(data.Matches(2447, 182, "gather"), "Peacebloom should be marked gatherable for Herbalism")
 assert(data.Matches(4603, 356, "gather"), "Raw Spotted Yellowtail should be marked gatherable for Fishing")
 assert(not data.Matches(2770, 182, "gather"), "gatherable item should be restricted to its gathering profession")
@@ -110,7 +118,9 @@ local borrowedTags = data.GetItemTags(997)
 assert(borrowedTags and borrowedTags[1] == "futureBorrowed",
     "borrowed future craft output should receive the uncertainty marker")
 assert(data.GetItem(996) == nil, "never-implemented recipes must not appear as future crafts")
+assert(data.GetItem(1) == nil and data.GetItem(2) == nil,
+    "contiguous scalar arrays must not be mistaken for low item IDs")
 local provider = data.GetFutureProviderStatus()
-assert(provider.available and provider.count == 2 and provider.unknownSourceCount == 1
+assert(provider.available and provider.count == 2 and provider.unknownSourceCount == 2
     and provider.borrowedSourceCount == 1, "provider coverage and uncertainty counts should be explicit")
 print("Modulo Market 0.4.0 profession data + future craft provenance harness PASS")

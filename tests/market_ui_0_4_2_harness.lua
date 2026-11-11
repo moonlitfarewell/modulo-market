@@ -250,7 +250,7 @@ assert(ui.professionDropdown and ui.roleDropdown,
   "profession and item-role filters should be present")
 assert(ui.professionDropdown.label:GetText() == "All professions",
   "profession filter should default to all professions")
-assert(ui.roleDropdown.label:GetText() == "All item roles",
+assert(ui.roleDropdown.label:GetText() == "All item types",
   "item-role filter should default to all item roles")
 local function openDropdown(frame)
   frame.scripts.OnClick(frame)
@@ -271,18 +271,18 @@ while ui.viewBuild or ui.rankSort do ui.frame.scripts.OnUpdate(ui.frame, 0.016) 
 local roleOptions = openDropdown(ui.roleDropdown)
 local selectedRole
 for _, optionButton in ipairs(roleOptions) do
-  if optionButton:GetText() == "Known crafts" then selectedRole = optionButton; break end
+  if optionButton:GetText() == "Known craft outputs" then selectedRole = optionButton; break end
 end
 assert(selectedRole and selectedRole.enabled, "Known crafts role should be enabled")
 selectedRole.scripts.OnClick(selectedRole)
-assert(ui.itemRoleFilter == "known" and ui.roleDropdown.label:GetText() == "Known crafts",
+assert(ui.itemRoleFilter == "known" and ui.roleDropdown.label:GetText() == "Known craft outputs",
   "selecting an item-role option through the visible menu must apply that role")
 while ui.viewBuild or ui.rankSort do ui.frame.scripts.OnUpdate(ui.frame, 0.016) end
 assert(#ui.viewRows == 1 and ui.viewRows[1].itemID == 100,
   "Known crafts dropdown selection must filter the market catalogue")
 local allRoles = openDropdown(ui.roleDropdown)
 for _, optionButton in ipairs(allRoles) do
-  if optionButton:GetText() == "All item roles" then optionButton.scripts.OnClick(optionButton); break end
+  if optionButton:GetText() == "All item types" then optionButton.scripts.OnClick(optionButton); break end
 end
 local allProfessions = openDropdown(ui.professionDropdown)
 for _, optionButton in ipairs(allProfessions) do
@@ -354,17 +354,22 @@ assert(ui.detailEconomics:GetText():find("REAGENTS", 1, true), "craft detail sho
 
 ui.search:SetText("")
 ui.search.scripts.OnTextChanged(ui.search)
-ui.tabs.opportunities.scripts.OnClick(ui.tabs.opportunities)
+assert(ui.tabs.allcrafts and ui.tabs.opportunities == nil,
+  "All Crafts replaces the overlapping Profitable tab")
+ui.tabs.allcrafts.scripts.OnClick(ui.tabs.allcrafts)
 while ui.viewBuild or ui.rankSort do ui.frame.scripts.OnUpdate(ui.frame, 0.016) end
-assert(#ui.viewRows == 1, "profitable tab should include only positive-profit crafts")
-assert(ui.tabs.opportunities.tooltipText:find("Only fully priced", 1, true),
-  "Profitable tab should explain its positive-profit-only eligibility rule")
+assert(#ui.viewRows >= 2, "All Crafts should retain known recipes independent of profit sign")
 
 ui.search:SetText("")
 ui.search.scripts.OnTextChanged(ui.search)
 ui.tabs.low.scripts.OnClick(ui.tabs.low)
 while ui.viewBuild or ui.rankSort do ui.frame.scripts.OnUpdate(ui.frame, 0.016) end
-assert(#ui.viewRows == 1 and ui.viewRows[1].itemID == 200, "low supply tab should filter total supply threshold")
+local hasLowSupplyOre = false
+for _, item in ipairs(ui.viewRows) do
+  if item.itemID == 200 then hasLowSupplyOre = true end
+end
+assert(#ui.viewRows >= 2 and hasLowSupplyOre,
+  "role-adjusted Low Supply should include scarce materials and other low-quantity items")
 
 local scenario = ui.GetProfitScenario(copper, 2000, 2, 5, 5000)
 assert(scenario and scenario.totalProfitCopper == 5500, "custom target scenario math should include AH cut")

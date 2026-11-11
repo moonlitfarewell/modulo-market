@@ -164,6 +164,18 @@ local function NormalizeLibraryReagents(source)
     local result = {}
     if type(source) ~= "table" then return result, false end
     local totalEntries = 0
+    local positionalArray = true
+    for key in pairs(source) do
+        totalEntries = totalEntries + 1
+        if type(key) ~= "number" or key < 1 or key ~= math.floor(key) then
+            positionalArray = false
+        end
+    end
+    if positionalArray then
+        for i = 1, totalEntries do
+            if source[i] == nil then positionalArray = false; break end
+        end
+    end
     for key, value in pairs(source) do
         totalEntries = totalEntries + 1
         local itemID, quantity, name
@@ -174,7 +186,9 @@ local function NormalizeLibraryReagents(source)
             name = value.name
         else
             local numericKey = tonumber(key)
-            itemID = numericKey and numericKey > 100 and numericKey or nil
+            -- Scalar itemID->quantity maps may use low IDs; distinguish them from
+            -- contiguous scalar arrays before accepting their numeric keys.
+            itemID = not positionalArray and numericKey and numericKey > 0 and numericKey or nil
             quantity = tonumber(value)
         end
         -- Also accept array-shaped reagent records, while refusing to interpret

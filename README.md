@@ -1,4 +1,4 @@
-# Modulo Market 0.5.1
+# Modulo Market 0.5.2
 
 **Current player milestone:** seven distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
 
@@ -149,7 +149,7 @@ The 0.2.0 manual per-item cost basis remains in SavedVariables for backward comp
 ## Install and first use
 
 1. Keep MODULO 1.0.48 installed and unchanged.
-2. Replace the existing `AddOns/ModuloMarket` folder with the one from `ModuloMarket-0.5.1.zip`.
+2. Replace the existing `AddOns/ModuloMarket` folder with the one from `ModuloMarket-0.5.2.zip`.
 3. `/reload`.
 4. Open each profession window once on the character. Market automatically captures known recipes.
 5. Open Market with `/mm` or the minimap coin button.
@@ -162,7 +162,7 @@ For the first in-client acceptance, do not start a new Replicate scan. Use the e
 
 Market remains a separate optional child addon:
 - folder `ModuloMarket`;
-- TOC version `0.5.1`;
+- TOC version `0.5.2`;
 - `Category: Modulo By Wells`;
 - `Group: Modulo`;
 - `Dependencies: Modulo`;
@@ -351,4 +351,19 @@ The former Profitable tab is replaced by two distinct views, and the old Profita
 
 This repository is the standalone public source home for ModuloMarket. It is maintained separately from the MODULO parent addon; ModuloMarket depends on MODULO, while MODULO does not depend on ModuloMarket.
 
-The 0.5.1 source is provided for review and development. No open-source licence has been selected or granted yet; unless a licence is added by the author, the default copyright restrictions apply.
+The 0.5.2 source is provided for review and development. No open-source licence has been selected or granted yet; unless a licence is added by the author, the default copyright restrictions apply.
+
+## Developer tooling: ForeverDB offline importer
+
+The repository includes a standard-library Python importer under `tools/foreverdb_importer/`. It is not an addon dependency and is not loaded by WoW. It captures approved ForeverDB API responses to local raw JSON, records their SHA-256 hashes/build metadata, profiles the actual response shape, validates a provider-reviewed canonical recipe format, and compiles reviewed records to per-profession Lua build artifacts.
+
+The importer deliberately does not guess the raw API's nested recipe schema. The exact provider adapter remains blocked until ForeverDB approves API access and we can inspect a real response. API keys are read from the `FOREVERDB_API_KEY` environment variable only; do not commit them. Raw imports and generated files are ignored by Git.
+
+See [`tools/foreverdb_importer/README.md`](tools/foreverdb_importer/README.md) for setup, Windows PowerShell instructions, evidence rules and commands.
+
+
+## 0.5.2 patch correction
+
+- Fixed normalization of sparse scalar itemID-to-quantity reagent maps so positive item IDs below or equal to 100 are not discarded as array indexes. Contiguous 1-based scalar arrays are detected as positional arrays, while table-shaped records continue to prefer explicit `itemID` fields.
+- No new runtime dependency was added.
+- Developer-only ForeverDB importer preview 0.1.0 is included under `tools/foreverdb_importer/`; it does not load in WoW. It is ready for a raw capture after API approval, but its provider-specific nested recipe mapper is deliberately pending a real approved response sample.

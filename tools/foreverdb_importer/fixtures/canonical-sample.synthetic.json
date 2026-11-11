@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "provider": "ForeverDB.net",
+  "provider_url": "https://foreverdb.net",
+  "client_build": "1.60.1.70862",
+  "locale": "enUS",
+  "retrieved_at_utc": "2026-11-11T00:00:00Z",
+  "attribution_required": true,
+  "synthetic_fixture": true,
+  "professions": [
+    {
+      "slug": "mining",
+      "profession_id": 186,
+      "name": "Mining",
+      "skill_cap": 300,
+      "recipes": [
+        {
+          "recipe_id": 2659,
+          "name": "Smelt Bronze",
+          "category": "Smelted Bars",
+          "structure_evidence": "FOREVER_CLIENT",
+          "output_kind": "item",
+          "outputs": [
+            {
+              "item_id": 2841,
+              "name": "Bronze Bar",
+              "quantity_min": 1,
+              "quantity_max": 1,
+              "quantity_evidence": "FOREVER_CLIENT"
+            }
+          ],
+          "reagent_groups": [
+            {
+              "required": true,
+              "quantity_min": 1,
+              "quantity_max": 1,
+              "quantity_evidence": "FOREVER_CLIENT",
+              "choices": [{"item_id": 2840, "name": "Copper Bar"}]
+            },
+            {
+              "required": true,
+              "quantity_min": 1,
+              "quantity_max": 1,
+              "quantity_evidence": "FOREVER_CLIENT",
+              "choices": [{"item_id": 3576, "name": "Tin Bar"}]
+            }
+          ],
+          "skill": {
+            "min_client": 65,
+            "orange": 65,
+            "yellow": 90,
+            "green": 115,
+            "grey": 140,
+            "threshold_evidence": "CLASSIC_BORROWED"
+          },
+          "acquisition_sources": [
+            {
+              "type": "trainer",
+              "name": "Blacksmithing Trainer (synthetic example)",
+              "faction": null,
+              "price_copper": 100,
+              "seen_in_forever": null,
+              "evidence": "CLASSIC_BORROWED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "alchemy",
+      "profession_id": 171,
+      "name": "Alchemy",
+      "skill_cap": 300,
+      "recipes": [
+        {
+          "recipe_id": 9990001,
+          "name": "Variable Yield Test Potion",
+          "category": "Potions",
+          "structure_evidence": "FOREVER_CLIENT",
+          "output_kind": "item",
+          "outputs": [
+            {
+              "item_id": 9990002,
+              "name": "Synthetic Test Potion",
+              "quantity_min": 1,
+              "quantity_max": 3,
+              "quantity_evidence": "FOREVER_CLIENT"
+            }
+          ],
+          "reagent_groups": [
+            {
+              "required": true,
+              "quantity_min": 2,
+              "quantity_max": 4,
+              "quantity_evidence": "FOREVER_CLIENT",
+              "choices": [
+                {"item_id": 9990003, "name": "Synthetic Herb A"},
+                {"item_id": 9990004, "name": "Synthetic Herb B"}
+              ]
+            }
+          ],
+          "skill": {
+            "min_client": null,
+            "orange": null,
+            "yellow": null,
+            "green": null,
+            "grey": null,
+            "threshold_evidence": "UNKNOWN"
+          },
+          "acquisition_sources": []
+        },
+        {
+          "recipe_id": 9990005,
+          "name": "Unknown Yield Test",
+          "category": "Potions",
+          "structure_evidence": "FOREVER_CLIENT",
+          "output_kind": "item",
+          "outputs": [
+            {
+              "item_id": 9990006,
+              "name": "Synthetic Unknown Potion",
+              "quantity_min": null,
+              "quantity_max": null,
+              "quantity_evidence": "UNKNOWN"
+            }
+          ],
+          "reagent_groups": [],
+          "skill": {"threshold_evidence": "UNKNOWN"},
+          "acquisition_sources": [
+            {
+              "type": "drop",
+              "name": "Unknown source",
+              "faction": null,
+              "price_copper": null,
+              "seen_in_forever": null,
+              "evidence": "UNKNOWN"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -13,9 +13,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_050_version_and_separate_child_boundary():
-    assert 'MM.version = "0.5.1"' in CORE
-    assert re.search(r"^## Version: 0\.5\.1$", TOC, re.M)
-    assert MANIFEST["version"] == "0.5.1"
+    assert 'MM.version = "0.5.2"' in CORE
+    assert re.search(r"^## Version: 0\.5\.2$", TOC, re.M)
+    assert MANIFEST["version"] == "0.5.2"
     assert "## Dependencies: Modulo" in TOC
     assert "ModuloMarket" not in (ROOT / "AddOns/Modulo/Modulo.toc").read_text() if (ROOT / "AddOns/Modulo/Modulo.toc").exists() else True
 
@@ -124,4 +124,4 @@ def test_050_lua_ui_integration_harness():
         cwd=ROOT, text=True, capture_output=True, check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "ModuloMarket 0.5.1 UI harness passed" in result.stdout
+    assert "ModuloMarket 0.5.2 UI harness passed" in result.stdout

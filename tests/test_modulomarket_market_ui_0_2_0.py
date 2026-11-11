@@ -9,7 +9,7 @@ TOC = (ROOT / "AddOns/ModuloMarket/ModuloMarket.toc").read_text()
 
 
 def test_020_versions_and_native_blizzard_templates():
-    assert re.search(r"^## Version: 0\.5\.1$", TOC, re.M)
+    assert re.search(r"^## Version: 0\.5\.2$", TOC, re.M)
     assert 'BasicFrameTemplateWithInset' in UI
     assert 'UIPanelButtonTemplate' in UI
     assert 'InputBoxTemplate' in UI
@@ -86,7 +86,7 @@ def test_manual_cost_entry_is_removed_from_player_ui():
 
 def test_audit_and_manifest_inventory_are_complete():
     manifest = json.loads((ROOT / "MANIFEST.json").read_text())
-    assert manifest["version"] == "0.5.1"
+    assert manifest["version"] == "0.5.2"
     assert "MODULOMARKET-RUNTIME-AUDIT-0.4.0.md" in manifest["files"]
     assert "tests/market_ui_0_2_0_harness.lua" in manifest["files"]
     actual = sorted(
