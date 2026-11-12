@@ -46,6 +46,8 @@ local UI = {
     tooltipSearchRequested = {},
     searchBuildDueAt = nil,
     tooltipSearchWarmup = nil,
+    tooltipSearchMode = false,
+    tooltipSearchDiagnostics = { searches = 0, requests = 0, cacheHits = 0, events = 0, failures = 0, timeouts = 0, completed = 0, structuredReads = 0, legacyFallbacks = 0, emptyResults = 0, lastItemID = nil, lastSource = "none", lastLineCount = 0, lastState = "idle" },
 }
 MM.MarketUI = UI
 
@@ -87,56 +89,122 @@ local function GetTooltipSearchText(itemID)
     itemID = tonumber(itemID)
     if not itemID then return "" end
     local cached = UI.tooltipSearchCache[itemID]
-    if cached ~= nil then return cached or "" end
-    if not searchTooltip then
-        searchTooltip = CreateFrame("GameTooltip", "ModuloMarketSearchTooltip", UIParent, "GameTooltipTemplate")
-        searchTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    if cached ~= nil then
+        UI.tooltipSearchDiagnostics.cacheHits = UI.tooltipSearchDiagnostics.cacheHits + 1
+        return cached or ""
     end
-    local loaded = type(_G.GetItemInfo) == "function" and _G.GetItemInfo(itemID) ~= nil
-    if loaded then UI.tooltipSearchRequested[itemID] = nil end
-    if not loaded then
-        if not UI.tooltipSearchRequested[itemID] and (UI.tooltipSearchRequestsThisFrame or 0) < 20 then
-            UI.tooltipSearchRequested[itemID] = true
-            UI.tooltipSearchRequestsThisFrame = (UI.tooltipSearchRequestsThisFrame or 0) + 1
-            local api = _G.C_Item
-            if type(api) == "table" and type(api.RequestLoadItemDataByID) == "function" then
-                pcall(api.RequestLoadItemDataByID, itemID)
-            elseif type(_G.GetItemInfo) == "function" then pcall(_G.GetItemInfo, itemID) end
-        end
-        return nil
-    end
+
     UI.tooltipSearchScansThisFrame = (UI.tooltipSearchScansThisFrame or 0) + 1
-    searchTooltip:ClearLines()
-    local ok = false
-    if type(searchTooltip.SetItemByID) == "function" then
-        ok = pcall(searchTooltip.SetItemByID, searchTooltip, itemID)
-    end
-    if not ok and type(_G.GetItemInfo) == "function" then
-        local _, link = _G.GetItemInfo(itemID)
-        if link and type(searchTooltip.SetHyperlink) == "function" then
-            ok = pcall(searchTooltip.SetHyperlink, searchTooltip, link)
+    local lines = {}
+    local source = "none"
+    local structured = _G.C_TooltipInfo
+    if type(structured) == "table" and type(structured.GetItemByID) == "function" then
+        local ok, data = pcall(structured.GetItemByID, itemID)
+        if ok and type(data) == "table" and type(data.lines) == "table" then
+            UI.tooltipSearchDiagnostics.structuredReads = UI.tooltipSearchDiagnostics.structuredReads + 1
+            source = "C_TooltipInfo.GetItemByID"
+            for _, line in ipairs(data.lines) do
+                if type(line) == "table" then
+                    if type(line.leftText) == "string" and line.leftText ~= "" then
+                        lines[#lines + 1] = line.leftText
+                    end
+                    if type(line.rightText) == "string" and line.rightText ~= "" then
+                        lines[#lines + 1] = line.rightText
+                    end
+                end
+            end
         end
     end
-    local lines = {}
-    for i = 1, 40 do
-        local left = _G["ModuloMarketSearchTooltipTextLeft" .. i]
-        local right = _G["ModuloMarketSearchTooltipTextRight" .. i]
-        local a = left and left.GetText and left:GetText()
-        local b = right and right.GetText and right:GetText()
-        if a and a ~= "" then lines[#lines + 1] = a end
-        if b and b ~= "" then lines[#lines + 1] = b end
+
+    -- Older clients may not expose structured tooltip data. Fall back to a
+    -- hidden GameTooltip, but verify that it actually produced lines: pcall()
+    -- only tells us the setter did not throw, not that it populated the tooltip.
+    if #lines == 0 then
+        local api = _G.C_Item
+        local isCached = false
+        if type(api) == "table" and type(api.IsItemDataCachedByID) == "function" then
+            local cacheOK, cacheValue = pcall(api.IsItemDataCachedByID, itemID)
+            isCached = cacheOK and cacheValue == true
+        end
+        local loaded = (type(_G.GetItemInfo) == "function" and _G.GetItemInfo(itemID) ~= nil) or isCached
+        if not loaded then
+            if not UI.tooltipSearchRequested[itemID] and (UI.tooltipSearchRequestsThisFrame or 0) < 20 then
+                UI.tooltipSearchRequested[itemID] = true
+                UI.tooltipSearchRequestsThisFrame = (UI.tooltipSearchRequestsThisFrame or 0) + 1
+                UI.tooltipSearchDiagnostics.requests = UI.tooltipSearchDiagnostics.requests + 1
+                if type(api) == "table" and type(api.RequestLoadItemDataByID) == "function" then
+                    local ok, accepted = pcall(api.RequestLoadItemDataByID, itemID)
+                    if not ok or accepted == false then
+                        UI.tooltipSearchRequested[itemID] = nil
+                        UI.tooltipSearchCache[itemID] = false
+                        UI.tooltipSearchDiagnostics.failures = UI.tooltipSearchDiagnostics.failures + 1
+                        UI.tooltipSearchDiagnostics.lastError = ok and "item-data request rejected" or tostring(accepted)
+                    end
+                else
+                    UI.tooltipSearchRequested[itemID] = nil
+                    UI.tooltipSearchCache[itemID] = false
+                    UI.tooltipSearchDiagnostics.failures = UI.tooltipSearchDiagnostics.failures + 1
+                    UI.tooltipSearchDiagnostics.lastError = "C_Item.RequestLoadItemDataByID unavailable"
+                end
+            end
+            return nil
+        end
+
+        if not searchTooltip then
+            searchTooltip = CreateFrame("GameTooltip", "ModuloMarketSearchTooltip", UIParent, "GameTooltipTemplate")
+            searchTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+        end
+        local function ReadLegacyLines()
+            local found = {}
+            for i = 1, 40 do
+                local left = _G["ModuloMarketSearchTooltipTextLeft" .. i]
+                local right = _G["ModuloMarketSearchTooltipTextRight" .. i]
+                local a = left and left.GetText and left:GetText()
+                local b = right and right.GetText and right:GetText()
+                if a and a ~= "" then found[#found + 1] = a end
+                if b and b ~= "" then found[#found + 1] = b end
+            end
+            return found
+        end
+        searchTooltip:ClearLines()
+        local setterOK = false
+        if type(searchTooltip.SetItemByID) == "function" then
+            setterOK = pcall(searchTooltip.SetItemByID, searchTooltip, itemID)
+        end
+        lines = ReadLegacyLines()
+        if #lines == 0 then
+            searchTooltip:ClearLines()
+            local link
+            if type(_G.GetItemInfo) == "function" then
+                local _, itemLink = _G.GetItemInfo(itemID)
+                link = itemLink
+            end
+            if link and type(searchTooltip.SetHyperlink) == "function" then
+                pcall(searchTooltip.SetHyperlink, searchTooltip, link)
+                lines = ReadLegacyLines()
+            end
+        end
+        searchTooltip:Hide()
+        source = "GameTooltip fallback"
+        UI.tooltipSearchDiagnostics.legacyFallbacks = UI.tooltipSearchDiagnostics.legacyFallbacks + 1
+        if #lines == 0 then
+            UI.tooltipSearchDiagnostics.emptyResults = UI.tooltipSearchDiagnostics.emptyResults + 1
+            UI.tooltipSearchDiagnostics.lastError = setterOK
+                and "GameTooltip setters returned no readable lines"
+                or "GameTooltip item tooltip unavailable"
+        end
     end
-    searchTooltip:Hide()
-    local text = table.concat(lines, " ")
-    -- Store normalized text once. Re-normalizing every cached tooltip on every
-    -- keystroke was avoidable work in the hottest search path.
-    local normalized = NormalizeSearchText(text)
+
+    UI.tooltipSearchDiagnostics.lastItemID = itemID
+    UI.tooltipSearchDiagnostics.lastSource = source
+    UI.tooltipSearchDiagnostics.lastLineCount = #lines
+    local normalized = NormalizeSearchText(table.concat(lines, " "))
     UI.tooltipSearchCache[itemID] = normalized ~= "" and normalized or false
     UI.tooltipSearchRequested[itemID] = nil
     return normalized
 end
 
-local function MatchesSearch(item, query, isCrafting)
+local function MatchesSearch(item, query, isCrafting, includeTooltip)
     if query == "" then return true end
     if string.match(query, "^%d+$") then
         local numericID = tonumber(query)
@@ -172,7 +240,7 @@ local function MatchesSearch(item, query, isCrafting)
     for token in string.gmatch(query, "%S+") do
         if not string.find(haystack, token, 1, true) then allNameTokensMatch = false; break end
     end
-    if not allNameTokensMatch then
+    if not allNameTokensMatch and includeTooltip then
         local tooltipText = GetTooltipSearchText(item.itemID)
         if tooltipText == nil then return nil end -- pending: do not treat unloaded tooltip data as a final no-match
         if tooltipText then haystack = haystack .. " " .. tooltipText end
@@ -847,6 +915,7 @@ function UI.StartViewBuild()
             hideLowProfit = UI.craftFilters.hideLowProfit,
         },
         source = source or {}, total = #(source or {}), startedAt = Now(), pendingTooltipIDs = {},
+        includeTooltip = UI.tooltipSearchMode == true,
     }
     if UI.scroll then
         UI.scroll:SetVerticalScroll(0)
@@ -917,7 +986,7 @@ local function StepView()
             item.historyDeltaCopper = GetHistoryDelta(item.itemID)
         end
         if type(item) == "table" then
-            local matches = MatchesSearch(item, build.query, isCrafting)
+            local matches = MatchesSearch(item, build.query, isCrafting, build.includeTooltip)
             if matches == nil and tonumber(item.itemID) then
                 build.pendingTooltipIDs[tonumber(item.itemID)] = true
             end
@@ -998,13 +1067,18 @@ local function StepView()
     UI.lastFilterDuration = math.max(0, Now() - (build.startedAt or Now()))
     local pendingIDs = {}
     for itemID in pairs(build.pendingTooltipIDs or {}) do pendingIDs[#pendingIDs + 1] = itemID end
-    if build.query ~= "" and #pendingIDs > 0 then
+    if build.includeTooltip and build.query ~= "" and #pendingIDs > 0 then
         UI.viewBuild = nil
         UI.tooltipSearchWarmup = {
             ids = pendingIDs, index = 1, outstanding = 0,
             startedAt = Now(), query = build.query, tab = build.tab,
             awaiting = {},
         }
+        UI.tooltipSearchDiagnostics.lastState = "warming"
+        UI.tooltipSearchDiagnostics.pending = #pendingIDs
+        -- Show immediate name/reagent matches while tooltip descriptions load;
+        -- the final pass later adds any tooltip-only matches.
+        UI.FinishView(build.rows)
         if UI.resultCount then UI.resultCount:SetText(string.format("Loading descriptions: 0/%d", #pendingIDs)) end
         return
     end
@@ -1040,6 +1114,35 @@ local TOOLTIP_SEARCH_TIMEOUT_SECONDS = 15
 local function StepTooltipSearchWarmup()
     local warmup = UI.tooltipSearchWarmup
     if not warmup then return end
+    if Now() - (warmup.startedAt or Now()) >= TOOLTIP_SEARCH_TIMEOUT_SECONDS then
+        for _, itemID in ipairs(warmup.ids) do
+            UI.tooltipSearchRequested[itemID] = nil
+            UI.tooltipSearchCache[itemID] = false
+            warmup.awaiting[itemID] = nil
+        end
+        UI.tooltipSearchDiagnostics.timeouts = UI.tooltipSearchDiagnostics.timeouts + 1
+        UI.tooltipSearchDiagnostics.lastState = "timeout"
+        UI.tooltipSearchDiagnostics.pending = 0
+        UI.tooltipSearchWarmup = nil
+        UI.StartViewBuild()
+        return
+    end
+    -- Reconcile outstanding requests against the cache as well as events. This
+    -- protects against client builds that populate item data without delivering
+    -- the event signature expected by this addon.
+    local api = _G.C_Item
+    for itemID in pairs(warmup.awaiting) do
+        local cached = type(_G.GetItemInfo) == "function" and _G.GetItemInfo(itemID) ~= nil
+        if not cached and type(api) == "table" and type(api.IsItemDataCachedByID) == "function" then
+            local ok, value = pcall(api.IsItemDataCachedByID, itemID)
+            cached = ok and value == true
+        end
+        if cached then
+            warmup.awaiting[itemID] = nil
+            warmup.outstanding = math.max(0, warmup.outstanding - 1)
+            UI.tooltipSearchRequested[itemID] = nil
+        end
+    end
     UI.tooltipSearchRequestsThisFrame = 0
     UI.tooltipSearchScansThisFrame = 0
     local processed = 0
@@ -1063,19 +1166,10 @@ local function StepTooltipSearchWarmup()
     end
     if warmup.index > #warmup.ids and warmup.outstanding <= 0 then
         UI.tooltipSearchWarmup = nil
-        UI.StartViewBuild() -- exactly one full pass, now backed by resolved/cached tooltip data
-        return
-    end
-    if Now() - (warmup.startedAt or Now()) >= TOOLTIP_SEARCH_TIMEOUT_SECONDS then
-        -- Fail closed for providers that never answer an item-data request; do not
-        -- leave the search stuck or repeatedly restart it.
-        for _, itemID in ipairs(warmup.ids) do
-            UI.tooltipSearchRequested[itemID] = nil
-            UI.tooltipSearchCache[itemID] = false
-            warmup.awaiting[itemID] = nil
-        end
-        UI.tooltipSearchWarmup = nil
-        UI.StartViewBuild()
+        UI.tooltipSearchDiagnostics.completed = UI.tooltipSearchDiagnostics.completed + 1
+        UI.tooltipSearchDiagnostics.lastState = "complete"
+        UI.tooltipSearchDiagnostics.pending = 0
+        UI.StartViewBuild() -- one final pass, now backed by resolved/cached tooltip data
         return
     end
     if UI.resultCount then
@@ -2514,8 +2608,18 @@ local function CreateUI()
     UI.search:SetPoint("TOPLEFT", frame, "TOPLEFT", 32, -220)
     UI.search:SetAutoFocus(false)
     UI.search:SetMaxLetters(80)
-    UI.search:SetScript("OnTextChanged", function() ScheduleSearchBuild() end)
-    AttachFilterTooltip(UI.search, "Search", "Search item and recipe names, profession, IDs, reagents and loaded item tooltip descriptions/effects. Tooltip data loads asynchronously.")
+    UI.search:SetScript("OnTextChanged", function()
+        UI.tooltipSearchMode = false
+        ScheduleSearchBuild()
+    end)
+    UI.search:SetScript("OnEnterPressed", function(self)
+        UI.tooltipSearchMode = true
+        UI.tooltipSearchDiagnostics.searches = UI.tooltipSearchDiagnostics.searches + 1
+        UI.tooltipSearchDiagnostics.lastState = "submitted"
+        self:ClearFocus()
+        UI.StartViewBuild()
+    end)
+    AttachFilterTooltip(UI.search, "Search", "Typing searches names, professions, IDs and reagents immediately. Press Enter to include item tooltip descriptions and effects.")
 
     RefreshProfessionOptions()
     UI.professionDropdown = CreateDropdown(frame, 230, 32, -284,
@@ -2890,10 +2994,12 @@ local function CreateUI()
             UI.searchBuildDueAt = nil
             UI.StartViewBuild()
         end
+        -- Run the warmup watchdog independently of other work queues so a stale
+        -- catalogue/economics task cannot starve its hard timeout.
+        if UI.tooltipSearchWarmup then StepTooltipSearchWarmup() end
         if UI.catalogBuild then StepCatalog()
         elseif UI.economicsIndexBuild then StepEconomicsIndex()
         elseif UI.viewBuild then StepView()
-        elseif UI.tooltipSearchWarmup then StepTooltipSearchWarmup()
         elseif UI.rankSort then StepRankSort() end
         UI.refreshElapsed = UI.refreshElapsed + (tonumber(elapsed) or 0)
         if UI.refreshElapsed >= 1 then
@@ -2908,8 +3014,10 @@ local function CreateUI()
     tooltipSearchEvents:SetScript("OnEvent", function(_, event, itemID, success)
         itemID = tonumber(itemID)
         if itemID and UI.tooltipSearchRequested[itemID] then
+            UI.tooltipSearchDiagnostics.events = UI.tooltipSearchDiagnostics.events + 1
             UI.tooltipSearchRequested[itemID] = nil
             if success == false then
+                UI.tooltipSearchDiagnostics.failures = UI.tooltipSearchDiagnostics.failures + 1
                 UI.tooltipSearchCache[itemID] = false
             else
                 -- The warmup phase reads and caches this tooltip before the one
@@ -2925,6 +3033,34 @@ local function CreateUI()
     end)
     UI.tooltipSearchEvents = tooltipSearchEvents
     return frame
+end
+
+function UI.GetSearchDiagnostics()
+    local d = UI.tooltipSearchDiagnostics or {}
+    local warmup = UI.tooltipSearchWarmup
+    local outstanding = 0
+    if warmup then outstanding = tonumber(warmup.outstanding) or 0 end
+    return {
+        searches = d.searches or 0, requests = d.requests or 0, events = d.events or 0,
+        cacheHits = d.cacheHits or 0, failures = d.failures or 0, timeouts = d.timeouts or 0,
+        completed = d.completed or 0, state = d.lastState or "idle",
+        pending = warmup and #warmup.ids or 0, outstanding = outstanding,
+        lastError = d.lastError or "none",
+        structuredReads = d.structuredReads or 0,
+        legacyFallbacks = d.legacyFallbacks or 0,
+        emptyResults = d.emptyResults or 0,
+        lastItemID = d.lastItemID or 0,
+        lastSource = d.lastSource or "none",
+        lastLineCount = d.lastLineCount or 0,
+    }
+end
+
+function UI.GetTooltipSearchDebug(itemID)
+    itemID = tonumber(itemID)
+    if not itemID then return nil, "Provide an item ID." end
+    local text = GetTooltipSearchText(itemID)
+    return text, UI.tooltipSearchDiagnostics.lastSource or "none",
+        UI.tooltipSearchDiagnostics.lastLineCount or 0
 end
 
 function UI.GetMarketItemByID(itemID)

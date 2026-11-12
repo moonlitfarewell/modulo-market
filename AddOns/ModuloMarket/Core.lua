@@ -3,7 +3,7 @@ local MM = _G.ModuloMarket or {}
 _G.ModuloMarket = MM
 
 MM.name = ADDON_NAME or "ModuloMarket"
-MM.version = "0.7.3"
+MM.version = "0.7.5"
 MM.debugPrefix = "|cff66ccffModuloMarket:|r "
 
 local function Print(message)
@@ -83,8 +83,34 @@ loader:SetScript("OnEvent", function(_, event, loadedName)
                 Print("Diagnostics UI is not ready.")
             end
         end
+        SLASH_MODULOMARKETSEARCHDEBUG1 = "/mmsearchdebug"
+        SlashCmdList.MODULOMARKETSEARCHDEBUG = function()
+            local d = MM.MarketUI and MM.MarketUI.GetSearchDiagnostics and MM.MarketUI.GetSearchDiagnostics()
+            if not d then Print("Search diagnostics unavailable."); return end
+            Print(string.format("Search state=%s submitted=%d requests=%d events=%d cacheHits=%d failures=%d timeouts=%d completed=%d pending=%d outstanding=%d",
+                tostring(d.state), d.searches, d.requests, d.events, d.cacheHits, d.failures,
+                d.timeouts, d.completed, d.pending, d.outstanding))
+            Print(string.format("Tooltip structured=%d fallback=%d empty=%d lastItem=%d source=%s lines=%d error=%s",
+                d.structuredReads or 0, d.legacyFallbacks or 0,
+                d.emptyResults or 0, d.lastItemID or 0, tostring(d.lastSource),
+                d.lastLineCount or 0, tostring(d.lastError)))
+        end
+        SLASH_MODULOMARKETTOOLTIPDEBUG1 = "/mmtooltipdebug"
+        SlashCmdList.MODULOMARKETTOOLTIPDEBUG = function(message)
+            local itemID = tonumber(message)
+            if not itemID then Print("Usage: /mmtooltipdebug itemID"); return end
+            if not (MM.MarketUI and MM.MarketUI.GetTooltipSearchDebug) then
+                Print("Tooltip diagnostics unavailable."); return
+            end
+            local text, source, lineCount = MM.MarketUI.GetTooltipSearchDebug(itemID)
+            if text == nil then Print("Tooltip data is pending or unavailable; retry after item data loads."); return end
+            Print(string.format("Tooltip item=%d source=%s lines=%d chars=%d",
+                itemID, tostring(source), tonumber(lineCount) or 0, #text))
+            if text == "" then Print("No searchable tooltip text was extracted."); return end
+            for i = 1, #text, 180 do Print(string.sub(text, i, i + 179)) end
+        end
         SLASH_MODULOMARKETVERSION1 = "/mmversion"
         SlashCmdList.MODULOMARKETVERSION = PrintVersion
-        Print("Loaded v" .. MM.version .. " (" .. GetClientBuildLabel() .. "). Type /mm for Market, /mmscan for Browse snapshots, /mmdebug for diagnostics, or /mmversion for version details.")
+        Print("Loaded v" .. MM.version .. " (" .. GetClientBuildLabel() .. "). Type /mm for Market, /mmscan for Browse snapshots, /mmdebug for diagnostics, or /mmsearchdebug for tooltip-search diagnostics, /mmtooltipdebug itemID to inspect extracted tooltip text, /mmversion for version details.")
     end
 end)
