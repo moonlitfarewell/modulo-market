@@ -773,20 +773,9 @@ function Data.Matches(itemID, professionID, role)
     end
     if role == "known" then
         return entry ~= nil and #entry.knownCrafts > 0
-    elseif role == "future" then
-        if not entry or #entry.knownCrafts > 0 then return false end
-        for _, future in ipairs(entry.futureCrafts) do
-            if not future.borrowedSources then return true end
-        end
-        return false
-    elseif role == "borrowed" then
-        if not entry or #entry.knownCrafts > 0 then return false end
-        for _, future in ipairs(entry.futureCrafts) do
-            if future.borrowedSources then return true end
-        end
-        return false
-    elseif role == "unknown" then
-        return entry ~= nil and #entry.knownCrafts == 0 and #entry.unknownFutureCrafts > 0
+    elseif role == "unlearned" then
+        return entry ~= nil and #entry.knownCrafts == 0
+            and (#entry.futureCrafts > 0 or #entry.unknownFutureCrafts > 0)
     elseif role == "gather" then
         return entry ~= nil and next(entry.gathering) ~= nil
     elseif role == "material" then

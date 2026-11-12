@@ -42,7 +42,8 @@
     "market_snapshot_build_gate": "0.5.5_REQUIRES_SAVED_AUCTION_SNAPSHOT_CLIENT_VERSION_AND_BUILD_TO_MATCH_CURRENT_CLIENT; OLD_SNAPSHOT_PRICES_WITHHELD",
     "version_visibility": "0.5.5_LOGIN_ANNOUNCEMENT; MMVERSION_COMMAND; MARKET_FOOTER_CLIENT_BUILD; OFFLINE_TESTED; FOREVER_RUNTIME_NOT_RUN",
     "market_ui_async_render_safety": "0.6.2_EARLY_ITEM_DATA_CALLBACK_GUARD; ROW_POOL_BOUNDS_CHECK; SPARSE_ROW_GUARD; PROFESSIONMASTER_ASYNC_INIT_STACK_ROOT_CAUSE; OFFLINE_REGRESSION_COVERAGE; FOREVER_RUNTIME_NOT_RUN",
-    "foreverdb_acquisition_sources": "0.6.6_PRESERVES_FIELD_LEVEL_SOURCE_ROWS; SINGLE_PRIMARY_SOURCE_PER_RECIPE; DIRECT_FOREVER_OBSERVED_PREFERRED_THEN_CLASSIC_FALLBACK; TYPE_NAME_LOCATION_COST_PRESENTATION; LEARN_AT_SKILL_EXPOSED; RAW_EVIDENCE_RETAINED_IN_DATA; FOREVER_RUNTIME_NOT_RUN"
+    "foreverdb_acquisition_sources": "0.6.6_PRESERVES_FIELD_LEVEL_SOURCE_ROWS; SINGLE_PRIMARY_SOURCE_PER_RECIPE; DIRECT_FOREVER_OBSERVED_PREFERRED_THEN_CLASSIC_FALLBACK; TYPE_NAME_LOCATION_COST_PRESENTATION; LEARN_AT_SKILL_EXPOSED; RAW_EVIDENCE_RETAINED_IN_DATA; FOREVER_RUNTIME_NOT_RUN",
+    "recipe_source_filter": "0.6.7_LEARNED_VS_UNLEARNED_ONLY; CLASSIC_SOURCE_FALLBACK_INCLUDED; FOREVER_SOURCE_PREFERRED_WHEN_AVAILABLE; EVIDENCE_PROVENANCE_RETAINED_INTERNALLY; FOREVER_RUNTIME_NOT_RUN"
   },
   "category": "Modulo By Wells",
   "dependencies": [
@@ -60,6 +61,7 @@
     "AddOns/ModuloMarket/RecipeEngine.lua",
     "AddOns/ModuloMarket/Replicate.lua",
     "AddOns/ModuloMarket/Scanner.lua",
+    "MANIFEST.json",
     "MODULOMARKET-PERFORMANCE-RESEARCH-2026-11-10.md",
     "MODULOMARKET-REPLICATE-PROBE-RESULT-2026-11-10.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.0.10.md",
@@ -97,6 +99,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.6.4.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.6.5.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.6.6.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.6.7.md",
     "README.md",
     "data/ForeverDB-Canonical-1.60.1.70862.json",
     "data/ForeverDB-Canonical-1.60.1.70888.json",
@@ -105,6 +108,7 @@
     "docs/FOREVERDB-DATA-REVIEW-2026-11-11.md",
     "docs/FOREVERDB-DATA-REVIEW-2026-11-12.md",
     "docs/FOREVERDB-INTEGRATION-PLAN.md",
+    "docs/MODULOMARKET-RECIPE-SOURCE-FILTER-0.6.7.md",
     "docs/MODULOMARKET-TOOLTIP-STRATA-0.5.8.md",
     "docs/MODULOMARKET-UI-POLISH-0.5.9.md",
     "docs/MODULOMARKET-UI-REDESIGN-0.5.6.md",
@@ -142,6 +146,7 @@
     "tests/test_modulomarket_persistence_0_0_8.py",
     "tests/test_modulomarket_probe_layout_0_0_11.py",
     "tests/test_modulomarket_recipe_engine_0_3_0.py",
+    "tests/test_modulomarket_recipe_source_filter_0_6_7.py",
     "tests/test_modulomarket_replicate_inspection_0_0_12.py",
     "tests/test_modulomarket_replicate_probe_0_0_10.py",
     "tests/test_modulomarket_scan_status_display_0_0_13.py",
@@ -163,8 +168,7 @@
     "tools/foreverdb_importer/README.md",
     "tools/foreverdb_importer/fixtures/canonical-sample.synthetic.json",
     "tools/foreverdb_importer/market_data_importer.py",
-    "tools/foreverdb_importer/recipe-data-v1.schema.json",
-    "MANIFEST.json"
+    "tools/foreverdb_importer/recipe-data-v1.schema.json"
   ],
   "folder": "ModuloMarket",
   "group": "Modulo",
@@ -181,6 +185,11 @@
   "parentUploader": "developer",
   "parent_addon": "Modulo",
   "previousChildBundles": [
+    {
+      "bundle": "ModuloMarket-GitHub-Update-0.6.6.zip",
+      "bytes": 1644145,
+      "sha256": "ec3a2304ec44c7c8d509d7dfcb352bcb1ef79910b88a02ed191bc375926535c2"
+    },
     {
       "bundle": "ModuloMarket-GitHub-Update-0.6.5.zip",
       "bytes": 1812249,
@@ -256,10 +265,10 @@
   "saved_variables": [
     "ModuloMarketDB"
   ],
-  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.6.5.zip",
-  "supersedesChildBytes": 1812249,
-  "supersedesChildSha256": "460543e651df52a95ce4599532f55206658ce38f729f76d4b76da916c816cddc",
-  "version": "0.6.6",
-  "file_count": 116,
+  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.6.6.zip",
+  "supersedesChildBytes": 1644145,
+  "supersedesChildSha256": "ec3a2304ec44c7c8d509d7dfcb352bcb1ef79910b88a02ed191bc375926535c2",
+  "version": "0.6.7",
+  "file_count": 119,
   "developer_tools_version": "Embedded repository importer 0.2.0 retained; standalone ForeverDB importer 0.2.3 used for the 70888 capture and runtime compilation (separate release lifecycle)."
 }

@@ -51,6 +51,6 @@ def test_history_bars_show_percentage_change_labels():
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.6"' in CORE
-    assert '## Version: 0.6.6' in TOC
-    assert MANIFEST["version"] == "0.6.6"
+    assert 'MM.version = "0.6.7"' in CORE
+    assert '## Version: 0.6.7' in TOC
+    assert MANIFEST["version"] == "0.6.7"

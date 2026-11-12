@@ -843,12 +843,8 @@ local function StepView()
                 local status = item.craftSourceStatus or "known"
                 if build.itemRoleFilter == "known" then
                     matches = status == "known"
-                elseif build.itemRoleFilter == "future" then
-                    matches = status == "future" or status == "auto"
-                elseif build.itemRoleFilter == "unknown" then
-                    matches = status == "unknown"
-                elseif build.itemRoleFilter == "borrowed" then
-                    matches = status == "borrowed"
+                elseif build.itemRoleFilter == "unlearned" then
+                    matches = status ~= "known"
                 end
             elseif matches and not isCrafting and build.itemRoleFilter ~= "all" then
                 matches = MM.ProfessionData and MM.ProfessionData.Matches(item.itemID, 0,
@@ -2238,21 +2234,15 @@ local function CreateUI()
         local futureReady = futureProvider and futureProvider.available
         if UI.activeTab == "allcrafts" then
             return {
-                { text = "All recipe sources", value = "all",
-                    tooltipTitle = "All Crafts",
-                    tooltipText = "Show every supported known and unlearned recipe candidate." },
+                { text = "All recipes", value = "all",
+                    tooltipTitle = "All recipes",
+                    tooltipText = "Show every supported recipe, whether you have learned it or not." },
                 { text = "Known by you", value = "known",
                     tooltipTitle = "Known recipes",
                     tooltipText = "Recipes recorded from this character's profession windows." },
-                { text = "Unlearned: confirmed", value = "future", disabled = not futureReady,
-                    tooltipTitle = "Unlearned, source recorded",
-                    tooltipText = "Not learned by this character. The database records a Forever acquisition source." },
-                { text = "Unlearned: borrowed", value = "borrowed", disabled = not futureReady,
-                    tooltipTitle = "Unlearned, borrowed source",
-                    tooltipText = "Not learned by this character. Acquisition information is borrowed from Vanilla and is not confirmed for Forever." },
-                { text = "Unlearned: unknown", value = "unknown", disabled = not futureReady,
-                    tooltipTitle = "Unlearned, source unknown",
-                    tooltipText = "The recipe is present in the database, but its acquisition source is not established." },
+                { text = "Unlearned", value = "unlearned", disabled = not futureReady,
+                    tooltipTitle = "Unlearned recipes",
+                    tooltipText = "Show recipes not recorded as learned by this character." },
             }
         elseif UI.activeTab == "crafting" then
             return { { text = "Known by you", value = "all" } }
@@ -2266,16 +2256,10 @@ local function CreateUI()
             { text = "Known craft outputs", value = "known",
                 tooltipTitle = "Known craft outputs",
                 tooltipText = "Items produced by at least one recipe recorded as learned by this character." },
-            { text = futureReady and "Unlearned · confirmed source" or "Unlearned crafts (install DB)",
-                value = "future", disabled = not futureReady,
-                tooltipTitle = "Unlearned, source recorded",
-                tooltipText = "Items produced by recipes you have not learned where the database records a Forever acquisition source." },
-            { text = "Unlearned: borrowed", value = "borrowed", disabled = not futureReady,
-                tooltipTitle = "Unlearned, borrowed source",
-                tooltipText = "Items produced by unlearned recipes whose acquisition information is borrowed from Vanilla and is not confirmed for Forever." },
-            { text = "Unlearned: unknown", value = "unknown", disabled = not futureReady,
-                tooltipTitle = "Unlearned, source unknown",
-                tooltipText = "Items produced by unlearned recipes whose acquisition source is not established." },
+            { text = futureReady and "Unlearned craft outputs" or "Unlearned crafts (install DB)",
+                value = "unlearned", disabled = not futureReady,
+                tooltipTitle = "Unlearned craft outputs",
+                tooltipText = "Items produced by recipes not recorded as learned by this character." },
             { text = gatherReady and "Gathering resources" or "Gathering data unavailable",
                 value = "gather", disabled = not gatherReady,
                 tooltipTitle = "Gathering resources",
@@ -2293,8 +2277,8 @@ local function CreateUI()
             UI.itemRoleFilter = value
             UI.StartViewBuild()
         end)
-    UI.roleLabel = AddLabel(frame, "Recipe source / item role", 30, -334, 230, 18, "GameFontNormalSmall")
-    AttachFilterTooltip(UI.roleDropdown, "Recipe source / item role", "Choose known, future, borrowed, unknown, gathering or material roles where supported. Hover individual menu options for their evidence definitions.")
+    UI.roleLabel = AddLabel(frame, "Recipe status / item role", 30, -334, 230, 18, "GameFontNormalSmall")
+    AttachFilterTooltip(UI.roleDropdown, "Recipe status / item role", "Filter by learned or unlearned recipe outputs, or by gathering and material roles where supported.")
 
     UI.craftFilterControls = {}
     local craftFilterSpecs = {
