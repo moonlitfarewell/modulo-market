@@ -809,6 +809,16 @@ local function StepView()
                 item.borrowedSources = sourceItem.borrowedSources
                 item.sourceUnknown = sourceItem.sourceUnknown
                 item.skillThresholds = sourceItem.skillThresholds
+                local providerDetails = MM.ProfessionData and MM.ProfessionData.GetForeverRecipeDetails
+                    and MM.ProfessionData.GetForeverRecipeDetails(sourceItem.professionID, sourceItem.recipeID)
+                if providerDetails then
+                    item.acquisitionSources = providerDetails.acquisitionSources
+                    item.recipeData.acquisitionSources = providerDetails.acquisitionSources
+                    item.recipeData.trainerCostCopper = providerDetails.trainerCostCopper
+                    item.recipeData.trainerCostEvidence = providerDetails.trainerCostEvidence
+                else
+                    item.acquisitionSources = sourceItem.acquisitionSources
+                end
             end
         elseif build.tab == "economics" and type(item) == "table" then
             item.economics = UI.economicsByItemID and UI.economicsByItemID[tonumber(item.itemID)]
@@ -1261,6 +1271,104 @@ local function AppendSkillThresholdLines(lines, thresholds)
     end
 end
 
+local function AcquisitionEvidenceLabel(source)
+    local evidence = type(source) == "table" and source.evidence or "UNKNOWN"
+    if evidence == "FOREVER_OBSERVED" then return "|cff55dd77FOREVER OBSERVED|r" end
+    if evidence == "FOREVER_CLIENT" then return "|cff66ccffFOREVER CLIENT|r" end
+    if evidence == "CLASSIC_BORROWED" then return "|cffffaa44CLASSIC BORROWED — UNCONFIRMED|r" end
+    return "|cffb7c0ccUNKNOWN / UNVERIFIED|r"
+end
+
+local function AcquisitionSourceText(source)
+    if type(source) ~= "table" then return nil end
+    local kind = tostring(source.type or "source"):gsub("_", " ")
+    local name = type(source.name) == "string" and source.name or nil
+    local label = kind:gsub("^%l", string.upper)
+    local text = label .. (name and (": " .. name) or "")
+    if source.faction and source.faction ~= "Both" then text = text .. " · " .. tostring(source.faction) end
+    if source.title and source.title ~= "" then text = text .. " · " .. tostring(source.title) end
+    if source.zone and source.zone ~= "" then text = text .. " — " .. tostring(source.zone) end
+    if source.npc_id then text = text .. " (NPC " .. tostring(source.npc_id) .. ")" end
+    if source.x and source.y then
+        text = text .. string.format(" · %.1f, %.1f", tonumber(source.x), tonumber(source.y))
+    end
+    if source.type == "vendor" then
+        local price = tonumber(source.price_per_item_copper or source.price_copper)
+        if price and price > 0 then text = text .. " · " .. FormatMoney(price) .. "/item" end
+        if source.limited_stock == true then
+            text = text .. " · limited stock" .. (source.limited_stock_count and (" (" .. tostring(source.limited_stock_count) .. ")") or "")
+        end
+        if type(source.costs) == "table" and #source.costs > 0 then
+            local costs = {}
+            for _, cost in ipairs(source.costs) do
+                if type(cost) == "table" then
+                    costs[#costs + 1] = tostring(cost.name or ("Currency #" .. tostring(cost.id or "?")))
+                        .. (cost.amount and (" × " .. tostring(cost.amount)) or "")
+                end
+            end
+            if #costs > 0 then text = text .. " · Cost: " .. table.concat(costs, ", ") end
+        end
+        if type(source.reputation_faction) == "table" and source.reputation_faction.name then
+            text = text .. " · Reputation: " .. tostring(source.reputation_faction.name)
+        end
+    elseif source.type == "drop" and source.chance_percent then
+        text = text .. " · " .. tostring(source.chance_percent) .. "% drop chance"
+    elseif source.type == "quest" and source.quest_id then
+        text = text .. " · Quest " .. tostring(source.quest_id)
+        if source.in_forever_client == true then text = text .. " (quest exists in Forever client; link unverified)" end
+    elseif source.type == "recipe_item" or source.type == "recipe_item_hidden"
+        or source.type == "recipe_item_not_in_client" then
+        if source.item_id then text = text .. " · Item " .. tostring(source.item_id) end
+        if source.visibility and source.visibility ~= "normal" then text = text .. " · " .. tostring(source.visibility) end
+    elseif source.type == "trainer_observation" then
+        text = text .. " · trainer name observed; exact teaching route not detailed"
+    end
+    if source.inferred == true then
+        text = text .. " · inferred recipe link"
+    end
+    return text
+end
+
+local function AppendAcquisitionSourceLines(lines, sources, limit)
+    if type(sources) ~= "table" or #sources == 0 then
+        lines[#lines + 1] = "No detailed acquisition records are supplied for this recipe."
+        return
+    end
+    local ordered = {}
+    local priority = { "FOREVER_OBSERVED", "FOREVER_CLIENT", "CLASSIC_BORROWED", "UNKNOWN" }
+    -- Bucket in a single pass rather than sorting: this runs on hover/selection
+    -- paths and must not add a synchronous sort to the large catalogue pipeline.
+    for _, evidence in ipairs(priority) do
+        for _, source in ipairs(sources) do
+            if type(source) == "table" and source.evidence == evidence then
+                ordered[#ordered + 1] = source
+            end
+        end
+    end
+    for _, source in ipairs(sources) do
+        if type(source) == "table" and source.evidence ~= "FOREVER_OBSERVED"
+            and source.evidence ~= "FOREVER_CLIENT" and source.evidence ~= "CLASSIC_BORROWED"
+            and source.evidence ~= "UNKNOWN" then
+            ordered[#ordered + 1] = source
+        end
+    end
+    local shown = math.min(#ordered, tonumber(limit) or #ordered)
+    for i = 1, shown do
+        local source = ordered[i]
+        lines[#lines + 1] = AcquisitionEvidenceLabel(source)
+        lines[#lines + 1] = AcquisitionSourceText(source) or "Unspecified acquisition source"
+        if source.evidence == "UNKNOWN" and source.entity_evidence == "FOREVER_OBSERVED" then
+            lines[#lines + 1] = "NPC observed on Forever; this recipe-to-NPC link is not confirmed."
+        end
+        if source.source_text and source.evidence == "FOREVER_OBSERVED" then
+            lines[#lines + 1] = tostring(source.source_text)
+        end
+    end
+    if #ordered > shown then
+        lines[#lines + 1] = string.format("%d additional source records; hover the recipe for the full list.", #ordered - shown)
+    end
+end
+
 local function RenderCraftDetail(item)
     local recipe = item and item.recipeData
     if not recipe then
@@ -1296,6 +1404,13 @@ local function RenderCraftDetail(item)
     lines[#lines + 1] = "Acquisition: " .. (sourceStatus == "known" and "Known by this character"
         or (sourceStatus == "future" and "Recorded source; not learned"
         or (sourceStatus == "borrowed" and "Classic-borrowed; Forever unconfirmed" or "Unknown / not established")))
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "|cffffd100ACQUISITION SOURCES|r"
+    AppendAcquisitionSourceLines(lines, recipe.acquisitionSources or item.acquisitionSources, 3)
+    if recipe.trainerCostCopper and recipe.trainerCostEvidence then
+        lines[#lines + 1] = "Trainer learning cost: " .. FormatMoney(recipe.trainerCostCopper)
+            .. " · " .. tostring(recipe.trainerCostEvidence)
+    end
     if not item.outputQuantity then
         lines[#lines + 1] = "|cffffaa44Output quantity unavailable; profit is withheld.|r"
     end
@@ -1740,6 +1855,17 @@ local function ShowMarketItemTooltip(owner, item, showRecipe)
         if item.professionName then
             GameTooltip:AddLine(tostring(item.professionName)
                 .. " · Skill " .. tostring(item.professionSkill or "?"), 0.8, 0.8, 0.8, true)
+        end
+        local sources = item.acquisitionSources or (item.recipeData and item.recipeData.acquisitionSources)
+        if type(sources) == "table" and #sources > 0 then
+            GameTooltip:AddLine("Acquisition sources", 1, 0.82, 0.2, true)
+            local sourceLines = {}
+            AppendAcquisitionSourceLines(sourceLines, sources, #sources)
+            for _, line in ipairs(sourceLines) do
+                GameTooltip:AddLine(line:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""), 0.9, 0.9, 0.9, true)
+            end
+        else
+            GameTooltip:AddLine("Acquisition source details unavailable", 0.65, 0.65, 0.65, true)
         end
     elseif item.recipeID then
         GameTooltip:AddLine("Recipe: " .. tostring(item.recipeName or item.recipeID), 0.8, 0.8, 0.8, true)

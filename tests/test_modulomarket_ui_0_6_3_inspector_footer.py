@@ -8,9 +8,9 @@ TOC = (ROOT / "AddOns" / "ModuloMarket" / "ModuloMarket.toc").read_text()
 MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.4"' in CORE
-    assert '## Version: 0.6.4' in TOC
-    assert MANIFEST["version"] == "0.6.4"
+    assert 'MM.version = "0.6.5"' in CORE
+    assert '## Version: 0.6.5' in TOC
+    assert MANIFEST["version"] == "0.6.5"
 
 def test_profit_and_history_footer_is_a_child_container_inside_inspector():
     body = UI.split('UI.detailFooter = CreateFrame("Frame", nil, frame)', 1)[1].split('for i = 1, 4 do', 1)[0]

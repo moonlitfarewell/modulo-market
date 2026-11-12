@@ -1,5 +1,16 @@
-# Modulo Market 0.6.3
-**Current player milestone:** 0.6.3 fixes an early asynchronous item-data callback race that could call the virtual row renderer before the row pool existed. The three-column workspace now allocates more width to the centre table and Materials (cost) column, keeps all three panel titles and the result count inside their header strips, constrains inspector text to the narrower right panel, and exposes evidence-separated skill-up colour thresholds in recipe inspection. Forever runtime acceptance is NOT RUN.
+# Modulo Market 0.6.5
+**Current player milestone:** 0.6.5 preserves and exposes the individual ForeverDB acquisition-source records in the runtime catalogue and selected-recipe inspector. Trainer/vendor NPCs, locations, coordinates, vendor costs, limited-stock metadata, recipe items, drops and quests retain their field-level evidence. Known character recipes are enriched without duplication. Forever runtime acceptance is NOT RUN.
+
+
+## Current 0.6.5 milestone — acquisition-source detail preservation
+
+- The 1.60.1.70888 canonical dataset already contains 10,369 individual acquisition-source records across 2,493 recipes: 4,137 `FOREVER_OBSERVED`, 2,292 `CLASSIC_BORROWED`, 3,907 `UNKNOWN` and 33 `FOREVER_CLIENT`.
+- The runtime compiler now preserves source type/name, faction, NPC identity/title, zone/map/coordinates, vendor copper or currency costs, stack/limited-stock/reputation metadata, recipe-item identity/visibility, drop identity/chance, quest identity and source/evidence text.
+- Known character recipes can retrieve their matching ForeverDB acquisition details by profession and recipe ID without adding duplicate craft rows. Unlearned candidates retain their individual source rows.
+- The inspector shows up to three prioritized source records; hovering the recipe displays the full source list. Unknown recipe-to-NPC links remain unknown even if the NPC itself was observed. Classic-borrowed records remain visibly unconfirmed.
+- No new API requests, keys, dependencies or parent MODULO changes. The canonical 70888 dataset is unchanged; only its runtime compilation and presentation are expanded.
+- Runtime catalogue Lua grew from approximately 1.54 MB to 5.04 MB. Load-time and memory impact require Forever client observation.
+- Offline tests and harnesses do not establish Forever runtime behavior. Forever runtime acceptance is **NOT RUN**. See `docs/FOREVERDB-ACQUISITION-SOURCES-0.6.5.md`.
 
 ## Current 0.6.2 milestone — async renderer safety and layout correction
 
@@ -20,7 +31,7 @@ Modulo Market is a separate optional child addon under MODULO.
 
 Source repository: https://github.com/moonlitfarewell/modulo-market
 
-Current ModuloMarket 0.6.2 uses a reviewed ForeverDB recipe dataset from client build `1.60.1.70888`; the prior `1.60.1.70862` canonical file is retained for historical comparison. The in-game Market window visibly credits [ForeverDB.net](https://foreverdb.net). ForeverDB API keys are build-time importer credentials only and are not committed or distributed inside the addon. The raw capture and normalized canonical dataset are retained under `data/` for provenance and reproducible builds.
+Current ModuloMarket 0.6.5 uses a reviewed ForeverDB recipe dataset from client build `1.60.1.70888`; the prior `1.60.1.70862` canonical file is retained for historical comparison. The in-game Market window visibly credits [ForeverDB.net](https://foreverdb.net). ForeverDB API keys are build-time importer credentials only and are not committed or distributed inside the addon. The raw capture and normalized canonical dataset are retained under `data/` for provenance and reproducible builds.
 
  It depends on `Modulo`; MODULO does not depend on Market. Auctionator and ProfessionMaster remain independent addons and are not runtime dependencies.
 

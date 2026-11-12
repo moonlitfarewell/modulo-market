@@ -24,6 +24,7 @@ local PROFESSION_NAMES = {
 local index = {}
 local professions = {}
 local allFutureRecipes = {}
+local foreverRecipeDetails = {}
 local futureProvider = {
     available = false,
     status = "LibProfessionDB is not installed",
@@ -316,6 +317,21 @@ local function AddForeverDBRecipes()
                             and (sourceRecipe.recipeName or sourceRecipe.name) or "Unknown recipe"
                         local alreadyKnown = recipeID and learned[professionID]
                             and learned[professionID][recipeID] == true or false
+                        if recipeID and outputID and sourceRecipe.kind ~= "enchantment"
+                            and sourceRecipe.kind ~= "service" then
+                            foreverRecipeDetails[tostring(professionID) .. ":" .. tostring(recipeID)] = {
+                                acquisitionSources = type(sourceRecipe.acquisitionSources) == "table"
+                                    and sourceRecipe.acquisitionSources or {},
+                                automatic = sourceRecipe.automatic == true,
+                                sourceKnown = sourceRecipe.sourceKnown == true,
+                                borrowedSources = sourceRecipe.borrowedSources == true,
+                                sourceUnknown = sourceRecipe.sourceUnknown == true,
+                                trainerCostCopper = tonumber(sourceRecipe.trainerCostCopper),
+                                trainerCostEvidence = sourceRecipe.trainerCostEvidence,
+                                sourceProvider = "ForeverDB.net",
+                                sourceBuild = datasetBuild,
+                            }
+                        end
                         if outputID and sourceRecipe.kind ~= "enchantment"
                             and sourceRecipe.kind ~= "service" then
                             local normalizedName = NormalizeName(recipeName)
@@ -379,6 +395,10 @@ local function AddForeverDBRecipes()
                                     automatic = sourceRecipe.automatic == true,
                                     observedSourceTypes = sourceRecipe.observedSourceTypes or {},
                                     borrowedSourceTypes = sourceRecipe.borrowedSourceTypes or {},
+                                    acquisitionSources = type(sourceRecipe.acquisitionSources) == "table"
+                                        and sourceRecipe.acquisitionSources or {},
+                                    trainerCostCopper = tonumber(sourceRecipe.trainerCostCopper),
+                                    trainerCostEvidence = sourceRecipe.trainerCostEvidence,
                                     skillThresholds = sourceRecipe.skill or {},
                                     newInForever = sourceRecipe.newInForever == true,
                                     changedFromClassic = sourceRecipe.changedFromClassic,
@@ -622,6 +642,7 @@ function Data.Refresh()
     index = {}
     professions = {}
     allFutureRecipes = {}
+    foreverRecipeDetails = {}
     futureProvider = {
         available = false,
         status = "Checking profession data…",
@@ -678,6 +699,11 @@ end
 
 function Data.GetAllFutureRecipes()
     return allFutureRecipes
+end
+
+function Data.GetForeverRecipeDetails(professionID, recipeID)
+    if not professionID or not recipeID then return nil end
+    return foreverRecipeDetails[tostring(tonumber(professionID)) .. ":" .. tostring(tonumber(recipeID))]
 end
 
 function Data.GetMaterialItems()

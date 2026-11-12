@@ -62,6 +62,10 @@ assert(status.recipeCount == 2493, "all provider recipes must be counted")
 assert(status.speculativeCount == 143, "speculative recipes must be counted separately")
 assert(status.nonItemCount == 179, "non-item and unknown-output records must not become item crafts")
 assert(status.excludedKnownCount == 1, "a recipe already learned by the character must not be duplicated")
+local knownDetails = data.GetForeverRecipeDetails(sampleProfession.professionID, sampleRecipe.id)
+assert(type(knownDetails) == "table", "known recipes must retain their ForeverDB acquisition details")
+assert(type(knownDetails.acquisitionSources) == "table" and #knownDetails.acquisitionSources > 0,
+    "known recipe acquisition records must be queryable without duplicating the recipe")
 
 local future = data.GetAllFutureRecipes()
 assert(#future > 0, "unlearned item-output recipes should be indexed")
@@ -77,6 +81,16 @@ end
 assert(observed, "Forever-observed or automatic sources should be represented")
 assert(borrowed, "Classic-borrowed sources should remain distinct")
 assert(unknown, "unverified acquisition sources should remain distinct")
+local detailedObserved, detailedBorrowed, detailedUnknown = false, false, false
+for _, recipe in ipairs(future) do
+    for _, source in ipairs(recipe.acquisitionSources or {}) do
+        if source.evidence == "FOREVER_OBSERVED" and source.npc_id and source.zone then detailedObserved = true end
+        if source.evidence == "CLASSIC_BORROWED" then detailedBorrowed = true end
+        if source.evidence == "UNKNOWN" then detailedUnknown = true end
+    end
+end
+assert(detailedObserved and detailedBorrowed and detailedUnknown,
+    "runtime recipes must preserve individual observed, borrowed and unknown source rows")
 
 local roleChecks = { future = false, borrowed = false, unknown = false }
 for _, recipe in ipairs(future) do

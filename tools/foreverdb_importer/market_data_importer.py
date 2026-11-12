@@ -1023,18 +1023,41 @@ def compile_runtime(data: dict[str, Any], output: Path, *, allow_fixture: bool =
                     ],
                 })
             skill = recipe.get("skill", {})
+            # Preserve the normalized, field-level acquisition evidence for the
+            # in-game inspector. Do not collapse mixed observed/borrowed/unknown
+            # routes into one recipe-wide status or infer confidence from provider.
+            acquisition_sources = []
+            source_fields = (
+                "type", "name", "faction", "npc_id", "title", "zone", "map_id",
+                "x", "y", "price_copper", "price_per_item_copper", "stack_size",
+                "costs", "limited_stock", "limited_stock_count",
+                "not_on_list_players_saw", "reputation_faction", "seen_in_forever",
+                "inferred", "entity_evidence", "evidence", "source_text",
+                "chance_percent", "quest_id", "in_forever_client", "url",
+                "item_id", "visibility",
+            )
+            for source in sources:
+                if not isinstance(source, dict):
+                    continue
+                compact_source = {key: source[key] for key in source_fields if key in source}
+                if compact_source.get("type"):
+                    acquisition_sources.append(compact_source)
+            provider_metadata = recipe.get("provider_metadata", {})
             compact_recipes.append({
                 "id": recipe["recipe_id"],
                 "name": recipe["name"],
                 "kind": recipe.get("output_kind"),
                 "outputs": output_rows,
                 "reagents": reagent_rows,
-                "reagentDataAvailable": recipe.get("provider_metadata", {}).get("reagent_data_available") is True,
+                "reagentDataAvailable": provider_metadata.get("reagent_data_available") is True,
                 "automatic": automatic,
                 "sourceKnown": bool(observed or automatic),
                 "borrowedSources": bool(borrowed and not (observed or automatic)),
                 "sourceUnknown": not bool(borrowed or observed or automatic),
-                "speculative": recipe.get("provider_metadata", {}).get("speculation") is True,
+                "acquisitionSources": acquisition_sources,
+                "trainerCostCopper": provider_metadata.get("trainer_cost_copper"),
+                "trainerCostEvidence": provider_metadata.get("trainer_cost_evidence"),
+                "speculative": provider_metadata.get("speculation") is True,
             })
         professions[prof["slug"]] = {
             "professionID": prof["profession_id"],
