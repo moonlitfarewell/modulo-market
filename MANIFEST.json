@@ -32,11 +32,11 @@
     "persistent_last_known_good_market_snapshot": "0.1.0_SOURCE_IMPLEMENTED; REPLACE_ONLY_AFTER_ALL_RECORDS_RESOLVED; FOREVER_RUNTIME_NOT_RUN",
     "profession_filters": "0.5.0_CUSTOM_CLICK_DRIVEN_POPUP; PROFESSION_FILTER_APPLIES_TO_ITEM_AND_RECIPE_VIEWS; OFFLINE_HARNESS_PASS; FOREVER_RUNTIME_NOT_RUN",
     "profession_profitability": "0.5.3_KNOWN_AND_FOREVER_OBSERVED_OR_AUTOMATIC_UNLEARNED_ITEM_CRAFTS; CLASSIC_BORROWED_AND_UNKNOWN_SOURCE_EXCLUDED_FROM_CONFIRMED_ROUTE; EXACT_CAPTURED_OUTPUT_COUNT_AND_REAGENT_COUNTS; MISSING_MARKET_PRICES_STILL_WITHHELD; FOREVER_RUNTIME_NOT_RUN",
-    "profession_recipe_capture": "0.5.6_CHARACTER_AND_PROFESSION_SCOPED_RECIPE_ID_SIGNATURE_CACHE; 0.50S_EVENT_COALESCING; UNCHANGED_LIST_SKIPS_FULL_SCHEMATIC_CAPTURE_AND_CHAT; NEW_RECIPE_LEARNED_FORCES_REFRESH; FORCED_EVENT_DURING_CAPTURE_QUEUES_FOLLOWUP; AUTOMATIC_ONLY; FOREVER_RUNTIME_NOT_RUN",
+    "profession_recipe_capture": "0.7.8_FORCE_REFRESH_ON_PROFESSION_OPEN; RETRY_TRANSIENT_MISSING_RECIPE_INFO_UP_TO_4_PASSES; DO_NOT_COMMIT_INCOMPLETE_CAPTURE; MERGE_POSITIVE_PER_CHARACTER_PROFESSION_EVIDENCE; ACTIVE_C_TRADE_SKILLUI_SKILL_OVERRIDES_LEGACY_SKILL; SUCCESS_CHAT_CONFIRMATION; AUTOMATIC_ONLY; FOREVER_RUNTIME_NOT_RUN",
     "profession_recipe_cost_integration": "0.3.0_SOURCE_IMPLEMENTED; CLIENT_KNOWN_RECIPE_CAPTURE; AUTOMATIC_REQUIRED_REAGENT_COST; FOREVER_RUNTIME_NOT_RUN",
     "profit_loss_estimator": "0.2.0_LEGACY_MANUAL_COST_SAVEDVARIABLES_PRESERVED; MANUAL_COST_UI_REMOVED_IN_0.3.0",
     "profitability_rankings": "0.5.0_ECONOMICS_AND_ALL_CRAFTS_VIEWS; KNOWN_RECIPE_PROFIT_AFTER_AH_CUT; SOURCE_BACKED_AND_UNKNOWN_SOURCE_CANDIDATES_LABELLED; MISSING_OUTPUT_OR_REAGENT_QUANTITY_WITHHELD; FOREVER_RUNTIME_NOT_RUN",
-    "recipe_learning_status": "0.7.0_ACCOUNT_AND_CHARACTER_SCOPE; ACCOUNT_UNION_OF_CAPTURED_CHARACTER_RECIPES_AND_POSITIVE_PROFESSION_EVIDENCE; MISSING_ACCOUNT_EVIDENCE_UNKNOWN; CHARACTER_SCOPE_USES_NATIVE_PROFESSION_LIST; FOREVER_RUNTIME_NOT_RUN; UNKNOWN_AND_UNLEARNABLE_STATUS_LABELS_RED",
+    "recipe_learning_status": "0.7.8_ACCOUNT_AND_CHARACTER_SCOPE; ACTIVE_PROFESSION_SKILL_SOURCE_PRIORITY; ACCOUNT_UNION_OF_CAPTURED_CHARACTER_RECIPES_AND_POSITIVE_PROFESSION_EVIDENCE; MISSING_ACCOUNT_EVIDENCE_UNKNOWN; CHARACTER_SCOPE_USES_NATIVE_PROFESSION_LIST; FOREVER_RUNTIME_NOT_RUN; UNKNOWN_AND_UNLEARNABLE_STATUS_LABELS_RED",
     "recipe_source_filter": "0.6.9_KNOWN_LEARNABLE_NOT_LEARNABLE; LEARNABLE_AND_UNLEARNABLE_REQUIRE_AUTHORITATIVE_PROFESSION_LIST; UNKNOWN_PRESERVED_WHEN_UNAVAILABLE; FOREVER_RUNTIME_NOT_RUN",
     "replicate_full_market_acquisition": "0.1.0_SOURCE_IMPLEMENTED; 250_RECORDS_PER_FRAME; 20_UNIQUE_ITEM_DATA_REQUESTS_PER_FRAME; FOREVER_RUNTIME_NOT_RUN",
     "replicate_initial_request": "0.0.11_FOREVER_OBSERVED_291276_AUCTIONS_IN_17S_3_SAMPLES_HASALLINFO_TRUE",
@@ -56,7 +56,7 @@
     "Modulo"
   ],
   "developer_tools_version": "Embedded repository importer 0.2.0 retained; standalone ForeverDB importer 0.2.3 used for the 70888 capture and runtime compilation (separate release lifecycle).",
-  "file_count": 143,
+  "file_count": 146,
   "files": [
     ".gitignore",
     "AddOns/ModuloMarket/Core.lua",
@@ -118,6 +118,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.7.5.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.7.6.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.7.7.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.7.8.md",
     "README.md",
     "data/ForeverDB-Canonical-1.60.1.70862.json",
     "data/ForeverDB-Canonical-1.60.1.70888.json",
@@ -144,6 +145,7 @@
     "tests/market_ui_0_4_1_harness.lua",
     "tests/market_ui_0_4_2_harness.lua",
     "tests/market_ui_0_5_0_harness.lua",
+    "tests/profession_capture_0_7_8_harness.lua",
     "tests/profession_data_0_4_0_harness.lua",
     "tests/profession_status_0_6_9_harness.lua",
     "tests/recipe_engine_0_3_0_harness.lua",
@@ -174,6 +176,7 @@
     "tests/test_modulomarket_market_ui_0_5_1.py",
     "tests/test_modulomarket_persistence_0_0_8.py",
     "tests/test_modulomarket_probe_layout_0_0_11.py",
+    "tests/test_modulomarket_profession_capture_0_7_8.py",
     "tests/test_modulomarket_profession_economics_0_6_9.py",
     "tests/test_modulomarket_profession_status_harness_0_6_9.py",
     "tests/test_modulomarket_recipe_engine_0_3_0.py",
@@ -330,5 +333,5 @@
   "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.7.6.zip",
   "supersedesChildBytes": 1701827,
   "supersedesChildSha256": "8abcc8944e3178f0d7b8462333cd7273f9c597c96c845841e6bb537c32d47f56",
-  "version": "0.7.7"
+  "version": "0.7.8"
 }

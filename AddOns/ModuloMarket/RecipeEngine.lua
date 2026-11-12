@@ -113,7 +113,10 @@ local function CaptureBatch()
         state.index = state.index + 1
         if recipeID then
             local info = SafeCall(api.GetRecipeInfo, recipeID)
-            if type(info) == "table" and info.learned == true then
+            if type(info) ~= "table" then
+                state.retryCounts[recipeID] = (state.retryCounts[recipeID] or 0) + 1
+                state.unresolved[recipeID] = state.retryCounts[recipeID]
+            elseif info.learned == true then
                 local schematic = SafeCall(api.GetRecipeSchematic, recipeID, false)
                 local outputData = SafeCall(api.GetRecipeOutputItemData, recipeID)
                 local outputItemID = type(schematic) == "table" and tonumber(schematic.outputItemID) or nil
@@ -150,6 +153,35 @@ local function CaptureBatch()
         return
     end
 
+    -- Recipe metadata can arrive after the ID list. Retry unresolved IDs across
+    -- frames; never persist a partial pass as a complete snapshot.
+    local retryIDs = {}
+    for recipeID, attempts in pairs(state.unresolved) do
+        if attempts < 4 then retryIDs[#retryIDs + 1] = recipeID end
+    end
+    table.sort(retryIDs)
+    if #retryIDs > 0 then
+        state.recipeIDs = retryIDs
+        state.index = 1
+        state.unresolved = {}
+        state.retryPass = (state.retryPass or 0) + 1
+        if MM.MarketUI and MM.MarketUI.SetStatus then
+            MM.MarketUI.SetStatus(string.format("Waiting for %s recipe data (%d)…",
+                state.profession.professionName, #retryIDs))
+        end
+        return
+    end
+    if next(state.unresolved) ~= nil then
+        captureState = nil
+        captureFrame:SetScript("OnUpdate", nil)
+        lastCaptureReason = "recipe-info-unavailable"
+        if MM.Print then
+            MM.Print(string.format("Could not finish %s recipe snapshot; %d recipe records were unavailable. Previous snapshot preserved.",
+                state.profession.professionName, (function() local n = 0; for _ in pairs(state.unresolved) do n = n + 1 end; return n end)()))
+        end
+        return
+    end
+
     local store = GetCharacterStore()
     if store then
         local previous = store[state.profession.professionID]
@@ -174,7 +206,11 @@ local function CaptureBatch()
                 for _ in pairs(recipes) do count = count + 1 end
                 return count
             end)(),
+            sourceListCount = state.sourceListCount,
+            unresolvedCount = 0,
+            captureComplete = true,
         }
+        Recipes.SaveActiveProfessionSnapshot(state.profession)
     end
 
     captureState = nil
@@ -182,14 +218,15 @@ local function CaptureBatch()
     if MM.MarketUI and MM.MarketUI.OnRecipesUpdated then
         MM.MarketUI.OnRecipesUpdated()
     end
-    lastCaptureReason = "recipe-list-changed"
+    lastCaptureReason = "snapshot-saved"
     if MM.Print then
-        MM.Print(string.format("Captured known %s recipes (%d).",
+        MM.Print(string.format("Saved %s snapshot: %d known recipes, skill %s/%s.",
             state.profession.professionName, (function()
                 local count = 0
                 for _ in pairs(state.recipes) do count = count + 1 end
                 return count
-            end)()))
+            end)(), tostring(state.profession.skillLevel or "?"),
+            tostring(state.profession.maxSkillLevel or "?")))
     end
     if captureQueuedForce then
         captureQueuedForce = false
@@ -214,6 +251,8 @@ function Recipes.CaptureCurrentProfession(force)
     if type(api) ~= "table" then return false, "TRADE_SKILL_API_UNAVAILABLE" end
     local profession = CurrentProfessionInfo()
     if not profession then return false, "NO_ACTIVE_PROFESSION" end
+    -- Skill/ownership evidence is independent of recipe metadata readiness.
+    Recipes.SaveActiveProfessionSnapshot(profession)
 
     local recipeIDs
     local listComplete = false
@@ -254,8 +293,12 @@ function Recipes.CaptureCurrentProfession(force)
         recipeIDs = recipeIDs,
         recipeListSignature = signature,
         listComplete = listComplete,
+        sourceListCount = signatureCount,
         index = 1,
         recipes = {},
+        unresolved = {},
+        retryCounts = {},
+        retryPass = 0,
         capturedAt = type(_G.time) == "function" and _G.time() or 0,
     }
     captureFrame:SetScript("OnUpdate", function()
@@ -288,15 +331,45 @@ function Recipes.SaveCharacterProfessionSnapshot(skills, names, authoritative)
     if type(MM.db) ~= "table" or authoritative ~= true then return false end
     local store, key = GetCharacterStore()
     if not store then return false end
-    store._professionSnapshot = { capturedAt = type(_G.time) == "function" and _G.time() or 0,
-        authoritative = true, professions = {} }
+    local snapshot = store._professionSnapshot
+    if type(snapshot) ~= "table" then snapshot = { professions = {} }; store._professionSnapshot = snapshot end
+    if type(snapshot.professions) ~= "table" then snapshot.professions = {} end
+    snapshot.capturedAt = type(_G.time) == "function" and _G.time() or 0
+    snapshot.authoritative = true
     for professionID, skill in pairs(skills or {}) do
         local pid = tonumber(professionID)
         if pid then
-            store._professionSnapshot.professions[pid] = {
-                professionID = pid, professionName = names and names[pid], skillLevel = tonumber(skill) }
+            local previous = snapshot.professions[pid] or { professionID = pid }
+            previous.professionName = names and names[pid] or previous.professionName
+            -- The legacy profession list is positive ownership evidence, but
+            -- must not downgrade the active C_TradeSkillUI skill observation.
+            if previous.skillSource ~= "C_TradeSkillUI" or previous.skillLevel == nil then
+                previous.skillLevel = tonumber(skill)
+                previous.skillSource = "GetProfessions"
+            end
+            snapshot.professions[pid] = previous
         end
     end
+    return true
+end
+
+function Recipes.SaveActiveProfessionSnapshot(profession)
+    if type(profession) ~= "table" or not tonumber(profession.professionID) then return false end
+    local store = GetCharacterStore()
+    if not store then return false end
+    local snapshot = store._professionSnapshot
+    if type(snapshot) ~= "table" then snapshot = { professions = {} }; store._professionSnapshot = snapshot end
+    if type(snapshot.professions) ~= "table" then snapshot.professions = {} end
+    local pid = tonumber(profession.professionID)
+    local previous = snapshot.professions[pid] or { professionID = pid }
+    previous.professionName = profession.professionName or previous.professionName
+    previous.skillLevel = tonumber(profession.skillLevel) or previous.skillLevel
+    previous.maxSkillLevel = tonumber(profession.maxSkillLevel) or previous.maxSkillLevel
+    previous.skillSource = "C_TradeSkillUI"
+    previous.capturedAt = type(_G.time) == "function" and _G.time() or 0
+    snapshot.professions[pid] = previous
+    snapshot.capturedAt = previous.capturedAt
+    snapshot.authoritative = true
     return true
 end
 
@@ -358,10 +431,14 @@ function Recipes.GetProfessionSummary(scope)
                 local pid = tonumber(professionID)
                 if pid and type(captured) == "table" then
                     local target = merged[pid] or { professionID = pid, name = captured.professionName,
-                        skill = tonumber(captured.skillLevel), recipeCount = 0, listComplete = false, characters = {} }
+                        skill = tonumber(captured.skillLevel), maxSkill = tonumber(captured.maxSkillLevel),
+                        recipeCount = 0, listComplete = false, characters = {} }
                     target.characters[character.key] = true
                     if tonumber(captured.skillLevel) and (not target.skill or captured.skillLevel > target.skill) then
                         target.skill = tonumber(captured.skillLevel)
+                    end
+                    if tonumber(captured.maxSkillLevel) and (not target.maxSkill or captured.maxSkillLevel > target.maxSkill) then
+                        target.maxSkill = tonumber(captured.maxSkillLevel)
                     end
                     merged[pid] = target
                 end
@@ -535,6 +612,8 @@ function Recipes.GetCaptureStatus()
         professionName = state and state.profession.professionName or nil,
         processed = state and math.min(state.index - 1, #state.recipeIDs) or nil,
         total = state and #state.recipeIDs or nil,
+        retryPass = state and state.retryPass or nil,
+        unresolved = state and (function() local n = 0; for _ in pairs(state.unresolved) do n = n + 1 end; return n end)() or 0,
         skippedUnchanged = skippedUnchangedCaptures,
         lastCaptureReason = lastCaptureReason,
     }
@@ -545,8 +624,11 @@ if registered then
             -- GetAllRecipeIDs includes learned and unlearned entries; the ID
             -- list itself may not change when an existing entry becomes learned.
             Recipes.ScheduleCapture(true)
-        elseif event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_LIST_UPDATE"
-            or event == "TRADE_SKILL_DATA_SOURCE_CHANGED" then
+        elseif event == "TRADE_SKILL_SHOW" then
+            -- Re-read on every open: a prior ID signature may have been saved
+            -- while recipe metadata was still loading.
+            Recipes.ScheduleCapture(true)
+        elseif event == "TRADE_SKILL_LIST_UPDATE" or event == "TRADE_SKILL_DATA_SOURCE_CHANGED" then
             Recipes.ScheduleCapture(false)
         end
     end)

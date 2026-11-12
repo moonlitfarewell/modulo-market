@@ -1,5 +1,17 @@
-# Modulo Market 0.7.7
-**Current player milestone:** Tooltip/effect search now starts automatically after a 0.35-second typing pause, with Enter retained as immediate submit. Tooltip inspections and item-data requests are reduced to bounded batches, and stale search generations are discarded. The Auction House launcher is restricted to Blizzard's native Sell tab and hidden on other/addon tabs. Forever runtime acceptance is NOT RUN.
+# Modulo Market 0.7.8
+**Current player milestone:** Profession snapshots are refreshed whenever a profession window opens, transiently unavailable recipe metadata is retried across bounded frames, and incomplete captures never replace the prior saved snapshot. Active `C_TradeSkillUI` skill evidence (e.g. Cooking 300/300) is merged into the per-character profession snapshot and cannot be downgraded by the legacy profession list. A successful save now confirms character profession, known recipe count and skill in chat. Forever runtime acceptance is NOT RUN.
+
+## Current 0.7.8 milestone — reliable character profession snapshots
+
+- Reopening a profession forces a fresh recipe capture even when the recipe-ID signature matches a previously saved capture.
+- Recipe records whose `GetRecipeInfo` result is temporarily unavailable are retried over bounded update passes (up to four observations).
+- If recipe metadata remains unavailable, the previous complete snapshot is preserved and the failure is exposed in diagnostics; a partial pass is never committed as complete.
+- Current profession skill and maximum skill from `C_TradeSkillUI` are saved as higher-priority evidence than the legacy `GetProfessions` skill tuple.
+- Per-character profession evidence is merged rather than replaced, preserving other professions and characters' snapshots.
+- Successful capture prints a concise confirmation with profession, recipe count and skill.
+
+See `MODULOMARKET-RUNTIME-AUDIT-0.7.8.md`.
+
 
 ## Current 0.7.7 milestone — responsive automatic search and Sell-only launcher
 

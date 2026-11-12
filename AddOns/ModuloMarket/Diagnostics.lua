@@ -253,6 +253,10 @@ local function BuildReport(mode)
             lines[#lines + 1] = "  capture event " .. tostring(event) .. "=" .. tostring(enabled)
         end
         Add(lines, "Capture active", capture.active)
+        Add(lines, "Capture last result", capture.lastCaptureReason)
+        Add(lines, "Unchanged captures skipped", capture.skippedUnchanged)
+        Add(lines, "Capture retry pass", capture.retryPass or 0)
+        Add(lines, "Unresolved recipe records", capture.unresolved or 0)
         if capture.active then
             Add(lines, "Capture progress", tostring(capture.processed or 0) .. "/" .. tostring(capture.total or 0))
         end
