@@ -10,7 +10,7 @@ TOC = (ADDON / "ModuloMarket.toc").read_text()
 
 
 def test_window_front_accessibility_and_escape():
-    assert re.search(r"^## Version: 0\.5\.8$", TOC, re.M)
+    assert re.search(r"^## Version: 0\.6\.0$", TOC, re.M)
     assert 'frame:SetFrameStrata("DIALOG")' in UI
     assert 'frame:SetFrameStrata("TOOLTIP")' not in UI
     assert "frame:SetToplevel(true)" in UI
@@ -24,7 +24,7 @@ def test_tabs_are_visually_distinct_and_column_widths_prevent_wrapping():
     assert "selectedMark" in UI
     assert "tabStrip" in UI
     assert "SetColorTexture(1, 0.72, 0.18, 1)" in UI
-    assert 'row.name = RowText("LEFT", 4, 205, "LEFT")' in UI
+    assert 'row.name = RowText("LEFT", 27, 182, "LEFT")' in UI
     assert 'row.price = RowText("LEFT", 212, 105, "RIGHT")' in UI
     assert "fs:SetWordWrap(false)" in UI
     assert "row.depth = RowText" in UI
@@ -77,7 +77,7 @@ def test_gathering_uses_explicit_item_ids_and_only_character_known_gathering_pro
 
 def test_manifest_inventory_matches_files():
     manifest = json.loads((ROOT / "MANIFEST.json").read_text())
-    assert manifest["version"] == "0.5.8"
+    assert manifest["version"] == "0.6.0"
     actual = sorted(
         p.relative_to(ROOT).as_posix()
         for p in ROOT.rglob("*")

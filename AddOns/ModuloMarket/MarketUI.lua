@@ -9,8 +9,9 @@ local UI = {
     catalogByID = {},
     viewRows = {},
     selectedItem = nil,
-    rowHeight = 22,
-    -- 25 rows cover a 510px viewport at 22px/row, including partial rows at either edge.
+    selectedByTab = {},
+    rowHeight = 24,
+    -- 25 virtual rows cover the 555px viewport at 24px/row, including partial rows.
     visibleCount = 25,
     listOffset = 0,
     catalogSnapshot = nil,
@@ -20,6 +21,7 @@ local UI = {
     activeTab = "market",
     professionFilter = 0,
     tabFilterState = {},
+    craftFilters = { craftableOnly = false, profitableOnly = false, reviewOnly = false, hideLowProfit = false },
     economicsByItemID = nil,
     vendorPriceCache = {},
     vendorPriceRequested = {},
@@ -41,6 +43,8 @@ local UI = {
     auctionHouseButtons = {},
 }
 MM.MarketUI = UI
+
+local SelectItem
 
 local function Now()
     return type(_G.GetTime) == "function" and _G.GetTime() or 0
@@ -177,6 +181,32 @@ local function GetItemDisplayName(item)
         end
     end
     return table.concat(prefix, " ") .. " " .. nameColor .. name .. "|r"
+end
+
+-- Resolve real client item artwork; never substitute decorative icons for data identities.
+local itemIconCache = {}
+local function GetItemIcon(itemID)
+    itemID = tonumber(itemID)
+    if not itemID then return "Interface\\Icons\\INV_Misc_QuestionMark" end
+    if itemIconCache[itemID] then return itemIconCache[itemID] end
+    local icon
+    local api = _G.C_Item
+    if type(api) == "table" and type(api.GetItemIconByID) == "function" then
+        local ok, value = pcall(api.GetItemIconByID, itemID)
+        if ok and value then icon = value end
+    end
+    if not icon and type(_G.GetItemInfo) == "function" then
+        local ok, _, _, _, _, _, _, _, _, texture = pcall(_G.GetItemInfo, itemID)
+        if ok and texture then icon = texture end
+    end
+    if not icon and type(api) == "table" and type(api.RequestLoadItemDataByID) == "function" then
+        pcall(api.RequestLoadItemDataByID, itemID)
+    end
+    if icon then
+        itemIconCache[itemID] = icon
+        return icon
+    end
+    return "Interface\\Icons\\INV_Misc_QuestionMark"
 end
 
 local function CacheVendorInfo(itemID, sellPrice, classID)
@@ -740,6 +770,12 @@ function UI.StartViewBuild()
         index = 1, query = query, rows = {}, tab = UI.activeTab,
         professionFilter = UI.professionFilter,
         itemRoleFilter = UI.itemRoleFilter,
+        craftFilters = {
+            craftableOnly = UI.craftFilters.craftableOnly,
+            profitableOnly = UI.craftFilters.profitableOnly,
+            reviewOnly = UI.craftFilters.reviewOnly,
+            hideLowProfit = UI.craftFilters.hideLowProfit,
+        },
         source = source or {}, total = #(source or {}), startedAt = Now(),
     }
     if UI.scroll then
@@ -808,6 +844,25 @@ local function StepView()
                 matches = MM.ProfessionData and MM.ProfessionData.IsMaterial
                     and MM.ProfessionData.IsMaterial(item.itemID) or false
             end
+            if matches and isCrafting then
+                local filters = build.craftFilters or {}
+                local status = item.craftSourceStatus or "known"
+                local freshness = item.freshnessStatus
+                    or (item.recipeData and item.recipeData.freshnessStatus)
+                local hasOutput = tonumber(item.itemID) ~= nil and (tonumber(item.outputQuantity) or 0) > 0
+                local completeCost = item.costComplete == true and tonumber(item.materialCostCopper) ~= nil
+                local profit = tonumber(item.profitCopper)
+                if filters.craftableOnly then
+                    matches = status == "known" and hasOutput and completeCost
+                end
+                if matches and filters.profitableOnly then matches = profit ~= nil and profit > 0 end
+                if matches and filters.hideLowProfit then matches = profit == nil or profit > 0 end
+                if matches and filters.reviewOnly then matches = freshness == "review" end
+                if matches and filters.craftableOnly and not hasSale then
+                    -- Craftability describes recipe/output/cost completeness, not auction profitability.
+                    matches = status == "known" and hasOutput and completeCost
+                end
+            end
             if matches then
                 if build.tab == "low" then
                     if (tonumber(item.totalQuantity) or 0) <= GetLowSupplyThreshold(item) then
@@ -870,6 +925,26 @@ function UI.FinishView(rows)
     UI.scrollChild:SetHeight(math.max(1, #UI.viewRows * UI.rowHeight))
     UI.RenderRows()
     if UI.activeTab == "history" then UI.RenderHistory() end
+    local wanted = UI.selectedByTab[UI.activeTab]
+    local chosen
+    if wanted then
+        for _, candidate in ipairs(UI.viewRows) do
+            if (wanted.recipeKey and candidate.recipeKey == wanted.recipeKey)
+                or (wanted.itemID and tonumber(candidate.itemID) == tonumber(wanted.itemID)) then
+                chosen = candidate
+                break
+            end
+        end
+    end
+    if not chosen then chosen = UI.viewRows[1] end
+    if chosen and SelectItem then SelectItem(chosen)
+    elseif not chosen then
+        UI.selectedItem = nil
+        if UI.detailName then UI.detailName:SetText("No matching items") end
+        if UI.detailIcon then UI.detailIcon:Hide() end
+        if UI.detailBadges then UI.detailBadges:SetText("") end
+        if UI.detailEconomics then UI.detailEconomics:SetText("No entries match the current filters. Adjust the filters or search to see results.") end
+    end
     UpdateResultRange()
     local provider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
         and MM.ProfessionData.GetFutureProviderStatus()
@@ -1003,6 +1078,18 @@ function UI.RenderRows()
         button:SetPoint("TOPLEFT", UI.scrollChild, "TOPLEFT", 0, -((index - 1) * UI.rowHeight))
         UI.visibleRows[i] = item
         if item then
+            if button.icon then
+                button.icon:SetTexture(GetItemIcon(item.itemID))
+                button.icon:Show()
+            end
+            if button.rowShade then
+                if index % 2 == 0 then
+                    button.rowShade:SetColorTexture(0.19, 0.16, 0.12, 0.22)
+                else
+                    button.rowShade:SetColorTexture(0.035, 0.032, 0.028, 0.12)
+                end
+                button.rowShade:Show()
+            end
             local profitText = "—"
             if isCrafting then
                 local status = item.craftSourceStatus or "known"
@@ -1013,7 +1100,15 @@ function UI.RenderRows()
                     or (status == "borrowed" and "[F?] " or "[?] "))
                 button.name:SetText(marker .. color .. GetItemName(item) .. "|r")
                 button.price:SetText(item.salePriceCopper and FormatMoney(item.salePriceCopper) or "—")
-                button.depth:SetText(item.materialCostCopper and FormatMoney(item.materialCostCopper) or "—")
+                local materialBits = {}
+                for reagentIndex, reagent in ipairs(item.reagentLines or {}) do
+                    if reagentIndex > 2 then break end
+                    materialBits[#materialBits + 1] = tostring(reagent.quantity or "?") .. "x |T"
+                        .. tostring(GetItemIcon(reagent.itemID)) .. ":14:14:0:0|t"
+                end
+                local materialCost = item.materialCostCopper and FormatMoney(item.materialCostCopper) or "—"
+                local materialSummary = #materialBits > 0 and table.concat(materialBits, " ") or "No reagent data"
+                button.depth:SetText(materialSummary .. "  " .. materialCost)
                 button.atPrice:SetText(item.minPriceQuantity ~= nil and tostring(item.minPriceQuantity) or "—")
                 button.total:SetText(item.totalQuantity ~= nil and tostring(item.totalQuantity) or "—")
                 if item.profitCopper ~= nil then
@@ -1065,6 +1160,8 @@ function UI.RenderRows()
             button:Show()
         else
             button:Hide()
+            if button.icon then button.icon:Hide() end
+            if button.rowShade then button.rowShade:Hide() end
             UI.visibleRows[i] = nil
         end
     end
@@ -1154,6 +1251,8 @@ local function RenderCraftDetail(item)
         "Recipe: " .. tostring(recipe.recipeName or "Unknown recipe"),
         "Output: " .. tostring(item.outputQuantity or "?") .. " × " .. tostring(item.itemName or ("Item #" .. tostring(item.itemID or "?"))),
         "Sale price / unit: " .. (item.salePriceCopper and FormatMoney(item.salePriceCopper) or "No market price"),
+        "At price: " .. (item.minPriceQuantity ~= nil and tostring(item.minPriceQuantity) or "—"),
+        "Total listed: " .. (item.totalQuantity ~= nil and tostring(item.totalQuantity) or "—") .. " units",
     }
     if item.variableYield then
         lines[#lines + 1] = "|cffffaa44Variable output; profit uses minimum yield.|r"
@@ -1170,6 +1269,9 @@ local function RenderCraftDetail(item)
         lines[#lines + 1] = "Recorded learning skill: " .. tostring(item.requiredSkill)
             .. (item.borrowedSkill and " (borrowed; unconfirmed)" or "")
     end
+    lines[#lines + 1] = "Acquisition: " .. (sourceStatus == "known" and "Known by this character"
+        or (sourceStatus == "future" and "Recorded source; not learned"
+        or (sourceStatus == "borrowed" and "Classic-borrowed; Forever unconfirmed" or "Unknown / not established")))
     if not item.outputQuantity then
         lines[#lines + 1] = "|cffffaa44Output quantity unavailable; profit is withheld.|r"
     end
@@ -1179,7 +1281,8 @@ local function RenderCraftDetail(item)
         lines[#lines + 1] = "No reagent data supplied by the client."
     else
         for _, reagent in ipairs(item.reagentLines) do
-            local label = tostring(reagent.itemName or ("Item #" .. tostring(reagent.itemID or "?")))
+            local label = "|T" .. tostring(GetItemIcon(reagent.itemID)) .. ":16:16:0:0|t "
+                .. tostring(reagent.itemName or ("Item #" .. tostring(reagent.itemID or "?")))
             local qty = tostring(reagent.quantity or "?")
             if reagent.lineCostCopper then
                 lines[#lines + 1] = string.format("%s × %s  —  %s",
@@ -1193,7 +1296,7 @@ local function RenderCraftDetail(item)
         end
     end
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "Material cost / craft: " ..
+    lines[#lines + 1] = "Total material cost / craft: " ..
         (item.materialCostCopper and FormatMoney(item.materialCostCopper) or "|cffff6666Incomplete — missing market data|r")
     if item.grossSaleCopper then
         lines[#lines + 1] = "Gross sale / craft: " .. FormatMoney(item.grossSaleCopper)
@@ -1216,7 +1319,10 @@ local function RenderCraftDetail(item)
     if UI.detailProfit then
         if item.profitCopper ~= nil then
             local color = item.profitCopper >= 0 and "|cff55dd77" or "|cffff6666"
-            UI.detailProfit:SetText(color .. FormatMoney(item.profitCopper) .. "|r profit / craft")
+            local netSale = tonumber(item.netSaleCopper)
+            local margin = netSale and netSale > 0 and (item.profitCopper / netSale * 100) or nil
+            UI.detailProfit:SetText(color .. FormatMoney(item.profitCopper) .. "|r profit / craft"
+                .. (margin and string.format(" (%.1f%%)", margin) or ""))
         else
             UI.detailProfit:SetText("Profit unavailable until every required price is known.")
         end
@@ -1405,10 +1511,30 @@ local function RenderMarketRecipeContext(item)
     end
 end
 
-local function SelectItem(item)
+SelectItem = function(item)
     if not item then return end
     UI.selectedItem = item
+    UI.selectedByTab[UI.activeTab] = { itemID = tonumber(item.itemID), recipeKey = item.recipeKey }
     UI.detailName:SetText(item.recipeData and GetItemName(item) or GetItemDisplayName(item))
+    if UI.detailIcon then UI.detailIcon:SetTexture(GetItemIcon(item.itemID)); UI.detailIcon:Show() end
+    if UI.detailBadges then
+        local tags = {}
+        if item.recipeData then
+            local state = item.craftSourceStatus or "known"
+            tags[#tags + 1] = state == "known" and "|cff55dd77KNOWN|r"
+                or (state == "future" and "|cffffd166FUTURE|r"
+                or (state == "borrowed" and "|cffffa64dBORROWED|r" or "|cffb7c0ccUNKNOWN|r"))
+            local freshness = item.freshnessStatus
+                or (item.recipeData and item.recipeData.freshnessStatus)
+            if freshness == "review" then tags[#tags + 1] = "|cffffc04dREVIEW|r"
+            elseif freshness == "baseline" or item.sourceProvider == "ForeverDB.net" then
+                tags[#tags + 1] = "|cff79c9ffBASELINE|r"
+            end
+        else
+            tags[#tags + 1] = "|cff79c9ffMARKET ITEM|r"
+        end
+        UI.detailBadges:SetText(table.concat(tags, "    "))
+    end
     local vendorPrice = GetVendorInfo(item.itemID, true)
     UI.detailPrice:SetText(item.minPriceCopper and FormatMoney(item.minPriceCopper)
         or (item.salePriceCopper and FormatMoney(item.salePriceCopper))
@@ -1434,6 +1560,8 @@ pcall(vendorInfoEvents.RegisterEvent, vendorInfoEvents, "ITEM_DATA_LOAD_RESULT")
 vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
     itemID = tonumber(itemID)
     if not itemID then return end
+    -- Item cache completion can also resolve the real icon for virtualized rows.
+    itemIconCache[itemID] = nil
     UI.vendorPriceRequested[itemID] = nil
     if success == false then
         UI.vendorPriceFailed[itemID] = true
@@ -1449,7 +1577,7 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
     end
     if UI.selectedItem and tonumber(UI.selectedItem.itemID) == itemID then
         SelectItem(UI.selectedItem)
-    elseif UI.activeTab == "economics" then
+    else
         UI.RenderRows()
     end
 end)
@@ -1606,12 +1734,25 @@ local function SetTab(tab)
     UI.tabFilterState[previousTab].search = UI.search and UI.search:GetText() or ""
     UI.tabFilterState[previousTab].profession = UI.professionFilter
     UI.tabFilterState[previousTab].role = UI.itemRoleFilter
+    UI.tabFilterState[previousTab].craftFilters = {
+        craftableOnly = UI.craftFilters.craftableOnly,
+        profitableOnly = UI.craftFilters.profitableOnly,
+        reviewOnly = UI.craftFilters.reviewOnly,
+        hideLowProfit = UI.craftFilters.hideLowProfit,
+    }
+    if UI.selectedItem then
+        UI.selectedByTab[previousTab] = { itemID = tonumber(UI.selectedItem.itemID), recipeKey = UI.selectedItem.recipeKey }
+    end
     UI.activeTab = tab
     if tab ~= "economics" then UI.economicsIndexBuild = nil end
     local saved = UI.tabFilterState[tab] or {}
     UI.professionFilter = tonumber(saved.profession) or 0
     UI.itemRoleFilter = saved.role or "all"
-    UI.selectedItem = nil
+    local savedCraft = saved.craftFilters or {}
+    UI.craftFilters.craftableOnly = savedCraft.craftableOnly == true
+    UI.craftFilters.profitableOnly = savedCraft.profitableOnly == true
+    UI.craftFilters.reviewOnly = savedCraft.reviewOnly == true
+    UI.craftFilters.hideLowProfit = savedCraft.hideLowProfit == true
     if UI.search then UI.search:SetText(saved.search or "") end
     if UI.filterHeading then UI.filterHeading:SetText("Filters — " .. (tab == "allcrafts" and "All Crafts"
         or (tab == "crafting" and "My Crafts" or (tab == "market" and "All Items"
@@ -1633,8 +1774,8 @@ local function SetTab(tab)
     local labels = { "Item / Recipe", "Cheapest", "Materials", "At Price", "Total", "Profit / Craft" }
     local keys = { "name", "price", "materials", "depth", "total", "profit" }
     if craftTab then
-        labels = { "Recipe", "Sale / Unit", "Materials", "At Price", "Total", "Profit / Craft" }
-        keys = { "name", "price", "materials", "depth", "total", "profit" }
+        labels = { "Recipe", "Materials (cost)", "Sale / Unit", "At Price", "Total", "Profit / Craft" }
+        keys = { "name", "materials", "price", "depth", "total", "profit" }
     elseif tab == "economics" then
         labels = { "Item", "Sale / Unit", "Materials", "At Price", "Total", "Profit / Loss" }
     elseif tab == "materials" then
@@ -1657,28 +1798,77 @@ local function SetTab(tab)
         header.sortKey = keys[i]
         if labels[i] then header:Show() else header:Hide() end
     end
-    if tab == "materials" then
-        UI.headerButtons[5]:ClearAllPoints()
-        UI.headerButtons[5]:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", 817, -218)
-        UI.headerButtons[5]:SetWidth(145)
+    if craftTab then
+        local craftColumns = {
+            { x = 302, w = 190, justify = "LEFT" },
+            { x = 500, w = 150, justify = "RIGHT" },
+            { x = 658, w = 96, justify = "RIGHT" },
+            { x = 758, w = 70, justify = "RIGHT" },
+            { x = 832, w = 70, justify = "RIGHT" },
+            { x = 906, w = 140, justify = "RIGHT" },
+        }
+        for i, column in ipairs(craftColumns) do
+            local header = UI.headerButtons[i]
+            header:ClearAllPoints(); header:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", column.x, -218); header:SetWidth(column.w)
+            header.label:SetWidth(column.w - 14); header.label:SetJustifyH(column.justify)
+        end
+        for _, row in ipairs(UI.rows or {}) do
+            row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(185)
+            row.depth:ClearAllPoints(); row.depth:SetPoint("RIGHT", row, "RIGHT", -396, 0); row.depth:SetWidth(150)
+            row.price:ClearAllPoints(); row.price:SetPoint("RIGHT", row, "RIGHT", -292, 0); row.price:SetWidth(96)
+            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("RIGHT", row, "RIGHT", -218, 0); row.atPrice:SetWidth(70)
+            row.total:ClearAllPoints(); row.total:SetPoint("RIGHT", row, "RIGHT", -144, 0); row.total:SetWidth(70)
+            row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(136)
+        end
+    elseif tab == "materials" then
+        local materialColumns = {
+            { x = 302, w = 205, justify = "LEFT" },
+            { x = 510, w = 105, justify = "RIGHT" },
+            { x = 620, w = 105, justify = "RIGHT" },
+            { x = 730, w = 82, justify = "RIGHT" },
+            { x = 817, w = 145, justify = "RIGHT" },
+        }
+        for i, column in ipairs(materialColumns) do
+            local header = UI.headerButtons[i]
+            header:ClearAllPoints(); header:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", column.x, -218); header:SetWidth(column.w)
+            header.label:SetWidth(column.w - 14); header.label:SetJustifyH(column.justify)
+        end
         UI.headerButtons[6]:Hide()
         for _, row in ipairs(UI.rows or {}) do
+            row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(182)
+            row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", 212, 0); row.price:SetWidth(105)
+            row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 322, 0); row.depth:SetWidth(105)
+            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", 432, 0); row.atPrice:SetWidth(82)
             row.total:Hide()
-            row.profit:ClearAllPoints()
-            row.profit:SetPoint("RIGHT", row, "RIGHT", 519, 0)
+            row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", 519, 0); row.profit:SetWidth(145)
         end
     else
-        UI.headerButtons[5]:ClearAllPoints()
-        UI.headerButtons[5]:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", 817, -218)
-        UI.headerButtons[5]:SetWidth(82)
-        UI.headerButtons[6]:ClearAllPoints()
-        UI.headerButtons[6]:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", 904, -218)
-        UI.headerButtons[6]:SetWidth(145)
+        local marketColumns = {
+            { x = 302, w = 205, justify = "LEFT" },
+            { x = 510, w = 105, justify = "RIGHT" },
+            { x = 620, w = 105, justify = "RIGHT" },
+            { x = 730, w = 82, justify = "RIGHT" },
+            { x = 817, w = 82, justify = "RIGHT" },
+            { x = 904, w = 145, justify = "RIGHT" },
+        }
+        for i, column in ipairs(marketColumns) do
+            local header = UI.headerButtons[i]
+            header:ClearAllPoints(); header:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", column.x, -218); header:SetWidth(column.w)
+            header.label:SetWidth(column.w - 14); header.label:SetJustifyH(column.justify)
+        end
         for _, row in ipairs(UI.rows or {}) do
             row.total:Show()
-            row.profit:ClearAllPoints()
-            row.profit:SetPoint("RIGHT", row, "RIGHT", 606, 0)
+            row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(182)
+            row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", 212, 0); row.price:SetWidth(105)
+            row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 322, 0); row.depth:SetWidth(105)
+            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", 432, 0); row.atPrice:SetWidth(82)
+            row.total:ClearAllPoints(); row.total:SetPoint("LEFT", row, "LEFT", 519, 0); row.total:SetWidth(82)
+            row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", 606, 0); row.profit:SetWidth(145)
         end
+    end
+    if UI.roleLabel then
+        UI.roleLabel:SetText(craftTab and (tab == "allcrafts" and "Known status" or "Recipe status")
+            or "Recipe source / item role")
     end
     UpdateHeaderIndicators()
 
@@ -1686,7 +1876,21 @@ local function SetTab(tab)
         UI.roleDropdown:Enable()
         if UI.roleDropdown.RefreshText then UI.roleDropdown.RefreshText() end
     end
-    if UI.detailName then UI.detailName:SetText("Select an item") end
+    local showCraftFilters = tab == "crafting" or tab == "allcrafts"
+    if UI.craftFilterHeading then
+        if showCraftFilters then UI.craftFilterHeading:Show() else UI.craftFilterHeading:Hide() end
+    end
+    for key, control in pairs(UI.craftFilterControls or {}) do
+        if showCraftFilters then control:Show() else control:Hide() end
+        if control.SetChecked then control:SetChecked(UI.craftFilters[key] == true) end
+        if control.label then
+            if showCraftFilters then control.label:Show() else control.label:Hide() end
+        end
+    end
+    if UI.detailHeading then UI.detailHeading:SetText(craftTab and "Selected Recipe" or "Selected Item") end
+    if UI.detailName then UI.detailName:SetText("Loading selection…") end
+    if UI.detailIcon then UI.detailIcon:Hide() end
+    if UI.detailBadges then UI.detailBadges:SetText("") end
     if UI.detailPrice then UI.detailPrice:SetText("—") end
     if UI.detailSupply then UI.detailSupply:SetText("—") end
     if UI.detailVariants then UI.detailVariants:SetText("") end
@@ -1900,7 +2104,20 @@ local function CreateUI()
     AddPanelBorder(18, -158, 260, 650)
     AddPanelBorder(286, -158, 780, 650)
     AddPanelBorder(1072, -158, 354, 650)
-    UI.filterHeading = AddLabel(frame, "Filters — All Items", 30, -170, 230, 24, "GameFontNormalLarge")
+    local function AddPanelHeader(x, y, width)
+        local plate = frame:CreateTexture(nil, "ARTWORK")
+        plate:SetColorTexture(0.19, 0.145, 0.075, 0.48)
+        plate:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 1, y)
+        plate:SetSize(width - 2, 28)
+        local rule = frame:CreateTexture(nil, "ARTWORK")
+        rule:SetColorTexture(0.62, 0.46, 0.22, 0.55)
+        rule:SetPoint("TOPLEFT", plate, "BOTTOMLEFT", 0, 0)
+        rule:SetSize(width - 2, 1)
+    end
+    AddPanelHeader(18, -158, 260)
+    AddPanelHeader(286, -158, 780)
+    AddPanelHeader(1072, -158, 354)
+    UI.filterHeading = AddLabel(frame, "FILTERS — ALL ITEMS", 30, -170, 230, 24, "GameFontNormalLarge")
     AddLabel(frame, "Search", 30, -198, 230, 18, "GameFontNormalSmall")
     UI.search = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
     UI.search:SetSize(230, 24)
@@ -1983,7 +2200,32 @@ local function CreateUI()
         end)
     UI.roleLabel = AddLabel(frame, "Recipe source / item role", 30, -334, 230, 18, "GameFontNormalSmall")
     AttachFilterTooltip(UI.roleDropdown, "Recipe source / item role", "Choose known, future, borrowed, unknown, gathering or material roles where supported. Hover individual menu options for their evidence definitions.")
+
+    UI.craftFilterControls = {}
+    local craftFilterSpecs = {
+        { "craftableOnly", "Craftable only", "Known recipes with a resolved output and complete reagent cost." },
+        { "profitableOnly", "Profitable only", "Show recipes with a calculated positive profit after the configured auction-house cut." },
+        { "reviewOnly", "Review items only", "Show only records explicitly marked for hotfix-linked review." },
+        { "hideLowProfit", "Hide non-profitable", "Hide recipes with zero or negative calculated profit. Incomplete profit remains visible." },
+    }
+    for i, spec in ipairs(craftFilterSpecs) do
+        local check = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+        check:SetSize(22, 22)
+        check:SetPoint("TOPLEFT", frame, "TOPLEFT", 28, -414 - ((i - 1) * 31))
+        local label = AddLabel(frame, spec[2], 54, -414 - ((i - 1) * 31), 210, 20, "GameFontHighlightSmall")
+        check.label = label
+        check.filterKey = spec[1]
+        check:SetScript("OnEnter", function(self) RaiseMarketTooltip(self, spec[2], spec[3]) end)
+        check:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
+        check:SetScript("OnClick", function(self)
+            UI.craftFilters[self.filterKey] = self:GetChecked() == true
+            UI.StartViewBuild()
+        end)
+        UI.craftFilterControls[spec[1]] = check
+    end
+    UI.craftFilterHeading = AddLabel(frame, "CRAFT FILTERS", 30, -394, 230, 18, "GameFontNormal")
     UI.tabFilterState[UI.activeTab] = { search = "", profession = 0, role = "all" }
+    UI.tabFilterState[UI.activeTab].craftFilters = {}
     UI.resultCount = AddLabel(frame, "", 930, -184, 120, 18, "GameFontNormalSmall")
     UI.resultCount:SetWordWrap(false)
 
@@ -2001,7 +2243,7 @@ local function CreateUI()
         local header = CreateFrame("Button", nil, frame)
         header:SetSize(h[3], 18)
         header:SetPoint("TOPLEFT", frame, "TOPLEFT", h[2], -218)
-        header.label = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        header.label = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         header.label:SetPoint("LEFT", header, "LEFT", 0, 0)
         header.label:SetWidth(h[3] - 14)
         header.label:SetJustifyH(h[4])
@@ -2052,17 +2294,23 @@ local function CreateUI()
         row:SetSize(758, UI.rowHeight)
         row:SetPoint("TOPLEFT", UI.scrollChild, "TOPLEFT", 0, -((i - 1) * UI.rowHeight))
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+        row.rowShade = row:CreateTexture(nil, "BACKGROUND")
+        row.rowShade:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+        row.rowShade:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
+        row.icon = row:CreateTexture(nil, "ARTWORK")
+        row.icon:SetSize(18, 18)
+        row.icon:SetPoint("LEFT", row, "LEFT", 4, 0)
         local function RowText(anchor, x, width, justify)
-            local fs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            local fs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
             if anchor == "LEFT" then fs:SetPoint("LEFT", row, "LEFT", x, 0)
             else fs:SetPoint("RIGHT", row, "RIGHT", x, 0) end
             fs:SetWidth(width); fs:SetJustifyH(justify); fs:SetWordWrap(false)
             return fs
         end
-        row.name = RowText("LEFT", 4, 205, "LEFT")
+        row.name = RowText("LEFT", 27, 182, "LEFT")
         row.nameHit = CreateFrame("Button", nil, row)
         row.nameHit:SetPoint("LEFT", row, "LEFT", 0, 0)
-        row.nameHit:SetSize(205, UI.rowHeight)
+        row.nameHit:SetSize(210, UI.rowHeight)
         row.nameHit:SetFrameLevel(row:GetFrameLevel() + 2)
         row.nameHit:SetScript("OnEnter", function(self)
             local selected = UI.visibleRows[slot]
@@ -2073,6 +2321,32 @@ local function CreateUI()
         end)
         row.nameHit:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
         row.nameHit:SetScript("OnClick", function()
+            local selected = UI.visibleRows[slot]
+            if selected then SelectItem(selected) end
+        end)
+        row.materialHit = CreateFrame("Button", nil, row)
+        row.materialHit:SetPoint("LEFT", row, "LEFT", 202, 0)
+        row.materialHit:SetSize(160, UI.rowHeight)
+        row.materialHit:SetFrameLevel(row:GetFrameLevel() + 2)
+        row.materialHit:SetScript("OnEnter", function(self)
+            local selected = UI.visibleRows[slot]
+            if selected and (UI.activeTab == "crafting" or UI.activeTab == "allcrafts") then
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetFrameStrata("TOOLTIP")
+                GameTooltip:SetText("Materials and cost", 1, 0.82, 0.35)
+                for _, reagent in ipairs(selected.reagentLines or {}) do
+                    GameTooltip:AddLine(string.format("%s × %s  %s",
+                        tostring(reagent.itemName or ("Item #" .. tostring(reagent.itemID or "?"))),
+                        tostring(reagent.quantity or "?"),
+                        reagent.lineCostCopper and FormatMoney(reagent.lineCostCopper) or "Price unknown"),
+                        1, 1, 1, true)
+                end
+                GameTooltip:AddLine("Total material cost: " .. (selected.materialCostCopper and FormatMoney(selected.materialCostCopper) or "Incomplete"), 1, 0.82, 0.35, true)
+                GameTooltip:Show()
+            end
+        end)
+        row.materialHit:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
+        row.materialHit:SetScript("OnClick", function()
             local selected = UI.visibleRows[slot]
             if selected then SelectItem(selected) end
         end)
@@ -2093,24 +2367,29 @@ local function CreateUI()
     divider:SetSize(1, 650)
     divider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1065, -158)
 
-    AddLabel(frame, "Selected item", 1090, -180, 320, 22, "GameFontNormalLarge")
-    UI.detailName = AddLabel(frame, "Choose an item", 1090, -210, 320, 24, "GameFontHighlight")
-    AddLabel(frame, "Sale price / unit", 1090, -252, 145, 18, "GameFontNormalSmall")
-    UI.detailPrice = AddLabel(frame, "—", 1240, -252, 170, 18, "GameFontHighlight")
-    AddLabel(frame, "Total listed", 1090, -278, 145, 18, "GameFontNormalSmall")
-    UI.detailSupply = AddLabel(frame, "—", 1240, -278, 170, 18, "GameFontHighlight")
-    UI.detailVariants = AddLabel(frame, "", 1090, -304, 320, 28, "GameFontDisableSmall")
+    UI.detailHeading = AddLabel(frame, "Selected item", 1090, -180, 320, 22, "GameFontNormalLarge")
+    UI.detailIcon = frame:CreateTexture(nil, "ARTWORK")
+    UI.detailIcon:SetSize(42, 42)
+    UI.detailIcon:SetPoint("TOPLEFT", frame, "TOPLEFT", 1090, -210)
+    UI.detailIcon:Hide()
+    UI.detailName = AddLabel(frame, "Choose an item", 1142, -210, 268, 28, "GameFontNormal")
+    UI.detailBadges = AddLabel(frame, "", 1142, -235, 268, 18, "GameFontDisableSmall")
+    AddLabel(frame, "SALE PRICE / UNIT", 1090, -274, 145, 18, "GameFontNormalSmall")
+    UI.detailPrice = AddLabel(frame, "—", 1240, -274, 170, 18, "GameFontHighlight")
+    AddLabel(frame, "TOTAL LISTED", 1090, -300, 145, 18, "GameFontNormalSmall")
+    UI.detailSupply = AddLabel(frame, "—", 1240, -300, 170, 18, "GameFontHighlight")
+    UI.detailVariants = AddLabel(frame, "", 1090, -326, 320, 28, "GameFontDisableSmall")
     UI.detailItemTooltip = CreateFrame("Button", nil, frame)
     UI.detailItemTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1090, -205)
-    UI.detailItemTooltip:SetSize(320, 26)
+    UI.detailItemTooltip:SetSize(320, 48)
     UI.detailItemTooltip:SetFrameLevel(frame:GetFrameLevel() + 2)
     UI.detailItemTooltip:SetScript("OnEnter", function(self)
         if UI.selectedItem then ShowMarketItemTooltip(self, UI.selectedItem, false) end
     end)
     UI.detailItemTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
     UI.detailRecipeTooltip = CreateFrame("Button", nil, frame)
-    UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1090, -300)
-    UI.detailRecipeTooltip:SetSize(320, 30)
+    UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1142, -235)
+    UI.detailRecipeTooltip:SetSize(268, 18)
     UI.detailRecipeTooltip:SetFrameLevel(frame:GetFrameLevel() + 2)
     UI.detailRecipeTooltip:SetScript("OnEnter", function(self)
         if UI.selectedItem then ShowMarketItemTooltip(self, UI.selectedItem, true) end
@@ -2118,7 +2397,7 @@ local function CreateUI()
     UI.detailRecipeTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
     UI.detailEconomics = AddLabel(frame,
         "Open each profession window once. Market records your known recipes automatically. Install LibProfessionDB 1.9.1 to identify supported unlearned recipes.",
-        1090, -340, 320, 350, "GameFontHighlightSmall")
+        1090, -360, 320, 350, "GameFontHighlightSmall")
     UI.detailEconomics:SetWordWrap(true)
     UI.detailProfit = AddLabel(frame, "Automatic recipe valuation", 1090, -710, 320, 28, "GameFontNormalLarge")
     UI.historyText = AddLabel(frame, "", 1090, -744, 320, 62, "GameFontHighlightSmall")

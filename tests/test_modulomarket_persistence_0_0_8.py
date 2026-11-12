@@ -12,9 +12,9 @@ def test_version_agreement():
     toc = TOC.read_text()
     core = CORE.read_text()
     manifest = (ROOT / "MANIFEST.json").read_text()
-    assert re.search(r"^## Version: 0\.5\.8$", toc, re.M)
-    assert 'MM.version = "0.5.8"' in core
-    assert '"version": "0.5.8"' in manifest
+    assert re.search(r"^## Version: 0\.6\.0$", toc, re.M)
+    assert 'MM.version = "0.6.0"' in core
+    assert '"version": "0.6.0"' in manifest
 
 
 def test_single_last_known_good_snapshot_is_restored():

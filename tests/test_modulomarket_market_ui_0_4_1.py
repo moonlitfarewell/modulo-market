@@ -50,5 +50,5 @@ def test_auction_house_launcher_retries_on_lifecycle_events():
 
 
 def test_version_is_aligned():
-    assert re.search(r"^## Version: 0\.5\.8$", TOC, re.M)
-    assert 'MM.version = "0.5.8"' in CORE
+    assert re.search(r"^## Version: 0\.6\.0$", TOC, re.M)
+    assert 'MM.version = "0.6.0"' in CORE

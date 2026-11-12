@@ -52,9 +52,9 @@ def test_probe_is_bounded_and_fails_closed():
 def test_probe_load_order_and_version_agreement():
     toc = TOC.read_text()
     assert toc.index("Scanner.lua") < toc.index("Diagnostics.lua")
-    assert re.search(r"^## Version: 0\.5\.8$", toc, re.M)
-    assert 'MM.version = "0.5.8"' in CORE.read_text()
+    assert re.search(r"^## Version: 0\.6\.0$", toc, re.M)
+    assert 'MM.version = "0.6.0"' in CORE.read_text()
     manifest = json.loads(MANIFEST.read_text())
-    assert manifest["version"] == "0.5.8"
+    assert manifest["version"] == "0.6.0"
     assert "AddOns/ModuloMarket/Scanner.lua" in manifest["files"]
     assert "tests/replicate_probe_harness.lua" in manifest["files"]

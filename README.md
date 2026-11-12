@@ -1,6 +1,8 @@
-# Modulo Market 0.5.8
+# Modulo Market 0.6.0
 
-**Current player milestone:** seven distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
+**Current player milestone:** Dark Foundry visual polish (0.5.9): real item icons in virtualized rows and reagent details; stronger selected-item identity and evidence badges; richer panel headers, alternating row surfaces and more legible table typography; all seven tab data models, market actions and baseline/current-build safeguards retained.
+
+**Retained product capabilities:** seven distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
 
 Modulo Market is a separate optional child addon under MODULO.
 
@@ -13,7 +15,27 @@ Market 0.5.3 includes a reviewed ForeverDB recipe dataset from client build `1.6
  It depends on `Modulo`; MODULO does not depend on Market. Auctionator and ProfessionMaster remain independent addons and are not runtime dependencies.
 
 
-## Current 0.5.8 milestone — Market remains below native tooltips
+
+## Current 0.6.0 milestone — Dark Foundry workspace completion
+
+- My Crafts and All Crafts now show dedicated craft filters: craftable only, profitable only, explicit review-only and hide non-profitable. Their definitions are evidence-aware: craftable requires a known recipe, a resolved output and complete reagent cost; profitable requires a positive calculated profit; review-only requires an explicit `freshnessStatus=review`; hide non-profitable hides calculated zero/negative profit while retaining incomplete-profit rows.
+- The All Crafts/ My Crafts centre table now uses an ingredient-led Materials (cost) column with real reagent icons and quantities plus the calculated material cost. Hovering the column shows every reagent, quantity, line cost and total material cost.
+- The right inspector is automatically populated with the first result when a tab has no prior selection. Returning to a tab restores its previous selected item/recipe when it remains in the filtered result set; otherwise it selects the first matching row.
+- Craft inspection now explicitly shows at-price quantity, total listed units, acquisition classification and material cost alongside the existing sale, reagent, profit and warning information.
+- Craft-specific table columns are laid out independently from item-market columns; switching between craft and non-craft tabs restores the correct positions.
+- Existing tab data, non-craft table columns, Materials Listings removal, tooltips, opacity, recipe baseline provenance and exact-current-build auction gate remain unchanged.
+- Forever runtime acceptance is NOT RUN until the user checks all seven tabs, tab-specific filter behavior, row selection restoration, materials hover detail and the full selected-recipe panel in-game.
+
+## Current 0.5.9 milestone — Dark Foundry visual polish
+
+- Real client item icons appear in virtualized market and recipe rows when item data resolves; unresolved icons use a temporary question-mark fallback and are retried on item-data completion.
+- Recipe reagent details show the actual reagent item icon beside the reagent identity and quantity.
+- The selected-entry panel has a larger item icon, clearer title hierarchy, and contextual Known/Future/Borrowed/Unknown plus Baseline/Review badges derived from the underlying record.
+- Alternating low-contrast row surfaces, more legible row/header typography and bronze panel header plates improve scanning without changing the three-column layout.
+- All seven tabs, existing tab-specific information, filters, global market controls, tooltip layering, whole-window opacity, baseline-plus-delta recipe data and exact-current-build auction snapshot gate remain intact.
+- Forever runtime acceptance for the visual changes is NOT RUN until the user confirms icon resolution, panel appearance, and tab parity in-game.
+
+## Current 0.5.9 milestone — Market remains below native tooltips
 
 - Corrected the open/raise lifecycle: the Market is explicitly kept at DIALOG strata, while native and addon tooltips remain at TOOLTIP. The 0.5.7 `UI.Raise()` path had inadvertently promoted the Market to TOOLTIP after creation.
 - Added regression coverage for the complete raise path and corrected legacy harness expectations.
