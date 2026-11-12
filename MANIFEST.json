@@ -49,6 +49,11 @@
   ],
   "files": [
     ".gitignore",
+    ".pytest_cache/.gitignore",
+    ".pytest_cache/CACHEDIR.TAG",
+    ".pytest_cache/README.md",
+    ".pytest_cache/v/cache/lastfailed",
+    ".pytest_cache/v/cache/nodeids",
     "AddOns/ModuloMarket/Core.lua",
     "AddOns/ModuloMarket/Diagnostics.lua",
     "AddOns/ModuloMarket/ForeverDBData.lua",
@@ -59,7 +64,6 @@
     "AddOns/ModuloMarket/RecipeEngine.lua",
     "AddOns/ModuloMarket/Replicate.lua",
     "AddOns/ModuloMarket/Scanner.lua",
-    "MANIFEST.json",
     "MODULOMARKET-PERFORMANCE-RESEARCH-2026-11-10.md",
     "MODULOMARKET-REPLICATE-PROBE-RESULT-2026-11-10.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.0.10.md",
@@ -94,6 +98,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.6.1.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.6.2.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.6.3.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.6.4.md",
     "README.md",
     "data/ForeverDB-Canonical-1.60.1.70862.json",
     "data/ForeverDB-Canonical-1.60.1.70888.json",
@@ -147,6 +152,7 @@
     "tests/test_modulomarket_ui_0_6_0_workspace.py",
     "tests/test_modulomarket_ui_0_6_2_runtime_layout.py",
     "tests/test_modulomarket_ui_0_6_3_inspector_footer.py",
+    "tests/test_modulomarket_ui_0_6_4_layout.py",
     "tests/test_modulomarket_version_reporting_harness_0_5_4.py",
     "tests/test_modulomarket_version_visibility_0_5_4.py",
     "tests/version_reporting_0_5_4_harness.lua",
@@ -239,14 +245,14 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.6.3_INSPECTOR_PROFIT_HISTORY_FOOTER_BOTTOM_ANCHORED_WITHIN_PANEL; HISTORY_BARS_RISE_UPWARD_FROM_BOTTOM_BASELINE; 0.6.2_ASYNC_ROW_GUARD_AND_LAYOUT_RETAINED; FOREVER_RUNTIME_NOT_RUN",
+  "runtime_status": "0.6.4_MATERIAL_COST_ONLY_WITH_REAGENT_ICON_TOOLTIP; INSPECTOR_WORD_WRAP; CENTRE_SCROLLBAR_INTERNAL; OPACITY_LABEL_ABOVE_SLIDER; FOCUSED_UI_TESTS_PASS; FULL_LEGACY_SUITE_HAS_32_STALE_CONTRACT_FAILURES; FOREVER_RUNTIME_NOT_RUN",
   "saved_variables": [
     "ModuloMarketDB"
   ],
-  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.6.2.zip",
-  "supersedesChildBytes": 1654915,
-  "supersedesChildSha256": "cff2a9e712e3671c999f5b971426d91743c970c14b2cf198ad55be0455a48c62",
-  "version": "0.6.3",
-  "file_count": 109,
+  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.6.3.zip",
+  "supersedesChildBytes": 1485482,
+  "supersedesChildSha256": "79c4ad9514d01ba4f3bcf5e483ecf849b7e124af3426201bb886049c97e97531",
+  "version": "0.6.4",
+  "file_count": 116,
   "developer_tools_version": "Embedded repository importer 0.2.0 retained; standalone ForeverDB importer 0.2.3 used for the 70888 capture and runtime compilation (separate release lifecycle)."
 }

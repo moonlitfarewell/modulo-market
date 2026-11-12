@@ -1107,15 +1107,11 @@ function UI.RenderRows()
                     or (status == "borrowed" and "[F?] " or "[?] "))
                 button.name:SetText(marker .. color .. GetItemName(item) .. "|r")
                 button.price:SetText(item.salePriceCopper and FormatMoney(item.salePriceCopper) or "—")
-                local materialBits = {}
-                for reagentIndex, reagent in ipairs(item.reagentLines or {}) do
-                    if reagentIndex > 2 then break end
-                    materialBits[#materialBits + 1] = tostring(reagent.quantity or "?") .. "x |T"
-                        .. tostring(GetItemIcon(reagent.itemID)) .. ":14:14:0:0|t"
-                end
+                -- Keep the table compact even for recipes with many reagents.
+                -- Full reagent detail (icons, quantities and per-line costs) is
+                -- available from the material-column hover tooltip.
                 local materialCost = item.materialCostCopper and FormatMoney(item.materialCostCopper) or "—"
-                local materialSummary = #materialBits > 0 and table.concat(materialBits, " ") or "No reagent data"
-                button.depth:SetText(materialSummary .. "  " .. materialCost)
+                button.depth:SetText(materialCost)
                 button.atPrice:SetText(item.minPriceQuantity ~= nil and tostring(item.minPriceQuantity) or "—")
                 button.total:SetText(item.totalQuantity ~= nil and tostring(item.totalQuantity) or "—")
                 if item.profitCopper ~= nil then
@@ -2021,10 +2017,11 @@ local function CreateUI()
     end)
     AddButton(frame, "Close", 80, 645, -62, function() frame:Hide() end)
 
-    AddLabel(frame, "Window opacity", 790, -62, 92, 18, "GameFontNormalSmall")
+    UI.opacityLabel = AddLabel(frame, "Window opacity", 860, -43, 170, 18, "GameFontNormalSmall")
+    UI.opacityLabel:SetJustifyH("CENTER")
     UI.opacitySlider = CreateFrame("Slider", nil, frame)
     UI.opacitySlider:SetSize(170, 14)
-    UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 860, -67)
+    UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 860, -66)
     UI.opacitySlider:SetOrientation("HORIZONTAL")
     UI.opacitySlider:SetMinMaxValues(0.35, 1.0)
     UI.opacitySlider:SetValueStep(0.05)
@@ -2035,7 +2032,7 @@ local function CreateUI()
     opacityTrack:SetPoint("LEFT", UI.opacitySlider, "LEFT", 0, 0)
     opacityTrack:SetPoint("RIGHT", UI.opacitySlider, "RIGHT", 0, 0)
     opacityTrack:SetHeight(6)
-    UI.opacityValue = AddLabel(frame, "", 1040, -62, 48, 18, "GameFontHighlightSmall")
+    UI.opacityValue = AddLabel(frame, "", 1036, -43, 48, 18, "GameFontHighlightSmall")
     ApplyBackgroundOpacity(frame, initialOpacity)
     UI.opacitySlider:SetValue(initialOpacity)
     UI.opacitySlider:SetScript("OnValueChanged", function(_, value)
@@ -2311,11 +2308,20 @@ local function CreateUI()
     UI.totalQuantityHeader = UI.headerButtons[5].label
     UpdateHeaderIndicators()
 
-    UI.scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
+    UI.scroll = CreateFrame("ScrollFrame", "ModuloMarketMainScrollFrame", frame, "UIPanelScrollFrameTemplate")
     UI.scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 298, -242)
     UI.scroll:SetSize(812, 555)
+    -- The Blizzard template normally places its scrollbar just outside the
+    -- scroll frame. Keep it within the centre panel instead of over the border.
+    local marketScrollBar = _G.ModuloMarketMainScrollFrameScrollBar
+    if marketScrollBar then
+        marketScrollBar:ClearAllPoints()
+        marketScrollBar:SetPoint("TOPRIGHT", UI.scroll, "TOPRIGHT", -1, -16)
+        marketScrollBar:SetPoint("BOTTOMRIGHT", UI.scroll, "BOTTOMRIGHT", -1, 16)
+        marketScrollBar:SetWidth(16)
+    end
     UI.scrollChild = CreateFrame("Frame", nil, UI.scroll)
-    UI.scrollChild:SetSize(812, 1)
+    UI.scrollChild:SetSize(796, 1)
     UI.scroll:SetScrollChild(UI.scrollChild)
     UI.scroll:SetScript("OnVerticalScroll", function(_, offset)
         UI.listOffset = offset
@@ -2325,7 +2331,7 @@ local function CreateUI()
     for i = 1, UI.visibleCount do
         local slot = i
         local row = CreateFrame("Button", nil, UI.scrollChild)
-        row:SetSize(812, UI.rowHeight)
+        row:SetSize(796, UI.rowHeight)
         row:SetPoint("TOPLEFT", UI.scrollChild, "TOPLEFT", 0, -((i - 1) * UI.rowHeight))
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
         row.rowShade = row:CreateTexture(nil, "BACKGROUND")
@@ -2369,7 +2375,9 @@ local function CreateUI()
                 GameTooltip:SetFrameStrata("TOOLTIP")
                 GameTooltip:SetText("Materials and cost", 1, 0.82, 0.35)
                 for _, reagent in ipairs(selected.reagentLines or {}) do
-                    GameTooltip:AddLine(string.format("%s × %s  %s",
+                    local icon = GetItemIcon(reagent.itemID)
+                    local iconMarkup = icon and ("|T" .. tostring(icon) .. ":16:16:0:0|t ") or ""
+                    GameTooltip:AddLine(iconMarkup .. string.format("%s × %s  %s",
                         tostring(reagent.itemName or ("Item #" .. tostring(reagent.itemID or "?"))),
                         tostring(reagent.quantity or "?"),
                         reagent.lineCostCopper and FormatMoney(reagent.lineCostCopper) or "Price unknown"),
@@ -2409,6 +2417,7 @@ local function CreateUI()
     UI.detailIcon:Hide()
     UI.detailName = AddLabel(frame, "Choose an item", 1194, -204, 214, 28, "GameFontNormal")
     UI.detailName:SetWordWrap(true)
+    if UI.detailName.SetNonSpaceWrap then UI.detailName:SetNonSpaceWrap(true) end
     UI.detailBadges = AddLabel(frame, "", 1194, -230, 214, 18, "GameFontDisableSmall")
     AddLabel(frame, "SALE PRICE / UNIT", 1142, -264, 128, 18, "GameFontNormalSmall")
     UI.detailPrice = AddLabel(frame, "—", 1274, -264, 132, 18, "GameFontHighlight")
@@ -2416,6 +2425,7 @@ local function CreateUI()
     UI.detailSupply = AddLabel(frame, "—", 1274, -290, 132, 18, "GameFontHighlight")
     UI.detailVariants = AddLabel(frame, "", 1142, -316, 268, 32, "GameFontDisableSmall")
     UI.detailVariants:SetWordWrap(true)
+    if UI.detailVariants.SetNonSpaceWrap then UI.detailVariants:SetNonSpaceWrap(true) end
     UI.detailItemTooltip = CreateFrame("Button", nil, frame)
     UI.detailItemTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1142, -200)
     UI.detailItemTooltip:SetSize(268, 48)
@@ -2436,15 +2446,19 @@ local function CreateUI()
         "Open each profession window once. Market records your known recipes automatically. Install LibProfessionDB 1.9.1 to identify supported unlearned recipes.",
         1142, -344, 268, 340, "GameFontHighlightSmall")
     UI.detailEconomics:SetWordWrap(true)
+    if UI.detailEconomics.SetNonSpaceWrap then UI.detailEconomics:SetNonSpaceWrap(true) end
     UI.detailEconomics:SetJustifyH("LEFT")
     -- Keep the valuation/history footer inside the inspector's bottom edge.
     -- The graph's baseline is anchored to the footer bottom so bars always rise upward.
     UI.detailFooter = CreateFrame("Frame", nil, frame)
     UI.detailFooter:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1138, 52)
     UI.detailFooter:SetSize(280, 122)
-    UI.detailProfit = AddLabel(UI.detailFooter, "Automatic recipe valuation", 4, -2, 272, 26, "GameFontNormalLarge")
+    UI.detailProfit = AddLabel(UI.detailFooter, "Automatic recipe valuation", 4, -2, 272, 36, "GameFontNormalLarge")
+    UI.detailProfit:SetWordWrap(true)
+    if UI.detailProfit.SetNonSpaceWrap then UI.detailProfit:SetNonSpaceWrap(true) end
     UI.historyText = AddLabel(UI.detailFooter, "", 4, -30, 272, 42, "GameFontHighlightSmall")
     UI.historyText:SetWordWrap(true)
+    if UI.historyText.SetNonSpaceWrap then UI.historyText:SetNonSpaceWrap(true) end
     UI.historyGraph = CreateFrame("Frame", nil, UI.detailFooter)
     UI.historyGraph:SetPoint("BOTTOMLEFT", UI.detailFooter, "BOTTOMLEFT", 4, 0)
     UI.historyGraph:SetSize(220, 48)
