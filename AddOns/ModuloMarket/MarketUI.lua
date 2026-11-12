@@ -1767,7 +1767,7 @@ SelectItem = function(item)
             local state = item.craftSourceStatus or "known"
             tags[#tags + 1] = state == "known" and "|cff55dd77KNOWN|r"
                 or (state == "learnable" and "|cffffd166LEARNABLE|r"
-                or (state == "unlearnable" and "|cffff6666NOT LEARNABLE|r" or "|cffb7c0ccUNKNOWN|r"))
+                or (state == "unlearnable" and "|cffff6666NOT LEARNABLE|r" or "|cffff6666UNKNOWN|r"))
             local freshness = item.freshnessStatus
                 or (item.recipeData and item.recipeData.freshnessStatus)
             if freshness == "review" then tags[#tags + 1] = "|cffffc04dREVIEW|r"
@@ -2829,12 +2829,19 @@ local function CreateUI()
             UI.searchBuildDueAt = nil
             UI.StartViewBuild()
         elseif UI.tooltipRefreshDueAt and now >= UI.tooltipRefreshDueAt then
-            UI.tooltipRefreshDueAt = nil
-            -- If the player is still typing, let the normal debounce perform the
-            -- refresh so item-load events cannot interrupt the quiet window.
-            if not UI.searchBuildDueAt and UI.search and UI.search:GetText()
-                and UI.search:GetText() ~= "" then
-                UI.StartViewBuild()
+            -- Item data may arrive in large asynchronous bursts while a tooltip
+            -- search is filtering thousands of rows. Never discard that active
+            -- build: keep the refresh pending until filtering and sorting finish.
+            -- The next pass then sees all item data loaded during this pass.
+            local viewBusy = UI.viewBuild ~= nil or UI.rankSort ~= nil
+                or UI.catalogBuild ~= nil or UI.economicsIndexBuild ~= nil
+            if not UI.searchBuildDueAt and not viewBusy then
+                UI.tooltipRefreshDueAt = nil
+                if UI.search and UI.search:GetText() ~= "" then
+                    UI.StartViewBuild()
+                else
+                    UI.tooltipRefreshDueAt = nil
+                end
             end
         end
         if UI.catalogBuild then StepCatalog()

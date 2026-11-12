@@ -1,4 +1,4 @@
-# ModuloMarket 0.7.1 — tooltip search responsiveness
+# ModuloMarket 0.7.2 — tooltip search restart correction
 
 ## Player problem
 
@@ -13,6 +13,17 @@ The 0.7.0 implementation had three avoidable costs in the search path:
 3. Cached tooltip text was normalized again on every lookup, despite being immutable after extraction.
 
 The filtering loop also performs tooltip extraction in bounded batches (up to 60 inspections per frame) and can request item data (up to 20 requests per frame). Those bounds are retained.
+
+## 0.7.1 runtime retest finding
+
+The player's Forever build 70888 screenshot showed the result counter cycling through `Waiting…`, `Filtering 1500/2175…`, and `0-0/0`. Source review of 0.7.1 found that the coalesced tooltip refresh could still call `StartViewBuild()` while `UI.viewBuild` or `UI.rankSort` was active. A sustained stream of asynchronous item-data completions could therefore invalidate the current pass before it finished.
+
+## Changes in 0.7.2
+
+- Keep a tooltip refresh pending while a view build, rank sort, catalogue build or economics index build is active.
+- Start at most one follow-up search after the active work completes and only when the search text is non-empty.
+- Preserve typing debounce, asynchronous tooltip requests, normalized cache and bounded per-frame work.
+- Render both `NOT LEARNABLE` and `UNKNOWN` status labels in red; their internal states and filters remain distinct.
 
 ## Changes
 
@@ -40,3 +51,9 @@ The filtering loop also performs tooltip extraction in bounded batches (up to 60
 3. `healing` and `spell damage` still find matching tooltip descriptions/effects.
 4. Search results update when previously unavailable item data arrives.
 5. The UI remains responsive and no Lua errors occur on Forever build 70888.
+
+
+## 0.7.2 verification and runtime status
+
+- Regression tests cover the active-build deferral and red Unknown label.
+- Forever runtime retest: NOT RUN. The player's screenshot is evidence that 0.7.1 failed runtime acceptance; it is not evidence that 0.7.2 succeeds.
