@@ -139,7 +139,7 @@ end
 
 local function AddKnownRecipes()
     if not (MM.Recipes and type(MM.Recipes.GetAllRecipes) == "function") then return end
-    local ok, recipes = pcall(MM.Recipes.GetAllRecipes)
+    local ok, recipes = pcall(MM.Recipes.GetAllRecipes, MM.db and MM.db.craftingScope or "character")
     if not ok or type(recipes) ~= "table" then return end
 
     for _, recipe in ipairs(recipes) do
@@ -271,7 +271,7 @@ local function AddForeverDBRecipes()
 
     local learned, learnedByOutput = {}, {}
     if MM.Recipes and type(MM.Recipes.GetAllRecipes) == "function" then
-        local ok, recipes = pcall(MM.Recipes.GetAllRecipes)
+        local ok, recipes = pcall(MM.Recipes.GetAllRecipes, MM.db and MM.db.craftingScope or "character")
         if ok and type(recipes) == "table" then
             for _, recipe in ipairs(recipes) do
                 local pid, rid = tonumber(recipe.professionID), tonumber(recipe.recipeID)
@@ -504,7 +504,7 @@ local function AddFutureRecipes()
 
     local learned, learnedByOutput = {}, {}
     if MM.Recipes and type(MM.Recipes.GetAllRecipes) == "function" then
-        local ok, recipes = pcall(MM.Recipes.GetAllRecipes)
+        local ok, recipes = pcall(MM.Recipes.GetAllRecipes, MM.db and MM.db.craftingScope or "character")
         if ok and type(recipes) == "table" then
             for _, recipe in ipairs(recipes) do
                 local pid, rid = tonumber(recipe.professionID), tonumber(recipe.recipeID)
@@ -652,8 +652,7 @@ local function ReadCharacterProfessionSkills(summary)
             apiKnown = true
             for _, professionIndex in pairs({ p1, p2, p3, p4, p5 }) do
                 if professionIndex then
-                    local infoOK, name, _, skillLevel, _, _, _, skillLine = pcall(
-                        _G.GetProfessionInfo, professionIndex)
+                    local infoOK, name, _, skillLevel, _, _, _, skillLine = pcall(_G.GetProfessionInfo, professionIndex)
                     local professionID = infoOK and tonumber(skillLine) or nil
                     if professionID then
                         skills[professionID] = tonumber(skillLevel) or 0
@@ -662,6 +661,21 @@ local function ReadCharacterProfessionSkills(summary)
                 end
             end
         end
+    end
+    if MM.db and MM.db.craftingScope == "account" then
+        -- Current character's live profession list is saved as positive per-character
+        -- evidence, then combined with other characters' saved profession captures.
+        if apiKnown and MM.Recipes and MM.Recipes.SaveCharacterProfessionSnapshot then
+            MM.Recipes.SaveCharacterProfessionSnapshot(skills, names, true)
+        end
+        for _, profession in ipairs(summary and summary.professions or {}) do
+            local pid = tonumber(profession.professionID)
+            if pid then
+                if not skills[pid] then skills[pid] = tonumber(profession.skill) or 0 end
+                names[pid] = names[pid] or profession.name or PROFESSION_NAMES[pid]
+            end
+        end
+        return skills, names, false
     end
     if not apiKnown then
         for _, profession in ipairs(summary and summary.professions or {}) do
@@ -691,7 +705,8 @@ function Data.Refresh()
         borrowedSourceCount = 0,
     }
 
-    local summary = MM.Recipes and MM.Recipes.GetProfessionSummary and MM.Recipes.GetProfessionSummary()
+    local scope = MM.db and MM.db.craftingScope or "character"
+    local summary = MM.Recipes and MM.Recipes.GetProfessionSummary and MM.Recipes.GetProfessionSummary(scope)
     for _, profession in ipairs(summary and summary.professions or {}) do
         if profession.professionID then
             professions[tonumber(profession.professionID)] = profession.name
@@ -701,9 +716,12 @@ function Data.Refresh()
 
     local knownProfessions, nativeNames, apiKnown = ReadCharacterProfessionSkills(summary)
     characterProfessionDataKnown = apiKnown
+    if scope ~= "account" and MM.Recipes and MM.Recipes.SaveCharacterProfessionSnapshot then
+        MM.Recipes.SaveCharacterProfessionSnapshot(knownProfessions, nativeNames, apiKnown)
+    end
     for professionID, skill in pairs(knownProfessions) do
         characterProfessions[professionID] = true
-        characterProfessionSkills[professionID] = skill
+        characterProfessionSkills[professionID] = tonumber(skill) and skill >= 0 and skill or nil
         if nativeNames[professionID] then professions[professionID] = nativeNames[professionID] end
     end
 
@@ -834,6 +852,10 @@ end
 
 function Data.HasAuthoritativeProfessionList()
     return characterProfessionDataKnown == true
+end
+
+function Data.HasAnyProfessionEvidence()
+    return next(characterProfessions) ~= nil
 end
 
 function Data.Matches(itemID, professionID, role)

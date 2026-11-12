@@ -40,6 +40,6 @@ def test_unlearned_source_classes_share_one_player_facing_colour():
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.9"' in CORE
-    assert '## Version: 0.6.9' in TOC
-    assert MANIFEST["version"] == "0.6.9"
+    assert 'MM.version = "0.7.0"' in CORE
+    assert '## Version: 0.7.0' in TOC
+    assert MANIFEST["version"] == "0.7.0"

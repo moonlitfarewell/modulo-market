@@ -41,6 +41,9 @@ local UI = {
     refreshElapsed = 0,
     lowSupplyThreshold = 5,
     auctionHouseButtons = {},
+    craftingScope = "account",
+    tooltipSearchCache = {},
+    tooltipSearchRequested = {},
 }
 MM.MarketUI = UI
 
@@ -77,6 +80,56 @@ local function NormalizeSearchText(value)
     return value:match("^%s*(.-)%s*$") or ""
 end
 
+local searchTooltip
+local function GetTooltipSearchText(itemID)
+    itemID = tonumber(itemID)
+    if not itemID then return "" end
+    local cached = UI.tooltipSearchCache[itemID]
+    if cached ~= nil then return NormalizeSearchText(cached or "") end
+    if not searchTooltip then
+        searchTooltip = CreateFrame("GameTooltip", "ModuloMarketSearchTooltip", UIParent, "GameTooltipTemplate")
+        searchTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    end
+    local loaded = type(_G.GetItemInfo) == "function" and _G.GetItemInfo(itemID) ~= nil
+    if not loaded then
+        if not UI.tooltipSearchRequested[itemID] and (UI.tooltipSearchRequestsThisFrame or 0) < 20 then
+            UI.tooltipSearchRequested[itemID] = true
+            UI.tooltipSearchRequestsThisFrame = (UI.tooltipSearchRequestsThisFrame or 0) + 1
+            local api = _G.C_Item
+            if type(api) == "table" and type(api.RequestLoadItemDataByID) == "function" then
+                pcall(api.RequestLoadItemDataByID, itemID)
+            elseif type(_G.GetItemInfo) == "function" then pcall(_G.GetItemInfo, itemID) end
+        end
+        return nil
+    end
+    UI.tooltipSearchScansThisFrame = (UI.tooltipSearchScansThisFrame or 0) + 1
+    searchTooltip:ClearLines()
+    local ok = false
+    if type(searchTooltip.SetItemByID) == "function" then
+        ok = pcall(searchTooltip.SetItemByID, searchTooltip, itemID)
+    end
+    if not ok and type(_G.GetItemInfo) == "function" then
+        local _, link = _G.GetItemInfo(itemID)
+        if link and type(searchTooltip.SetHyperlink) == "function" then
+            ok = pcall(searchTooltip.SetHyperlink, searchTooltip, link)
+        end
+    end
+    local lines = {}
+    for i = 1, 40 do
+        local left = _G["ModuloMarketSearchTooltipTextLeft" .. i]
+        local right = _G["ModuloMarketSearchTooltipTextRight" .. i]
+        local a = left and left.GetText and left:GetText()
+        local b = right and right.GetText and right:GetText()
+        if a and a ~= "" then lines[#lines + 1] = a end
+        if b and b ~= "" then lines[#lines + 1] = b end
+    end
+    searchTooltip:Hide()
+    local text = table.concat(lines, " ")
+    UI.tooltipSearchCache[itemID] = text ~= "" and text or false
+    UI.tooltipSearchRequested[itemID] = nil
+    return NormalizeSearchText(text)
+end
+
 local function MatchesSearch(item, query, isCrafting)
     if query == "" then return true end
     if string.match(query, "^%d+$") then
@@ -109,6 +162,14 @@ local function MatchesSearch(item, query, isCrafting)
         end
         return values
     end)(), " "))
+    local allNameTokensMatch = true
+    for token in string.gmatch(query, "%S+") do
+        if not string.find(haystack, token, 1, true) then allNameTokensMatch = false; break end
+    end
+    if not allNameTokensMatch then
+        local tooltipText = GetTooltipSearchText(item.itemID)
+        if tooltipText then haystack = haystack .. " " .. tooltipText end
+    end
     for token in string.gmatch(query, "%S+") do
         if not string.find(haystack, token, 1, true) then return false end
     end
@@ -278,7 +339,7 @@ local SetStatus
 
 local function GetAllCraftSources()
     local result, seen = {}, {}
-    local known = MM.Recipes and MM.Recipes.GetAllRecipes and MM.Recipes.GetAllRecipes() or {}
+    local known = MM.Recipes and MM.Recipes.GetAllRecipes and MM.Recipes.GetAllRecipes(UI.craftingScope) or {}
     for _, recipe in ipairs(known or {}) do
         local key = tostring(recipe.professionID or "") .. ":" .. tostring(recipe.recipeID or "")
         if not seen[key] then
@@ -790,8 +851,10 @@ local function StepView()
     if not build then return end
     local source = build.source or {}
     local stop = math.min(build.total, build.index + 249)
+    UI.tooltipSearchRequestsThisFrame = 0
+    UI.tooltipSearchScansThisFrame = 0
     local cut = tonumber(MM.db and MM.db.auctionHouseCutPercent) or 5
-    while build.index <= stop do
+    while build.index <= stop and (UI.tooltipSearchScansThisFrame or 0) < 60 do
         local sourceItem = source[build.index]
         local item = sourceItem
         local isCrafting = build.tab == "crafts"
@@ -1199,6 +1262,62 @@ function UI.RenderRows()
         end
     end
     for i = rowPoolCount + 1, #(UI.visibleRows or {}) do UI.visibleRows[i] = nil end
+    if UI.activeTab == "economics" then
+        local function measured(fs, fallback)
+            local width = fs and type(fs.GetStringWidth) == "function" and fs:GetStringWidth() or nil
+            return math.max(fallback, tonumber(width) or fallback)
+        end
+        local widths = {
+            profit = measured(UI.headerButtons[6] and UI.headerButtons[6].label, 120),
+            total = measured(UI.headerButtons[5] and UI.headerButtons[5].label, 68),
+            change = measured(UI.headerButtons[4] and UI.headerButtons[4].label, 88),
+            depth = measured(UI.headerButtons[3] and UI.headerButtons[3].label, 100),
+            price = measured(UI.headerButtons[2] and UI.headerButtons[2].label, 100),
+        }
+        for i = 1, math.min(UI.visibleCount or rowPoolCount, rowPoolCount) do
+            local row = UI.rows[i]
+            if row and UI.visibleRows[i] then
+                widths.profit = math.max(widths.profit, measured(row.profit, 120))
+                widths.total = math.max(widths.total, measured(row.total, 68))
+                widths.change = math.max(widths.change, measured(row.atPrice, 88))
+                widths.depth = math.max(widths.depth, measured(row.depth, 100))
+                widths.price = math.max(widths.price, measured(row.price, 100))
+            end
+        end
+        widths.profit = math.min(190, widths.profit + 14)
+        widths.total = math.min(100, widths.total + 12)
+        widths.change = math.min(126, widths.change + 12)
+        widths.depth = math.min(150, widths.depth + 12)
+        widths.price = math.min(128, widths.price + 12)
+        local right = 1106
+        local xProfit = right - widths.profit
+        local xTotal = xProfit - 6 - widths.total
+        local xChange = xTotal - 6 - widths.change
+        local xDepth = xChange - 6 - widths.depth
+        local xPrice = xDepth - 6 - widths.price
+        local columns = {
+            { x = 302, w = math.max(90, xPrice - 302 - 6), justify = "LEFT" },
+            { x = xPrice, w = widths.price, justify = "RIGHT" },
+            { x = xDepth, w = widths.depth, justify = "RIGHT" },
+            { x = xChange, w = widths.change, justify = "RIGHT" },
+            { x = xTotal, w = widths.total, justify = "RIGHT" },
+            { x = xProfit, w = widths.profit, justify = "RIGHT" },
+        }
+        for i, column in ipairs(columns) do
+            local header = UI.headerButtons[i]
+            header:ClearAllPoints(); header:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", column.x, -218); header:SetWidth(column.w)
+            header.label:SetWidth(column.w - 8); header.label:SetJustifyH(column.justify)
+        end
+        for _, row in ipairs(UI.rows or {}) do
+            local positions = { 27, xPrice - 298, xDepth - 298, xChange - 298, xTotal - 298 }
+            local fields = { row.name, row.price, row.depth, row.atPrice, row.total }
+            local fieldWidths = { columns[1].w - 12, widths.price, widths.depth, widths.change, widths.total }
+            for j = 1, #fields do
+                fields[j]:ClearAllPoints(); fields[j]:SetPoint("LEFT", row, "LEFT", positions[j], 0); fields[j]:SetWidth(fieldWidths[j])
+            end
+            row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(widths.profit)
+        end
+    end
     UpdateResultRange()
 end
 
@@ -1653,7 +1772,7 @@ SelectItem = function(item)
         end
         local skillSummary
         if hasProfession then
-            skillSummary = "Your skill " .. tostring(currentSkill or "?")
+            skillSummary = (UI.craftingScope == "account" and "Best recorded account skill " or "Your skill ") .. tostring(currentSkill or "?")
                 .. (requiredSkill and (" · Requires " .. tostring(requiredSkill)) or " · Requirement unknown")
         elseif MM.ProfessionData and MM.ProfessionData.HasAuthoritativeProfessionList
             and MM.ProfessionData.HasAuthoritativeProfessionList() then
@@ -2092,6 +2211,8 @@ local function CreateUI()
     frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
     frame:SetClampedToScreen(true)
+    UI.craftingScope = (MM.db and MM.db.craftingScope == "character") and "character" or "account"
+    if type(MM.db) == "table" then MM.db.craftingScope = UI.craftingScope end
     local initialOpacity = ApplyBackgroundOpacity(frame,
         MM.db and MM.db.backgroundOpacity or 0.85)
     frame:SetSize(1460, 850)
@@ -2172,6 +2293,24 @@ local function CreateUI()
     opacityTrack:SetPoint("RIGHT", UI.opacitySlider, "RIGHT", 0, 0)
     opacityTrack:SetHeight(6)
     UI.opacityValue = AddLabel(frame, "", 1036, -43, 48, 18, "GameFontHighlightSmall")
+    UI.craftingScopeLabel = AddLabel(frame, "CRAFTING SCOPE", 1135, -30, 210, 16, "GameFontNormalSmall")
+    UI.craftingScopeDropdown = CreateDropdown(frame, 210, 1135, -48,
+        function() return {
+            { text = "Account Crafting", value = "account", tooltipTitle = "Account Crafting",
+                tooltipText = "Combines known recipes and recorded profession ownership across characters that have been captured on this account. Missing character evidence remains Unknown." },
+            { text = "Character Crafting", value = "character", tooltipTitle = "Character Crafting",
+                tooltipText = "Uses only the currently logged-in character's learned recipes and native profession list." },
+        } end,
+        function() return UI.craftingScope end,
+        function(value)
+            UI.craftingScope = value == "character" and "character" or "account"
+            MM.db.craftingScope = UI.craftingScope
+            if MM.ProfessionData and MM.ProfessionData.Refresh then MM.ProfessionData.Refresh() end
+            UI.economicsByItemID = nil
+            UI.economicsIndexBuild = nil
+            RefreshProfessionOptions()
+            UI.StartViewBuild()
+        end)
     ApplyBackgroundOpacity(frame, initialOpacity)
     UI.opacitySlider:SetValue(initialOpacity)
     UI.opacitySlider:SetScript("OnValueChanged", function(_, value)
@@ -2291,7 +2430,7 @@ local function CreateUI()
     UI.search:SetAutoFocus(false)
     UI.search:SetMaxLetters(80)
     UI.search:SetScript("OnTextChanged", function() UI.StartViewBuild() end)
-    AttachFilterTooltip(UI.search, "Search", "Filter the active tab by item name, recipe name, profession or supported numeric ID.")
+    AttachFilterTooltip(UI.search, "Search", "Search item and recipe names, profession, IDs, reagents and loaded item tooltip descriptions/effects. Tooltip data loads asynchronously.")
 
     RefreshProfessionOptions()
     UI.professionDropdown = CreateDropdown(frame, 230, 32, -284,
@@ -2318,12 +2457,14 @@ local function CreateUI()
                 { text = "Known by you", value = "known",
                     tooltipTitle = "Known recipes",
                     tooltipText = "Recipes recorded from this character's profession windows." },
-                { text = "Learnable", value = "learnable", disabled = not futureReady or not professionStatusReady,
+                { text = "Learnable", value = "learnable", disabled = not futureReady
+                    or not (data and data.HasAnyProfessionEvidence and data.HasAnyProfessionEvidence()),
                     tooltipTitle = "Learnable recipes",
-                    tooltipText = "Recipes for professions you have. Skill requirements are shown in the recipe details." },
-                { text = "Not learnable", value = "unlearnable", disabled = not futureReady or not professionStatusReady,
+                    tooltipText = "Recipes for professions recorded on this character or elsewhere on the account, depending on Crafting Scope." },
+                { text = "Not learnable", value = "unlearnable", disabled = not futureReady or not professionStatusReady
+                    or UI.craftingScope == "account",
                     tooltipTitle = "Not learnable",
-                    tooltipText = "Recipes for professions this character does not currently have." },
+                    tooltipText = "Recipes for professions this character does not currently have. Account scope keeps missing character evidence Unknown." },
             }
         end
         local gatherReady = MM.ProfessionData and MM.ProfessionData.HasGatheringData
@@ -2643,6 +2784,8 @@ local function CreateUI()
         self:SetFrameStrata("DIALOG")
         self:SetToplevel(true)
         if type(self.Raise) == "function" then self:Raise() end
+        UI.craftingScope = (MM.db and MM.db.craftingScope == "character") and "character" or "account"
+        if UI.craftingScopeDropdown and UI.craftingScopeDropdown.RefreshText then UI.craftingScopeDropdown.RefreshText() end
         if MM.ProfessionData and MM.ProfessionData.Refresh then
             MM.ProfessionData.Refresh()
             UI.economicsByItemID = nil
@@ -2668,6 +2811,19 @@ local function CreateUI()
         end
     end)
     UI.frame = frame
+    local tooltipSearchEvents = CreateFrame("Frame")
+    tooltipSearchEvents:RegisterEvent("ITEM_DATA_LOAD_RESULT")
+    tooltipSearchEvents:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+    tooltipSearchEvents:SetScript("OnEvent", function(_, event, itemID, success)
+        itemID = tonumber(itemID)
+        if itemID and UI.tooltipSearchRequested[itemID] then
+            UI.tooltipSearchRequested[itemID] = nil
+            if success == false then UI.tooltipSearchCache[itemID] = false
+            else UI.tooltipSearchCache[itemID] = nil end
+            if UI.search and UI.search:GetText() and UI.search:GetText() ~= "" then UI.StartViewBuild() end
+        end
+    end)
+    UI.tooltipSearchEvents = tooltipSearchEvents
     return frame
 end
 

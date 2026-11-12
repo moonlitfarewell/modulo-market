@@ -284,45 +284,110 @@ function Recipes.ScheduleCapture(force)
     end
 end
 
-function Recipes.GetAllRecipes()
-    local store = GetCharacterStore()
-    local result = {}
-    if not store then return result end
-    for _, professionID in ipairs(SortedNumericKeys(store)) do
-        local profession = store[professionID]
-        for _, recipeID in ipairs(SortedNumericKeys(profession.recipes)) do
-            local recipe = profession.recipes[recipeID]
-            if type(recipe) == "table" and recipe.learned == true then
-                local copy = {}
-                for key, value in pairs(recipe) do copy[key] = value end
-                copy.professionID = profession.professionID
-                copy.professionName = profession.professionName
-                copy.professionSkill = profession.skillLevel
-                copy.professionMaxSkill = profession.maxSkillLevel
-                copy.listComplete = profession.listComplete
-                result[#result + 1] = copy
+function Recipes.SaveCharacterProfessionSnapshot(skills, names, authoritative)
+    if type(MM.db) ~= "table" or authoritative ~= true then return false end
+    local store, key = GetCharacterStore()
+    if not store then return false end
+    store._professionSnapshot = { capturedAt = type(_G.time) == "function" and _G.time() or 0,
+        authoritative = true, professions = {} }
+    for professionID, skill in pairs(skills or {}) do
+        local pid = tonumber(professionID)
+        if pid then
+            store._professionSnapshot.professions[pid] = {
+                professionID = pid, professionName = names and names[pid], skillLevel = tonumber(skill) }
+        end
+    end
+    return true
+end
+
+function Recipes.GetAllRecipes(scope)
+    local result, seen = {}, {}
+    local stores = {}
+    if scope == "account" then
+        local all = MM.db and MM.db.professionRecipesByCharacter or {}
+        for characterKey, store in pairs(all) do
+            if type(store) == "table" then stores[#stores + 1] = { key = characterKey, value = store } end
+        end
+    else
+        local store, key = GetCharacterStore()
+        if store then stores[1] = { key = key, value = store } end
+    end
+    for _, character in ipairs(stores) do
+        local store = character.value
+        for _, professionID in ipairs(SortedNumericKeys(store)) do
+            local profession = store[professionID]
+            if type(profession) == "table" and type(profession.recipes) == "table" then
+                for _, recipeID in ipairs(SortedNumericKeys(profession.recipes)) do
+                    local recipe = profession.recipes[recipeID]
+                    local key = tostring(profession.professionID or professionID) .. ":" .. tostring(recipeID)
+                    if type(recipe) == "table" and recipe.learned == true and not seen[key] then
+                        seen[key] = true
+                        local copy = {}
+                        for field, value in pairs(recipe) do copy[field] = value end
+                        copy.professionID = profession.professionID or tonumber(professionID)
+                        copy.professionName = profession.professionName
+                        copy.professionSkill = profession.skillLevel
+                        copy.professionMaxSkill = profession.maxSkillLevel
+                        copy.listComplete = profession.listComplete
+                        copy.characterKey = character.key
+                        result[#result + 1] = copy
+                    end
+                end
             end
         end
     end
     return result
 end
 
-function Recipes.GetProfessionSummary()
-    local store = GetCharacterStore()
-    local result = { character = CharacterKey(), professions = {}, recipeCount = 0 }
-    if not store then return result end
-    for _, professionID in ipairs(SortedNumericKeys(store)) do
-        local profession = store[professionID]
-        result.professions[#result.professions + 1] = {
-            professionID = profession.professionID,
-            name = profession.professionName,
-            skill = profession.skillLevel,
-            maxSkill = profession.maxSkillLevel,
-            recipeCount = profession.recipeCount or 0,
-            listComplete = profession.listComplete == true,
-        }
-        result.recipeCount = result.recipeCount + (profession.recipeCount or 0)
+function Recipes.GetProfessionSummary(scope)
+    local result = { character = CharacterKey(), professions = {}, recipeCount = 0, accountScope = scope == "account" }
+    local stores = {}
+    if scope == "account" then
+        for key, store in pairs(MM.db and MM.db.professionRecipesByCharacter or {}) do
+            if type(store) == "table" then stores[#stores + 1] = { key = key, value = store } end
+        end
+    else
+        local store = GetCharacterStore()
+        if store then stores[1] = { key = CharacterKey(), value = store } end
     end
+    local merged = {}
+    for _, character in ipairs(stores) do
+        local snapshot = character.value._professionSnapshot
+        if type(snapshot) == "table" and type(snapshot.professions) == "table" then
+            for professionID, captured in pairs(snapshot.professions) do
+                local pid = tonumber(professionID)
+                if pid and type(captured) == "table" then
+                    local target = merged[pid] or { professionID = pid, name = captured.professionName,
+                        skill = tonumber(captured.skillLevel), recipeCount = 0, listComplete = false, characters = {} }
+                    target.characters[character.key] = true
+                    if tonumber(captured.skillLevel) and (not target.skill or captured.skillLevel > target.skill) then
+                        target.skill = tonumber(captured.skillLevel)
+                    end
+                    merged[pid] = target
+                end
+            end
+        end
+        for _, professionID in ipairs(SortedNumericKeys(character.value)) do
+            local profession = character.value[professionID]
+            if type(profession) == "table" and type(profession.recipes) == "table" then
+                local pid = tonumber(profession.professionID or professionID)
+                if pid then
+                    local target = merged[pid] or { professionID = pid, name = profession.professionName,
+                        skill = tonumber(profession.skillLevel), maxSkill = tonumber(profession.maxSkillLevel),
+                        recipeCount = 0, listComplete = false, characters = {} }
+                    target.characters[character.key] = true
+                    target.recipeCount = math.max(target.recipeCount, tonumber(profession.recipeCount) or 0)
+                    if tonumber(profession.skillLevel) and (not target.skill or profession.skillLevel > target.skill) then
+                        target.skill = tonumber(profession.skillLevel)
+                    end
+                    target.listComplete = target.listComplete or profession.listComplete == true
+                    merged[pid] = target
+                end
+            end
+        end
+    end
+    for pid, entry in pairs(merged) do result.professions[#result.professions + 1] = entry; result.recipeCount = result.recipeCount + entry.recipeCount end
+    table.sort(result.professions, function(a,b) return a.professionID < b.professionID end)
     return result
 end
 

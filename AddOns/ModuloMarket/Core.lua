@@ -3,7 +3,7 @@ local MM = _G.ModuloMarket or {}
 _G.ModuloMarket = MM
 
 MM.name = ADDON_NAME or "ModuloMarket"
-MM.version = "0.6.9"
+MM.version = "0.7.0"
 MM.debugPrefix = "|cff66ccffModuloMarket:|r "
 
 local function Print(message)
@@ -47,6 +47,9 @@ local function InitializeDB()
     end
     MM.db = _G.ModuloMarketDB
     MM.db.debug = MM.db.debug ~= false
+    if MM.db.craftingScope ~= "character" and MM.db.craftingScope ~= "account" then
+        MM.db.craftingScope = "account"
+    end
 end
 
 local loader = CreateFrame("Frame")

@@ -1,5 +1,16 @@
-# Modulo Market 0.6.9
+# Modulo Market 0.7.0
 **Current player milestone:** My Crafts and All Crafts are consolidated into Crafts. Recipe status is character-aware: known by you (green), learnable through a profession you have (gold), not learnable because the native profession list confirms you lack the profession (red), or neutral Unknown when ownership cannot be established. Materials shares the same status filters and includes the core leather/hide Skinning tiers. Economics is now a distinct market-analysis view with cheapest price, craft cost, saved price movement, total units, best craft profit and relationship filters. Drop/loot and vendor-origin filters remain disabled because the available provider records describe recipe acquisition, not a complete item-origin catalogue. Forever runtime acceptance is NOT RUN.
+
+
+
+## Current 0.7.0 milestone — tooltip search, account/character crafting scope and Economics layout
+
+- Search now extends beyond names and IDs to loaded item tooltip descriptions/effects. Tooltip text is cached per item, with bounded per-frame inspections and asynchronous item-data requests; item-data completion restarts the active search. Missing tooltip data is not treated as an authoritative no-match until loaded.
+- Added a persistent Account Crafting / Character Crafting selector in the unused top-right header space. Account mode unions learned recipes and positive profession evidence across characters saved in `professionRecipesByCharacter`; absent evidence for any other character remains Unknown, never Not learnable. Character mode uses only the logged-in character's captured recipes and native profession list.
+- Current character native profession snapshots are saved when the API list is readable. Existing character recipe records remain keyed by realm and character; no recipe data is migrated or relabelled.
+- Economics right-hand columns now size from their visible header/value widths and are anchored from the right edge; Item receives the remaining centre-panel width.
+- No API requests, ForeverDB dataset, market snapshot, price formula, or parent MODULO dependency changed.
+- Offline source/harness tests and Lua syntax checks only. Forever runtime acceptance is NOT RUN; tooltip API support, asynchronous search refresh, character switching, account union, and responsive column sizing require in-game validation.
 
 See `docs/MODULOMARKET-PROFESSION-STATUS-AND-ECONOMICS-0.6.9.md` for scope and acceptance.
 See `docs/MODULOMARKET-ROW-STATUS-PRESENTATION-0.6.8.md` for scope and acceptance.
