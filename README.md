@@ -1,4 +1,4 @@
-# Modulo Market 0.6.0
+# Modulo Market 0.6.1
 
 **Current player milestone:** Dark Foundry visual polish (0.5.9): real item icons in virtualized rows and reagent details; stronger selected-item identity and evidence badges; richer panel headers, alternating row surfaces and more legible table typography; all seven tab data models, market actions and baseline/current-build safeguards retained.
 
@@ -15,6 +15,16 @@ Market 0.5.3 includes a reviewed ForeverDB recipe dataset from client build `1.6
  It depends on `Modulo`; MODULO does not depend on Market. Auctionator and ProfessionMaster remain independent addons and are not runtime dependencies.
 
 
+
+
+## Current 0.6.1 milestone — ForeverDB 1.60.1.70888 data refresh
+
+- Replaced the active compact runtime catalogue with a freshly normalized ForeverDB dataset for client build `1.60.1.70888`; retained the previous `1.60.1.70862` canonical file unchanged for provenance.
+- The new capture contains the same 12 professions and 2,493 recipe IDs; no recipe IDs were added or removed. A field-level comparison found 200 changed records: 185 acquisition-source records, 28 provider-metadata records and one skill record (overlapping categories).
+- Blacksmithing Coarse Grinding Stone (recipe 3326) now uses captured green 70 / grey 90 thresholds. Its orange threshold remains Classic-borrowed and is not promoted. Its old hotfix review flag is retired for the now-refreshed skill-up field.
+- Three unchanged hotfix-linked records remain flagged for review: Journeyman Campfire, Minor Arcane Elixir and Iron Grenade.
+- Exact current-client recipe data does not relax the independent exact-build auction snapshot gate. Old market prices remain withheld until a 1.60.1.70888 snapshot is available.
+- Forever runtime acceptance is NOT RUN. See `docs/FOREVERDB-DATA-REVIEW-2026-11-12.md`.
 
 ## Current 0.6.0 milestone — Dark Foundry workspace completion
 

@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.0"' in CORE
-    assert '## Version: 0.6.0' in TOC
-    assert MANIFEST["version"] == "0.6.0"
+    assert 'MM.version = "0.6.1"' in CORE
+    assert '## Version: 0.6.1' in TOC
+    assert MANIFEST["version"] == "0.6.1"
 
 
 def test_each_craft_tab_remembers_selection_and_defaults_to_first_result():

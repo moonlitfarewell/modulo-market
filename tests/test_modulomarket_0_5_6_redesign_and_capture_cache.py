@@ -51,6 +51,6 @@ def test_profession_capture_caches_unchanged_recipe_lists():
 
 
 def test_patch_version_and_manifest_are_0_5_7():
-    assert 'MM.version = "0.6.0"' in CORE
-    assert '## Version: 0.6.0' in TOC
-    assert MANIFEST["version"] == "0.6.0"
+    assert 'MM.version = "0.6.1"' in CORE
+    assert '## Version: 0.6.1' in TOC
+    assert MANIFEST["version"] == "0.6.1"

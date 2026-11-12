@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / 'MANIFEST.json').read_text())
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.0"' in CORE
-    assert '## Version: 0.6.0' in TOC
-    assert MANIFEST['version'] == '0.6.0'
+    assert 'MM.version = "0.6.1"' in CORE
+    assert '## Version: 0.6.1' in TOC
+    assert MANIFEST['version'] == '0.6.1'
 
 
 def test_real_client_item_icons_are_resolved_and_cached_only_when_known():

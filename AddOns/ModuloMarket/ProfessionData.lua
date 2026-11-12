@@ -32,13 +32,11 @@ local futureProvider = {
     borrowedSourceCount = 0,
 }
 
--- Targeted review watch from the November 10, 2026 Forever hotfix report:
--- https://allthings.how/wow-forever-hotfixes-patch-notes/
--- These are advisory field-level flags, not proof that the whole recipe is stale.
--- Client-file comparison: https://theforeverera.com/en/builds/70862-70888/
--- That comparison does not rule out server-side hotfixes.
+-- Targeted review watch retained from the November 10, 2026 Forever hotfix report.
+-- The 1.60.1.70888 ForeverDB capture now directly supplies Coarse Grinding Stone's
+-- updated skill-up thresholds (recipe 3326), so that resolved watch was retired.
+-- Remaining entries are unchanged in the new capture and stay advisory field-level flags.
 local FOREVERDB_HOTFIX_WATCH = {
-    [3326] = { field = "skill-up range", note = "Blacksmithing skill-up range was reported changed; verify thresholds." },
     [1283400] = { field = "placement requirement", note = "Journeyman Campfire placement requirement was reported changed; verify nearby/tool requirements." },
     [1245246] = { field = "sell price", note = "Minor Arcane Elixir sell price was reported changed; use current live item pricing." },
     [3962] = { field = "vendor price", note = "Iron Grenade vendor price was reported changed; verify vendor pricing before using it." },

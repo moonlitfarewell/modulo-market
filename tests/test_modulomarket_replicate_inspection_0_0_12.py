@@ -61,10 +61,10 @@ def test_inspection_never_mutates_last_known_good_snapshot():
 
 
 def test_version_agreement():
-    assert re.search(r"^## Version: 0\.6\.0$", TOC.read_text(), re.M)
-    assert 'MM.version = "0.6.0"' in CORE.read_text()
+    assert re.search(r"^## Version: 0\.6\.1$", TOC.read_text(), re.M)
+    assert 'MM.version = "0.6.1"' in CORE.read_text()
     manifest = json.loads(MANIFEST.read_text())
-    assert manifest["version"] == "0.6.0"
+    assert manifest["version"] == "0.6.1"
     assert "tests/test_modulomarket_replicate_inspection_0_0_12.py" in manifest["files"]
     assert manifest["parentSourceBundle"] == "MODULO-Project-Source-1.0.48.zip"
     assert manifest["parentProjectFileId"] == "file_000000001a2482128af00913b054f6f9"

@@ -8,7 +8,7 @@ _G.ModuloMarket = {
     },
     GatheringItems = {},
 }
-_G.GetBuildInfo = function() return "1.60.1", "70862", "test", 16001 end
+_G.GetBuildInfo = function() return "1.60.1", "70888", "test", 16001 end
 _G.CreateFrame = function()
     return {
         RegisterEvent = function() end,
@@ -47,10 +47,10 @@ dofile(professionPath)
 local data = assert(_G.ModuloMarket.ProfessionData)
 local status = data.GetFutureProviderStatus()
 assert(status.available == true, "matching ForeverDB build should load")
-assert(status.datasetBuild == "1.60.1.70862", "dataset build must be preserved")
-assert(status.currentBuild == "1.60.1.70862", "client build must be composed exactly")
+assert(status.datasetBuild == "1.60.1.70888", "dataset build must be preserved")
+assert(status.currentBuild == "1.60.1.70888", "client build must be composed exactly")
 assert(data.IsMarketSnapshotCompatible({
-    clientVersion = "1.60.1", clientBuild = "70862",
+    clientVersion = "1.60.1", clientBuild = "70888",
 }) == true, "market snapshots from the exact client build should be compatible")
 assert(data.IsMarketSnapshotCompatible({
     clientVersion = "1.60.1", clientBuild = "70755",
@@ -95,23 +95,23 @@ local professions = data.GetProfessions()
 assert(#professions == 12, "all 12 professions should be exposed")
 assert(data.GetFutureProviderStatus().dataSource == "ForeverDB.net", "provider identity should be exposed")
 
-_G.GetBuildInfo = function() return "1.60.1", "70888", "test", 16001 end
+_G.GetBuildInfo = function() return "1.60.1", "70889", "test", 16001 end
 data.Refresh()
 local baseline = data.GetFutureProviderStatus()
 assert(baseline.available == true, "older build dataset must remain available as a labelled baseline")
-assert(baseline.datasetBuild == "1.60.1.70862", "baseline provenance must not be relabelled")
-assert(baseline.currentBuild == "1.60.1.70888", "current client build must remain visible")
+assert(baseline.datasetBuild == "1.60.1.70888", "baseline provenance must not be relabelled")
+assert(baseline.currentBuild == "1.60.1.70889", "current client build must remain visible")
 assert(baseline.dataBuildMatchesClient == false, "different build must be labelled as a baseline, not a match")
-assert(baseline.reviewWatchCount == 4, "only the four hotfix-linked recipes should be flagged for review")
+assert(baseline.reviewWatchCount == 3, "only the three unresolved hotfix-linked recipes should be flagged for review")
 assert(#data.GetAllFutureRecipes() > 0, "baseline recipe candidates must remain available on a newer client")
 local freshness = {}
 for _, recipe in ipairs(data.GetAllFutureRecipes()) do
     freshness[recipe.recipeID] = recipe.freshnessStatus
     if recipe.recipeID == 3326 then
-        assert(recipe.freshnessField == "skill-up range", "Blacksmithing hotfix must be scoped to its reported field")
+        assert(recipe.freshnessStatus == "baseline", "refreshed Coarse Grinding Stone thresholds should no longer be flagged")
     end
 end
-assert(freshness[3326] == "review", "Coarse Grinding Stone should be in the targeted review watch")
+assert(freshness[3326] == "baseline", "Coarse Grinding Stone skill-up watch should be resolved by the 70888 capture")
 assert(freshness[1283400] == "review", "Journeyman Campfire should be in the targeted review watch")
 assert(freshness[1245246] == "review", "Minor Arcane Elixir should be in the targeted review watch")
 assert(freshness[3962] == "review", "Iron Grenade should be in the targeted review watch")
@@ -121,10 +121,10 @@ for _, recipe in ipairs(data.GetAllFutureRecipes()) do
 end
 assert(hasUnrelatedBaseline, "unrelated recipes must remain baseline rather than review/unknown")
 assert(data.IsMarketSnapshotCompatible({
-    clientVersion = "1.60.1", clientBuild = "70888",
+    clientVersion = "1.60.1", clientBuild = "70889",
 }) == true, "market snapshots from the current client build should remain compatible")
 assert(data.IsMarketSnapshotCompatible({
-    clientVersion = "1.60.1", clientBuild = "70862",
-}) == false, "old market snapshots must still be blocked for current-client recipe economics")
+    clientVersion = "1.60.1", clientBuild = "70888",
+}) == false, "market snapshots from the previous recipe baseline must be blocked for current-client recipe economics")
 
 print("ModuloMarket baseline-plus-delta provider harness passed")

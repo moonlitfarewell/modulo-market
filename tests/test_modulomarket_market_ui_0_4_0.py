@@ -10,7 +10,7 @@ TOC = (ADDON / "ModuloMarket.toc").read_text()
 
 
 def test_window_front_accessibility_and_escape():
-    assert re.search(r"^## Version: 0\.6\.0$", TOC, re.M)
+    assert re.search(r"^## Version: 0\.6\.1$", TOC, re.M)
     assert 'frame:SetFrameStrata("DIALOG")' in UI
     assert 'frame:SetFrameStrata("TOOLTIP")' not in UI
     assert "frame:SetToplevel(true)" in UI
@@ -77,7 +77,7 @@ def test_gathering_uses_explicit_item_ids_and_only_character_known_gathering_pro
 
 def test_manifest_inventory_matches_files():
     manifest = json.loads((ROOT / "MANIFEST.json").read_text())
-    assert manifest["version"] == "0.6.0"
+    assert manifest["version"] == "0.6.1"
     actual = sorted(
         p.relative_to(ROOT).as_posix()
         for p in ROOT.rglob("*")
