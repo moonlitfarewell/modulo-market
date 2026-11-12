@@ -9,7 +9,7 @@ TOC = (ROOT / "AddOns/ModuloMarket/ModuloMarket.toc").read_text()
 
 
 def test_020_versions_and_native_blizzard_templates():
-    assert re.search(r"^## Version: 0\.6\.1$", TOC, re.M)
+    assert re.search(r"^## Version: 0\.6\.2$", TOC, re.M)
     assert 'BasicFrameTemplateWithInset' in UI
     assert 'UIPanelButtonTemplate' in UI
     assert 'InputBoxTemplate' in UI
@@ -38,7 +38,7 @@ def test_opening_market_never_synchronously_traverses_all_saved_rows():
 
 def test_render_path_uses_only_virtualized_visible_rows_and_no_item_api_calls():
     render = UI[UI.index("function UI.RenderRows()"):UI.index("function UI.RenderHistory()")]
-    assert "for i = 1, UI.visibleCount do" in render
+    assert "math.min(UI.visibleCount or rowPoolCount, rowPoolCount)" in render
     assert "GetItemNameByID" not in render
     assert "RequestLoadItemDataByID" not in render
     assert "GetItemInfo" not in render
@@ -86,7 +86,7 @@ def test_manual_cost_entry_is_removed_from_player_ui():
 
 def test_audit_and_manifest_inventory_are_complete():
     manifest = json.loads((ROOT / "MANIFEST.json").read_text())
-    assert manifest["version"] == "0.6.1"
+    assert manifest["version"] == "0.6.2"
     assert "MODULOMARKET-RUNTIME-AUDIT-0.4.0.md" in manifest["files"]
     assert "tests/market_ui_0_2_0_harness.lua" in manifest["files"]
     actual = sorted(

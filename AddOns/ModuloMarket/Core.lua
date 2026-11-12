@@ -3,7 +3,7 @@ local MM = _G.ModuloMarket or {}
 _G.ModuloMarket = MM
 
 MM.name = ADDON_NAME or "ModuloMarket"
-MM.version = "0.6.1"
+MM.version = "0.6.2"
 MM.debugPrefix = "|cff66ccffModuloMarket:|r "
 
 local function Print(message)

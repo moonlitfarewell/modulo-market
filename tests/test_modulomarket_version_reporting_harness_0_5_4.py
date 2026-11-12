@@ -15,4 +15,4 @@ def test_version_reporting_runtime_model():
          str(ROOT / "AddOns/ModuloMarket/Core.lua")],
         check=True, capture_output=True, text=True,
     )
-    assert "ModuloMarket 0.6.1 version reporting harness passed" in result.stdout
+    assert "ModuloMarket 0.6.2 version reporting harness passed" in result.stdout

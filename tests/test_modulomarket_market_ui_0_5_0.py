@@ -13,9 +13,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_050_version_and_separate_child_boundary():
-    assert 'MM.version = "0.6.1"' in CORE
-    assert re.search(r"^## Version: 0\.6\.1$", TOC, re.M)
-    assert MANIFEST["version"] == "0.6.1"
+    assert 'MM.version = "0.6.2"' in CORE
+    assert re.search(r"^## Version: 0\.6\.2$", TOC, re.M)
+    assert MANIFEST["version"] == "0.6.2"
     assert "## Dependencies: Modulo" in TOC
     assert "ModuloMarket" not in (ROOT / "AddOns/Modulo/Modulo.toc").read_text() if (ROOT / "AddOns/Modulo/Modulo.toc").exists() else True
 
@@ -107,7 +107,7 @@ def test_050_tab_tooltips_are_raised_above_market():
 
 def test_050_catalogue_render_stays_virtualized_and_incremental():
     render = UI[UI.index("function UI.RenderRows()"):UI.index("function UI.RenderHistory()")]
-    assert "for i = 1, UI.visibleCount do" in render
+    assert "math.min(UI.visibleCount or rowPoolCount, rowPoolCount)" in render
     assert "RequestLoadItemDataByID" not in render
     assert "GetItemInfo" not in render
     assert "local budget = 500" in UI

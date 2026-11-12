@@ -18,9 +18,9 @@ def test_three_column_workspace_retains_seven_tabs_and_market_toolbar():
         assert tab in UI
     assert 'AddButton(frame, "Update Full Market"' in UI
     assert 'AddButton(frame, "Browse Scan"' in UI
-    assert 'FILTERS — ALL ITEMS' in UI
+    assert 'Filters — All Items' in UI
     assert 'Selected item' in UI
-    assert 'centerPanel:SetSize(780, 650)' in UI
+    assert 'centerPanel:SetSize(834, 650)' in UI
 
 
 def test_all_crafts_keeps_full_economic_columns():
@@ -51,6 +51,6 @@ def test_profession_capture_caches_unchanged_recipe_lists():
 
 
 def test_patch_version_and_manifest_are_0_5_7():
-    assert 'MM.version = "0.6.1"' in CORE
-    assert '## Version: 0.6.1' in TOC
-    assert MANIFEST["version"] == "0.6.1"
+    assert 'MM.version = "0.6.2"' in CORE
+    assert '## Version: 0.6.2' in TOC
+    assert MANIFEST["version"] == "0.6.2"

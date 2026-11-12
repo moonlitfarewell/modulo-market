@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.1"' in CORE
-    assert '## Version: 0.6.1' in TOC
-    assert MANIFEST["version"] == "0.6.1"
+    assert 'MM.version = "0.6.2"' in CORE
+    assert '## Version: 0.6.2' in TOC
+    assert MANIFEST["version"] == "0.6.2"
 
 
 def test_each_craft_tab_remembers_selection_and_defaults_to_first_result():
@@ -51,8 +51,8 @@ def test_selected_recipe_inspector_contains_full_market_and_acquisition_context(
 def test_switching_from_craft_to_noncraft_restores_market_column_positions():
     assert 'row.price:SetPoint("LEFT", row, "LEFT", 212, 0)' in UI
     assert 'row.depth:SetPoint("LEFT", row, "LEFT", 322, 0)' in UI
-    assert 'row.atPrice:SetPoint("LEFT", row, "LEFT", 432, 0)' in UI
-    assert 'row.total:SetPoint("LEFT", row, "LEFT", 519, 0)' in UI
+    assert 'row.atPrice:SetPoint("LEFT", row, "LEFT", 478, 0)' in UI
+    assert 'row.total:SetPoint("LEFT", row, "LEFT", 554, 0)' in UI
 
 
 def test_all_tab_switches_restore_their_own_column_geometry():
@@ -60,4 +60,4 @@ def test_all_tab_switches_restore_their_own_column_geometry():
     assert 'local materialColumns = {' in UI
     assert 'local marketColumns = {' in UI
     assert 'row.depth:SetPoint("LEFT", row, "LEFT", 322, 0)' in UI
-    assert 'row.profit:SetPoint("RIGHT", row, "RIGHT", 519, 0)' in UI
+    assert 'row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0)' in UI

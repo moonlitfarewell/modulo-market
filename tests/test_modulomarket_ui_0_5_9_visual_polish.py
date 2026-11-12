@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / 'MANIFEST.json').read_text())
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.1"' in CORE
-    assert '## Version: 0.6.1' in TOC
-    assert MANIFEST['version'] == '0.6.1'
+    assert 'MM.version = "0.6.2"' in CORE
+    assert '## Version: 0.6.2' in TOC
+    assert MANIFEST['version'] == '0.6.2'
 
 
 def test_real_client_item_icons_are_resolved_and_cached_only_when_known():
@@ -46,8 +46,8 @@ def test_reagent_lines_use_actual_item_icons():
 def test_panel_header_plates_and_full_workspace_are_retained():
     assert 'local function AddPanelHeader' in UI
     assert 'AddPanelHeader(18, -158, 260)' in UI
-    assert 'AddPanelHeader(286, -158, 780)' in UI
-    assert 'AddPanelHeader(1072, -158, 354)' in UI
+    assert 'AddPanelHeader(286, -158, 834)' in UI
+    assert 'AddPanelHeader(1126, -158, 300)' in UI
     assert 'All Items' in UI and 'Economics' in UI and 'My Crafts' in UI
     assert 'All Crafts' in UI and 'Materials' in UI and 'Low Supply' in UI and 'History' in UI
 

@@ -808,6 +808,7 @@ local function StepView()
                 item.borrowedSkill = sourceItem.borrowedSkill
                 item.borrowedSources = sourceItem.borrowedSources
                 item.sourceUnknown = sourceItem.sourceUnknown
+                item.skillThresholds = sourceItem.skillThresholds
             end
         elseif build.tab == "economics" and type(item) == "table" then
             item.economics = UI.economicsByItemID and UI.economicsByItemID[tonumber(item.itemID)]
@@ -1067,13 +1068,19 @@ local function StepRankSort()
 end
 
 function UI.RenderRows()
-    if not UI.rows then return end
+    -- Item-data callbacks may arrive while ProfessionMaster is initializing,
+    -- before CreateUI has populated the virtual row pool. An empty table is
+    -- truthy in Lua, so checking only UI.rows is not sufficient.
+    if type(UI.rows) ~= "table" or not UI.rows[1] or not UI.scrollChild then return end
+    local rowPoolCount = #UI.rows
+    if rowPoolCount == 0 then return end
     local startIndex = math.floor((UI.listOffset or 0) / UI.rowHeight) + 1
     local isCrafting = UI.activeTab == "crafting" or UI.activeTab == "allcrafts"
-    for i = 1, UI.visibleCount do
+    for i = 1, math.min(UI.visibleCount or rowPoolCount, rowPoolCount) do
         local index = startIndex + i - 1
         local item = UI.viewRows[index]
         local button = UI.rows[i]
+        if button then
         button:ClearAllPoints()
         button:SetPoint("TOPLEFT", UI.scrollChild, "TOPLEFT", 0, -((index - 1) * UI.rowHeight))
         UI.visibleRows[i] = item
@@ -1164,7 +1171,9 @@ function UI.RenderRows()
             if button.rowShade then button.rowShade:Hide() end
             UI.visibleRows[i] = nil
         end
+        end
     end
+    for i = rowPoolCount + 1, #(UI.visibleRows or {}) do UI.visibleRows[i] = nil end
     UpdateResultRange()
 end
 
@@ -1238,6 +1247,24 @@ local function SetDetailEconomics(text)
     end
 end
 
+local function AppendSkillThresholdLines(lines, thresholds)
+    if type(thresholds) ~= "table" then return end
+    local evidence = thresholds.other_threshold_evidence or thresholds.threshold_evidence
+    local parts = {}
+    for _, key in ipairs({ "orange", "yellow", "green", "grey" }) do
+        local value = tonumber(thresholds[key])
+        if value then parts[#parts + 1] = key:sub(1, 1):upper() .. key:sub(2) .. " " .. value end
+    end
+    if #parts > 0 and evidence == "FOREVER_CLIENT" then
+        lines[#lines + 1] = "Skill-up colours (Forever client data; not trainer requirements): "
+            .. table.concat(parts, " · ")
+    end
+    local classicOrange = tonumber(thresholds.orange_classic)
+    if classicOrange then
+        lines[#lines + 1] = "Classic orange " .. classicOrange .. " (borrowed; not Forever-confirmed)"
+    end
+end
+
 local function RenderCraftDetail(item)
     local recipe = item and item.recipeData
     if not recipe then
@@ -1269,6 +1296,7 @@ local function RenderCraftDetail(item)
         lines[#lines + 1] = "Recorded learning skill: " .. tostring(item.requiredSkill)
             .. (item.borrowedSkill and " (borrowed; unconfirmed)" or "")
     end
+    AppendSkillThresholdLines(lines, recipe.skillThresholds or item.skillThresholds)
     lines[#lines + 1] = "Acquisition: " .. (sourceStatus == "known" and "Known by this character"
         or (sourceStatus == "future" and "Recorded source; not learned"
         or (sourceStatus == "borrowed" and "Classic-borrowed; Forever unconfirmed" or "Unknown / not established")))
@@ -1452,6 +1480,7 @@ local function RenderMarketRecipeContext(item)
                 and (" · REVIEW: " .. tostring(future.freshnessField or "hotfix-linked field")) or ""
             lines[#lines + 1] = tostring(future.recipeName) .. " · "
                 .. tostring(future.professionName or "Profession") .. skill .. note .. freshness
+            AppendSkillThresholdLines(lines, future.skillThresholds)
         end
         if #professionData.unknownFutureCrafts > 0 then
             lines[#lines + 1] = string.format("+ %d additional unlearned recipes have unknown acquisition sources",
@@ -1754,6 +1783,9 @@ local function SetTab(tab)
     UI.craftFilters.reviewOnly = savedCraft.reviewOnly == true
     UI.craftFilters.hideLowProfit = savedCraft.hideLowProfit == true
     if UI.search then UI.search:SetText(saved.search or "") end
+    if UI.centerHeading then UI.centerHeading:SetText(tab == "allcrafts" and "All Crafts"
+        or (tab == "crafting" and "My Crafts" or (tab == "market" and "All Items"
+        or (tab == "low" and "Low Supply" or tab:gsub("^%l", string.upper))))) end
     if UI.filterHeading then UI.filterHeading:SetText("Filters — " .. (tab == "allcrafts" and "All Crafts"
         or (tab == "crafting" and "My Crafts" or (tab == "market" and "All Items"
         or (tab == "low" and "Low Supply" or (tab:gsub("^%l", string.upper))))))) end
@@ -1800,12 +1832,12 @@ local function SetTab(tab)
     end
     if craftTab then
         local craftColumns = {
-            { x = 302, w = 190, justify = "LEFT" },
-            { x = 500, w = 150, justify = "RIGHT" },
-            { x = 658, w = 96, justify = "RIGHT" },
-            { x = 758, w = 70, justify = "RIGHT" },
-            { x = 832, w = 70, justify = "RIGHT" },
-            { x = 906, w = 140, justify = "RIGHT" },
+            { x = 302, w = 205, justify = "LEFT" },
+            { x = 510, w = 166, justify = "LEFT" },
+            { x = 680, w = 96, justify = "RIGHT" },
+            { x = 782, w = 70, justify = "RIGHT" },
+            { x = 858, w = 70, justify = "RIGHT" },
+            { x = 936, w = 170, justify = "RIGHT" },
         }
         for i, column in ipairs(craftColumns) do
             local header = UI.headerButtons[i]
@@ -1813,20 +1845,20 @@ local function SetTab(tab)
             header.label:SetWidth(column.w - 14); header.label:SetJustifyH(column.justify)
         end
         for _, row in ipairs(UI.rows or {}) do
-            row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(185)
-            row.depth:ClearAllPoints(); row.depth:SetPoint("RIGHT", row, "RIGHT", -396, 0); row.depth:SetWidth(150)
-            row.price:ClearAllPoints(); row.price:SetPoint("RIGHT", row, "RIGHT", -292, 0); row.price:SetWidth(96)
-            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("RIGHT", row, "RIGHT", -218, 0); row.atPrice:SetWidth(70)
-            row.total:ClearAllPoints(); row.total:SetPoint("RIGHT", row, "RIGHT", -144, 0); row.total:SetWidth(70)
-            row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(136)
+            row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(180)
+            row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 212, 0); row.depth:SetWidth(160)
+            row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", 382, 0); row.price:SetWidth(96)
+            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", 484, 0); row.atPrice:SetWidth(70)
+            row.total:ClearAllPoints(); row.total:SetPoint("LEFT", row, "LEFT", 560, 0); row.total:SetWidth(70)
+            row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(170)
         end
     elseif tab == "materials" then
         local materialColumns = {
             { x = 302, w = 205, justify = "LEFT" },
             { x = 510, w = 105, justify = "RIGHT" },
-            { x = 620, w = 105, justify = "RIGHT" },
-            { x = 730, w = 82, justify = "RIGHT" },
-            { x = 817, w = 145, justify = "RIGHT" },
+            { x = 620, w = 150, justify = "RIGHT" },
+            { x = 776, w = 72, justify = "RIGHT" },
+            { x = 852, w = 254, justify = "RIGHT" },
         }
         for i, column in ipairs(materialColumns) do
             local header = UI.headerButtons[i]
@@ -1837,19 +1869,19 @@ local function SetTab(tab)
         for _, row in ipairs(UI.rows or {}) do
             row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(182)
             row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", 212, 0); row.price:SetWidth(105)
-            row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 322, 0); row.depth:SetWidth(105)
-            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", 432, 0); row.atPrice:SetWidth(82)
+            row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 322, 0); row.depth:SetWidth(150)
+            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", 478, 0); row.atPrice:SetWidth(72)
             row.total:Hide()
-            row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", 519, 0); row.profit:SetWidth(145)
+            row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(254)
         end
     else
         local marketColumns = {
             { x = 302, w = 205, justify = "LEFT" },
             { x = 510, w = 105, justify = "RIGHT" },
-            { x = 620, w = 105, justify = "RIGHT" },
-            { x = 730, w = 82, justify = "RIGHT" },
-            { x = 817, w = 82, justify = "RIGHT" },
-            { x = 904, w = 145, justify = "RIGHT" },
+            { x = 620, w = 150, justify = "RIGHT" },
+            { x = 776, w = 72, justify = "RIGHT" },
+            { x = 852, w = 72, justify = "RIGHT" },
+            { x = 930, w = 176, justify = "RIGHT" },
         }
         for i, column in ipairs(marketColumns) do
             local header = UI.headerButtons[i]
@@ -1860,10 +1892,10 @@ local function SetTab(tab)
             row.total:Show()
             row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(182)
             row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", 212, 0); row.price:SetWidth(105)
-            row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 322, 0); row.depth:SetWidth(105)
-            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", 432, 0); row.atPrice:SetWidth(82)
-            row.total:ClearAllPoints(); row.total:SetPoint("LEFT", row, "LEFT", 519, 0); row.total:SetWidth(82)
-            row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", 606, 0); row.profit:SetWidth(145)
+            row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 322, 0); row.depth:SetWidth(150)
+            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", 478, 0); row.atPrice:SetWidth(72)
+            row.total:ClearAllPoints(); row.total:SetPoint("LEFT", row, "LEFT", 554, 0); row.total:SetWidth(72)
+            row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(176)
         end
     end
     if UI.roleLabel then
@@ -2085,11 +2117,11 @@ local function CreateUI()
     local centerPanel = frame:CreateTexture(nil, "BACKGROUND")
     centerPanel:SetColorTexture(0.025, 0.026, 0.028, 0.90)
     centerPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 286, -158)
-    centerPanel:SetSize(780, 650)
+    centerPanel:SetSize(834, 650)
     local rightPanel = frame:CreateTexture(nil, "BACKGROUND")
     rightPanel:SetColorTexture(0.035, 0.032, 0.028, 0.92)
-    rightPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 1072, -158)
-    rightPanel:SetSize(354, 650)
+    rightPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 1126, -158)
+    rightPanel:SetSize(300, 650)
     local function AddPanelBorder(x, y, width, height)
         local color = { 0.43, 0.32, 0.17, 0.72 }
         local top = frame:CreateTexture(nil, "BORDER")
@@ -2102,8 +2134,8 @@ local function CreateUI()
         right:SetColorTexture(unpack(color)); right:SetPoint("TOPLEFT", frame, "TOPLEFT", x + width, y); right:SetSize(1, height)
     end
     AddPanelBorder(18, -158, 260, 650)
-    AddPanelBorder(286, -158, 780, 650)
-    AddPanelBorder(1072, -158, 354, 650)
+    AddPanelBorder(286, -158, 834, 650)
+    AddPanelBorder(1126, -158, 300, 650)
     local function AddPanelHeader(x, y, width)
         local plate = frame:CreateTexture(nil, "ARTWORK")
         plate:SetColorTexture(0.19, 0.145, 0.075, 0.48)
@@ -2115,9 +2147,10 @@ local function CreateUI()
         rule:SetSize(width - 2, 1)
     end
     AddPanelHeader(18, -158, 260)
-    AddPanelHeader(286, -158, 780)
-    AddPanelHeader(1072, -158, 354)
-    UI.filterHeading = AddLabel(frame, "FILTERS — ALL ITEMS", 30, -170, 230, 24, "GameFontNormalLarge")
+    AddPanelHeader(286, -158, 834)
+    AddPanelHeader(1126, -158, 300)
+    UI.filterHeading = AddLabel(frame, "Filters — All Items", 30, -166, 230, 24, "GameFontNormalLarge")
+    UI.centerHeading = AddLabel(frame, "All Items", 302, -166, 500, 24, "GameFontNormalLarge")
     AddLabel(frame, "Search", 30, -198, 230, 18, "GameFontNormalSmall")
     UI.search = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
     UI.search:SetSize(230, 24)
@@ -2226,17 +2259,18 @@ local function CreateUI()
     UI.craftFilterHeading = AddLabel(frame, "CRAFT FILTERS", 30, -394, 230, 18, "GameFontNormal")
     UI.tabFilterState[UI.activeTab] = { search = "", profession = 0, role = "all" }
     UI.tabFilterState[UI.activeTab].craftFilters = {}
-    UI.resultCount = AddLabel(frame, "", 930, -184, 120, 18, "GameFontNormalSmall")
+    UI.resultCount = AddLabel(frame, "", 990, -166, 116, 20, "GameFontNormalSmall")
     UI.resultCount:SetWordWrap(false)
+    UI.resultCount:SetJustifyH("RIGHT")
 
     UI.headerButtons = {}
     local headers = {
         { "Recipe / Item", 302, 205, "LEFT", "name" },
-        { "Sale / Unit", 510, 105, "RIGHT", "price" },
-        { "Materials", 620, 105, "RIGHT", "materials" },
-        { "At Price", 730, 82, "RIGHT", "depth" },
-        { "Total", 817, 82, "RIGHT", "total" },
-        { "Profit / Craft", 904, 145, "RIGHT", "profit" },
+        { "Sale / Unit", 680, 96, "RIGHT", "price" },
+        { "Materials (cost)", 510, 166, "LEFT", "materials" },
+        { "At Price", 782, 70, "RIGHT", "depth" },
+        { "Total", 858, 70, "RIGHT", "total" },
+        { "Profit / Craft", 936, 170, "RIGHT", "profit" },
     }
     for i = 1, #headers do
         local h = headers[i]
@@ -2279,9 +2313,9 @@ local function CreateUI()
 
     UI.scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
     UI.scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 298, -242)
-    UI.scroll:SetSize(758, 555)
+    UI.scroll:SetSize(812, 555)
     UI.scrollChild = CreateFrame("Frame", nil, UI.scroll)
-    UI.scrollChild:SetSize(758, 1)
+    UI.scrollChild:SetSize(812, 1)
     UI.scroll:SetScrollChild(UI.scrollChild)
     UI.scroll:SetScript("OnVerticalScroll", function(_, offset)
         UI.listOffset = offset
@@ -2291,7 +2325,7 @@ local function CreateUI()
     for i = 1, UI.visibleCount do
         local slot = i
         local row = CreateFrame("Button", nil, UI.scrollChild)
-        row:SetSize(758, UI.rowHeight)
+        row:SetSize(812, UI.rowHeight)
         row:SetPoint("TOPLEFT", UI.scrollChild, "TOPLEFT", 0, -((i - 1) * UI.rowHeight))
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
         row.rowShade = row:CreateTexture(nil, "BACKGROUND")
@@ -2326,7 +2360,7 @@ local function CreateUI()
         end)
         row.materialHit = CreateFrame("Button", nil, row)
         row.materialHit:SetPoint("LEFT", row, "LEFT", 202, 0)
-        row.materialHit:SetSize(160, UI.rowHeight)
+        row.materialHit:SetSize(170, UI.rowHeight)
         row.materialHit:SetFrameLevel(row:GetFrameLevel() + 2)
         row.materialHit:SetScript("OnEnter", function(self)
             local selected = UI.visibleRows[slot]
@@ -2365,31 +2399,34 @@ local function CreateUI()
     local divider = frame:CreateTexture(nil, "ARTWORK")
     divider:SetColorTexture(0.45, 0.40, 0.30, 0.8)
     divider:SetSize(1, 650)
-    divider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1065, -158)
+    divider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1119, -158)
 
-    UI.detailHeading = AddLabel(frame, "Selected item", 1090, -180, 320, 22, "GameFontNormalLarge")
+    UI.detailHeading = AddLabel(frame, "Selected item", 1142, -166, 268, 24, "GameFontNormalLarge")
+    UI.detailHeading:SetWordWrap(false)
     UI.detailIcon = frame:CreateTexture(nil, "ARTWORK")
     UI.detailIcon:SetSize(42, 42)
-    UI.detailIcon:SetPoint("TOPLEFT", frame, "TOPLEFT", 1090, -210)
+    UI.detailIcon:SetPoint("TOPLEFT", frame, "TOPLEFT", 1142, -204)
     UI.detailIcon:Hide()
-    UI.detailName = AddLabel(frame, "Choose an item", 1142, -210, 268, 28, "GameFontNormal")
-    UI.detailBadges = AddLabel(frame, "", 1142, -235, 268, 18, "GameFontDisableSmall")
-    AddLabel(frame, "SALE PRICE / UNIT", 1090, -274, 145, 18, "GameFontNormalSmall")
-    UI.detailPrice = AddLabel(frame, "—", 1240, -274, 170, 18, "GameFontHighlight")
-    AddLabel(frame, "TOTAL LISTED", 1090, -300, 145, 18, "GameFontNormalSmall")
-    UI.detailSupply = AddLabel(frame, "—", 1240, -300, 170, 18, "GameFontHighlight")
-    UI.detailVariants = AddLabel(frame, "", 1090, -326, 320, 28, "GameFontDisableSmall")
+    UI.detailName = AddLabel(frame, "Choose an item", 1194, -204, 214, 28, "GameFontNormal")
+    UI.detailName:SetWordWrap(true)
+    UI.detailBadges = AddLabel(frame, "", 1194, -230, 214, 18, "GameFontDisableSmall")
+    AddLabel(frame, "SALE PRICE / UNIT", 1142, -264, 128, 18, "GameFontNormalSmall")
+    UI.detailPrice = AddLabel(frame, "—", 1274, -264, 132, 18, "GameFontHighlight")
+    AddLabel(frame, "TOTAL LISTED", 1142, -290, 128, 18, "GameFontNormalSmall")
+    UI.detailSupply = AddLabel(frame, "—", 1274, -290, 132, 18, "GameFontHighlight")
+    UI.detailVariants = AddLabel(frame, "", 1142, -316, 268, 32, "GameFontDisableSmall")
+    UI.detailVariants:SetWordWrap(true)
     UI.detailItemTooltip = CreateFrame("Button", nil, frame)
-    UI.detailItemTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1090, -205)
-    UI.detailItemTooltip:SetSize(320, 48)
+    UI.detailItemTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1142, -200)
+    UI.detailItemTooltip:SetSize(268, 48)
     UI.detailItemTooltip:SetFrameLevel(frame:GetFrameLevel() + 2)
     UI.detailItemTooltip:SetScript("OnEnter", function(self)
         if UI.selectedItem then ShowMarketItemTooltip(self, UI.selectedItem, false) end
     end)
     UI.detailItemTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
     UI.detailRecipeTooltip = CreateFrame("Button", nil, frame)
-    UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1142, -235)
-    UI.detailRecipeTooltip:SetSize(268, 18)
+    UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1194, -230)
+    UI.detailRecipeTooltip:SetSize(214, 18)
     UI.detailRecipeTooltip:SetFrameLevel(frame:GetFrameLevel() + 2)
     UI.detailRecipeTooltip:SetScript("OnEnter", function(self)
         if UI.selectedItem then ShowMarketItemTooltip(self, UI.selectedItem, true) end
@@ -2397,14 +2434,15 @@ local function CreateUI()
     UI.detailRecipeTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
     UI.detailEconomics = AddLabel(frame,
         "Open each profession window once. Market records your known recipes automatically. Install LibProfessionDB 1.9.1 to identify supported unlearned recipes.",
-        1090, -360, 320, 350, "GameFontHighlightSmall")
+        1142, -344, 268, 340, "GameFontHighlightSmall")
     UI.detailEconomics:SetWordWrap(true)
-    UI.detailProfit = AddLabel(frame, "Automatic recipe valuation", 1090, -710, 320, 28, "GameFontNormalLarge")
-    UI.historyText = AddLabel(frame, "", 1090, -744, 320, 62, "GameFontHighlightSmall")
+    UI.detailEconomics:SetJustifyH("LEFT")
+    UI.detailProfit = AddLabel(frame, "Automatic recipe valuation", 1142, -694, 268, 28, "GameFontNormalLarge")
+    UI.historyText = AddLabel(frame, "", 1142, -728, 268, 62, "GameFontHighlightSmall")
     UI.historyText:SetWordWrap(true)
     UI.historyGraph = CreateFrame("Frame", nil, frame)
-    UI.historyGraph:SetPoint("TOPLEFT", frame, "TOPLEFT", 1090, -790)
-    UI.historyGraph:SetSize(250, 35)
+    UI.historyGraph:SetPoint("TOPLEFT", frame, "TOPLEFT", 1142, -790)
+    UI.historyGraph:SetSize(220, 35)
     for i = 1, 4 do
         local bar = UI.historyGraph:CreateTexture(nil, "ARTWORK")
         bar:SetColorTexture(0.72, 0.62, 0.36, 0.95)

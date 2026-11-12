@@ -31,4 +31,4 @@ def test_materials_hides_listings_and_uses_best_profit_column():
     assert 'labels = { "Item", "Cheapest", "At Price", "Total Units", "Best Craft Profit" }' in UI
     assert 'row.total:Hide()' in UI
     assert 'UI.headerButtons[6]:Hide()' in UI
-    assert 'row.profit:SetPoint("RIGHT", row, "RIGHT", 519, 0)' in UI
+    assert 'row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0)' in UI

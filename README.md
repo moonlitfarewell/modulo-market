@@ -1,6 +1,16 @@
-# Modulo Market 0.6.1
+# Modulo Market 0.6.2
+**Current player milestone:** 0.6.2 fixes an early asynchronous item-data callback race that could call the virtual row renderer before the row pool existed. The three-column workspace now allocates more width to the centre table and Materials (cost) column, keeps all three panel titles and the result count inside their header strips, constrains inspector text to the narrower right panel, and exposes evidence-separated skill-up colour thresholds in recipe inspection. Forever runtime acceptance is NOT RUN.
 
-**Current player milestone:** Dark Foundry visual polish (0.5.9): real item icons in virtualized rows and reagent details; stronger selected-item identity and evidence badges; richer panel headers, alternating row surfaces and more legible table typography; all seven tab data models, market actions and baseline/current-build safeguards retained.
+## Current 0.6.2 milestone — async renderer safety and layout correction
+
+- Guards the virtualized row renderer until the first row and scroll child exist; bounds iteration to the actual row pool and checks every row button. This addresses the reported ProfessionMaster item-data callback stack at `MarketUI.lua:1077` without changing the asynchronous event or ProfessionMaster.
+- Rebalances the three-column workspace: centre 834px, right inspector 300px, 812px scroll viewport/rows, and 166px craft Materials (cost) column. Market and Materials columns are repositioned to align with the expanded table.
+- Places Filters, centre tab title, Selected Item/Recipe and result count within their panel header strips. Inspector text is constrained to 268px and wraps within its border.
+- Displays captured skill-up colours in the selected recipe/item inspector with evidence separation. Coarse Grinding Stone shows Forever-client Orange/Yellow 50, Green 70, Grey 90; Classic orange 75 remains separately borrowed and unconfirmed. These are skill-up thresholds, not trainer learning requirements.
+- Offline regression suite: 172 passed; nine addon Lua files parse. Forever runtime remains NOT RUN until the user validates ProfessionMaster initialization, all tabs, layout and Coarse Grinding Stone details.
+
+
+
 
 **Retained product capabilities:** seven distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
 
@@ -10,7 +20,7 @@ Modulo Market is a separate optional child addon under MODULO.
 
 Source repository: https://github.com/moonlitfarewell/modulo-market
 
-Market 0.5.3 includes a reviewed ForeverDB recipe dataset from client build `1.60.1.70862`. The in-game Market window visibly credits [ForeverDB.net](https://foreverdb.net). ForeverDB API keys are build-time importer credentials only and are not committed or distributed inside the addon. The raw capture and normalized canonical dataset are retained under `data/` for provenance and reproducible builds.
+Current ModuloMarket 0.6.2 uses a reviewed ForeverDB recipe dataset from client build `1.60.1.70888`; the prior `1.60.1.70862` canonical file is retained for historical comparison. The in-game Market window visibly credits [ForeverDB.net](https://foreverdb.net). ForeverDB API keys are build-time importer credentials only and are not committed or distributed inside the addon. The raw capture and normalized canonical dataset are retained under `data/` for provenance and reproducible builds.
 
  It depends on `Modulo`; MODULO does not depend on Market. Auctionator and ProfessionMaster remain independent addons and are not runtime dependencies.
 
