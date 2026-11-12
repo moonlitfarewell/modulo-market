@@ -1,5 +1,15 @@
-# Modulo Market 0.7.6
-**Current player milestone:** Tooltip-description search is now explicitly submitted with Enter. Typing performs only immediate name/recipe/profession/ID/reagent matching; Enter enables tooltip/effect matching. The warmup watchdog is serviced independently of other update queues, item cache state is checked when supported, and `/mmsearchdebug` exposes request/event/cache/timeout counters. Forever runtime acceptance is NOT RUN.
+# Modulo Market 0.7.7
+**Current player milestone:** Tooltip/effect search now starts automatically after a 0.35-second typing pause, with Enter retained as immediate submit. Tooltip inspections and item-data requests are reduced to bounded batches, and stale search generations are discarded. The Auction House launcher is restricted to Blizzard's native Sell tab and hidden on other/addon tabs. Forever runtime acceptance is NOT RUN.
+
+## Current 0.7.7 milestone — responsive automatic search and Sell-only launcher
+
+- Search starts after 0.35 seconds of typing inactivity; Enter submits immediately.
+- Search work is generation-scoped so older view/warmup passes cannot overwrite a newer query.
+- Tooltip inspections are capped at 30 per frame, item-data requests at 10 per frame, and warmup visits at 10 items per frame. Cached tooltip text is reused.
+- Launcher attaches only to the classic Blizzard AuctionFrame and is shown only while its native Sell tab (tab 2) is selected; it hides on all other tabs and fails closed when selection cannot be established.
+- If Forever runtime testing shows unacceptable lag, revert the typing path to explicit Enter submission without changing tooltip matching.
+
+See `MODULOMARKET-RUNTIME-AUDIT-0.7.7.md`.
 
 ## Current 0.7.6 milestone — first-open filter visibility and complete tooltip loading
 

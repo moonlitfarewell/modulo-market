@@ -45,6 +45,7 @@ local UI = {
     tooltipSearchCache = {},
     tooltipSearchRequested = {},
     searchBuildDueAt = nil,
+    searchGeneration = 0,
     tooltipSearchWarmup = nil,
     tooltipSearchMode = false,
     tooltipSearchDiagnostics = { searches = 0, requests = 0, cacheHits = 0, events = 0, failures = 0, timeouts = 0, completed = 0, structuredReads = 0, legacyFallbacks = 0, emptyResults = 0, lastItemID = nil, lastSource = "none", lastLineCount = 0, lastState = "idle" },
@@ -105,7 +106,7 @@ local function GetTooltipSearchText(itemID)
     local loaded = hasCacheAPI and isCached
         or (not hasCacheAPI and type(_G.GetItemInfo) == "function" and _G.GetItemInfo(itemID) ~= nil)
     if not loaded then
-        if not UI.tooltipSearchRequested[itemID] and (UI.tooltipSearchRequestsThisFrame or 0) < 20 then
+        if not UI.tooltipSearchRequested[itemID] and (UI.tooltipSearchRequestsThisFrame or 0) < 10 then
             UI.tooltipSearchRequested[itemID] = true
             UI.tooltipSearchRequestsThisFrame = (UI.tooltipSearchRequestsThisFrame or 0) + 1
             UI.tooltipSearchDiagnostics.requests = UI.tooltipSearchDiagnostics.requests + 1
@@ -901,6 +902,7 @@ function UI.StartViewBuild()
         return
     end
     UI.viewBuild = {
+        generation = UI.searchGeneration,
         index = 1, query = query, rows = {}, tab = UI.activeTab,
         professionFilter = UI.professionFilter,
         itemRoleFilter = UI.itemRoleFilter,
@@ -929,11 +931,13 @@ end
 -- Text entry is intentionally debounced. Tooltip lookup is relatively expensive
 -- on the target client, so rebuilding the full catalogue for every typed character
 -- creates unnecessary work and can starve the visible UI.
-local SEARCH_DEBOUNCE_SECONDS = 0.25
+local SEARCH_DEBOUNCE_SECONDS = 0.35
 local function ScheduleSearchBuild()
+    UI.searchGeneration = (UI.searchGeneration or 0) + 1
     UI.viewBuild = nil
     UI.rankSort = nil
     UI.tooltipSearchWarmup = nil
+    UI.tooltipSearchMode = false
     UI.searchBuildDueAt = Now() + SEARCH_DEBOUNCE_SECONDS
     if UI.resultCount then UI.resultCount:SetText("Waiting…") end
 end
@@ -941,12 +945,13 @@ end
 local function StepView()
     local build = UI.viewBuild
     if not build then return end
+    if build.generation ~= UI.searchGeneration then UI.viewBuild = nil; return end
     local source = build.source or {}
     local stop = math.min(build.total, build.index + 249)
     UI.tooltipSearchRequestsThisFrame = 0
     UI.tooltipSearchScansThisFrame = 0
     local cut = tonumber(MM.db and MM.db.auctionHouseCutPercent) or 5
-    while build.index <= stop and (UI.tooltipSearchScansThisFrame or 0) < 60 do
+    while build.index <= stop and (UI.tooltipSearchScansThisFrame or 0) < 30 do
         local sourceItem = source[build.index]
         local item = sourceItem
         local isCrafting = build.tab == "crafts"
@@ -1072,6 +1077,7 @@ local function StepView()
     if build.includeTooltip and build.query ~= "" and #pendingIDs > 0 then
         UI.viewBuild = nil
         UI.tooltipSearchWarmup = {
+            generation = build.generation,
             ids = pendingIDs, index = 1, outstanding = 0,
             startedAt = Now(), query = build.query, tab = build.tab,
             awaiting = {},
@@ -1116,6 +1122,7 @@ local TOOLTIP_SEARCH_TIMEOUT_SECONDS = 15
 local function StepTooltipSearchWarmup()
     local warmup = UI.tooltipSearchWarmup
     if not warmup then return end
+    if warmup.generation ~= UI.searchGeneration then UI.tooltipSearchWarmup = nil; return end
     if Now() - (warmup.startedAt or Now()) >= TOOLTIP_SEARCH_TIMEOUT_SECONDS then
         for _, itemID in ipairs(warmup.ids) do
             UI.tooltipSearchRequested[itemID] = nil
@@ -1148,7 +1155,7 @@ local function StepTooltipSearchWarmup()
     UI.tooltipSearchRequestsThisFrame = 0
     UI.tooltipSearchScansThisFrame = 0
     local processed = 0
-    while warmup.index <= #warmup.ids and processed < 20 do
+    while warmup.index <= #warmup.ids and processed < 10 do
         local itemID = warmup.ids[warmup.index]
         local text = GetTooltipSearchText(itemID)
         if text == nil then
@@ -2610,18 +2617,20 @@ local function CreateUI()
     UI.search:SetPoint("TOPLEFT", frame, "TOPLEFT", 32, -220)
     UI.search:SetAutoFocus(false)
     UI.search:SetMaxLetters(80)
-    UI.search:SetScript("OnTextChanged", function()
-        UI.tooltipSearchMode = false
+    UI.search:SetScript("OnTextChanged", function(self, userInput)
+        if userInput == false then return end
         ScheduleSearchBuild()
     end)
     UI.search:SetScript("OnEnterPressed", function(self)
+        UI.searchGeneration = (UI.searchGeneration or 0) + 1
+        UI.searchBuildDueAt = nil
         UI.tooltipSearchMode = true
         UI.tooltipSearchDiagnostics.searches = UI.tooltipSearchDiagnostics.searches + 1
         UI.tooltipSearchDiagnostics.lastState = "submitted"
         self:ClearFocus()
         UI.StartViewBuild()
     end)
-    AttachFilterTooltip(UI.search, "Search", "Typing searches names, professions, IDs and reagents immediately. Press Enter to include item tooltip descriptions and effects.")
+    AttachFilterTooltip(UI.search, "Search", "Typing searches names, professions, IDs, reagents and tooltip descriptions automatically after a short pause. Press Enter to search immediately.")
 
     RefreshProfessionOptions()
     UI.professionDropdown = CreateDropdown(frame, 230, 32, -284,
@@ -2994,6 +3003,9 @@ local function CreateUI()
         local now = Now()
         if UI.searchBuildDueAt and now >= UI.searchBuildDueAt then
             UI.searchBuildDueAt = nil
+            UI.tooltipSearchMode = true
+            UI.tooltipSearchDiagnostics.searches = UI.tooltipSearchDiagnostics.searches + 1
+            UI.tooltipSearchDiagnostics.lastState = "debounced"
             UI.StartViewBuild()
         end
         -- Run the warmup watchdog independently of other work queues so a stale
@@ -3120,36 +3132,64 @@ function UI.Show()
     UI.Raise()
 end
 
-function UI.AttachAuctionHouseButton()
-    local parents = {}
-    if _G.AuctionHouseFrame then parents[#parents + 1] = _G.AuctionHouseFrame end
-    if _G.AuctionFrame then parents[#parents + 1] = _G.AuctionFrame end
-    local attached = false
-    for _, parent in ipairs(parents) do
-        if parent and type(parent.IsObjectType) == "function" and parent:IsObjectType("Frame") then
-            attached = true
-            local button = UI.auctionHouseButtons[parent]
-            if not button then
-                button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-                button:SetSize(116, 20)
-                button:SetFrameStrata("TOOLTIP")
-                button:SetToplevel(true)
-                button:SetFrameLevel((parent:GetFrameLevel() or 0) + 8)
-                -- Keep the launcher in the header strip, clear of the portrait,
-                -- browse controls and the Auction House close button.
-                button:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -42, -34)
-                button:SetText("Modulo Market")
-                button:SetScript("OnClick", UI.Show)
-                UI.auctionHouseButtons[parent] = button
-                if type(parent.HookScript) == "function" then
-                    parent:HookScript("OnShow", function() button:Show() end)
-                end
-            end
-            button:Show()
-            UI.auctionHouseButton = button
-        end
+local function IsDefaultBlizzardSellTab(parent)
+    if parent ~= _G.AuctionFrame then return false end
+    local selected
+    if type(_G.PanelTemplates_GetSelectedTab) == "function" then
+        local ok, value = pcall(_G.PanelTemplates_GetSelectedTab, parent)
+        if ok then selected = tonumber(value) end
     end
-    return attached
+    if not selected then selected = tonumber(parent.selectedTab) end
+    if selected ~= 2 then return false end
+    local sellTab = _G.AuctionFrameTab2
+    if sellTab and type(sellTab.IsShown) == "function" and not sellTab:IsShown() then
+        return false
+    end
+    return true
+end
+
+function UI.AttachAuctionHouseButton()
+    -- The target Classic auction UI uses AuctionFrameTab2 for Blizzard's
+    -- native Sell tab. Fail closed on other frames/addon-owned tab surfaces.
+    local parent = _G.AuctionFrame
+    if not parent or type(parent.IsObjectType) ~= "function" or not parent:IsObjectType("Frame") then
+        return false
+    end
+    local button = UI.auctionHouseButtons[parent]
+    if not button then
+        button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+        button:SetSize(116, 20)
+        button:SetFrameStrata("TOOLTIP")
+        button:SetToplevel(true)
+        button:SetFrameLevel((parent:GetFrameLevel() or 0) + 8)
+        button:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -42, -34)
+        button:SetText("Modulo Market")
+        button:SetScript("OnClick", UI.Show)
+        UI.auctionHouseButtons[parent] = button
+        local function RefreshLauncherVisibility()
+            if IsDefaultBlizzardSellTab(parent) then button:Show() else button:Hide() end
+        end
+        if type(parent.HookScript) == "function" then
+            parent:HookScript("OnShow", RefreshLauncherVisibility)
+            parent:HookScript("OnHide", function() button:Hide() end)
+        end
+        -- Blizzard's native tab buttons fire OnClick before their panel update;
+        -- defer visibility to the next frame so selectedTab has settled.
+        for index = 1, 12 do
+            local tab = _G["AuctionFrameTab" .. index]
+            if tab and type(tab.HookScript) == "function" then
+                tab:HookScript("OnClick", function()
+                    button:SetScript("OnUpdate", function(self)
+                        self:SetScript("OnUpdate", nil)
+                        RefreshLauncherVisibility()
+                    end)
+                end)
+            end
+        end
+        UI.auctionHouseVisibilityRefresh = RefreshLauncherVisibility
+    end
+    if UI.auctionHouseVisibilityRefresh then UI.auctionHouseVisibilityRefresh() end
+    return true
 end
 
 local function PositionMinimapButton(button, angle)
