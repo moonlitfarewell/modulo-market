@@ -8,9 +8,9 @@ TOC = (ROOT / 'AddOns/ModuloMarket/ModuloMarket.toc').read_text()
 MANIFEST = (ROOT / 'MANIFEST.json').read_text()
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.7.0"' in CORE
-    assert '## Version: 0.7.0' in TOC
-    assert '"version": "0.7.0"' in MANIFEST
+    assert 'MM.version = "0.7.1"' in CORE
+    assert '## Version: 0.7.1' in TOC
+    assert '"version": "0.7.1"' in MANIFEST
 
 def test_account_and_character_scope_are_persistent_and_visible():
     assert 'MM.db.craftingScope = "account"' in CORE

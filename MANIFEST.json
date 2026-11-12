@@ -10,7 +10,7 @@
     "large_snapshot_responsiveness": "0.5.0_SOURCE_IMPLEMENTED; 250_SOURCE_ROWS_PER_FRAME; 250_FILTER_ROWS_PER_FRAME; 100_RECIPE_ECONOMICS_INDEX_PER_FRAME; 500_SORT_COMPARISONS_PER_FRAME; 25_ABSOLUTELY_POSITIONED_VIRTUAL_ROWS; OFFLINE_HARNESS_PASS; FOREVER_RUNTIME_NOT_RUN",
     "low_supply_filter": "0.5.0_ROLE_ADJUSTED_THRESHOLDS; MATERIALS_AND_GATHERABLES_5X; EQUIPMENT_1X; OTHER_2X; UNITS_AND_LISTINGS_SEPARATE_WHEN_KNOWN; FOREVER_RUNTIME_NOT_RUN",
     "market_catalogue_grouping": "0.2.0_SOURCE_IMPLEMENTED; ONE_ROW_PER_ITEM_ID; CHEAPEST_UNIT_PRICE; QUANTITY_AT_CHEAPEST_WHEN_SOURCE_EXPOSES_DEPTH; TOTAL_QUANTITY_ACROSS_VARIANTS",
-    "market_catalogue_search": "0.7.0_NAME_ID_REAGENT_AND_ITEM_TOOLTIP_DESCRIPTION_EFFECT_SEARCH; ASYNC_ITEM_DATA_LOAD_CACHE; FOREVER_RUNTIME_NOT_RUN",
+    "market_catalogue_search": "0.7.1_DEBOUNCED_QUERY_ENTRY; COALESCED_ITEM_DATA_REFRESH; NORMALIZED_TOOLTIP_CACHE; ASYNC_ITEM_DATA_LOAD_CACHE; FOREVER_RUNTIME_NOT_RUN",
     "market_catalogue_sorting": "0.5.0_INCREMENTAL_SORT; ITEM_ECONOMICS_AND_ALL_CRAFTS_PROFIT_SORT; HISTORY_CHANGE_SORT; FOREVER_RUNTIME_NOT_RUN",
     "market_material_recipe_relationships": "0.5.3_KNOWN_AND_BUILD_MATCHED_FOREVERDB_RECIPE_OUTPUTS_AND_REAGENTS; OBSERVED_BORROWED_UNKNOWN_SOURCE_LABELS; SPECULATIVE_AND_NONITEM_EXCLUDED; FOREVER_RUNTIME_NOT_RUN",
     "market_price_history": "0.5.0_LATEST_VS_PREVIOUS_SIGNED_PRICE_DELTA; FOUR_POINT_COMPACT_GRAPH; UP_TO_FOUR_COMPLETED_REPLICATE_SNAPSHOTS; FOREVER_RUNTIME_NOT_RUN",
@@ -106,6 +106,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.6.8.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.6.9.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.7.0.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.7.1.md",
     "README.md",
     "data/ForeverDB-Canonical-1.60.1.70862.json",
     "data/ForeverDB-Canonical-1.60.1.70888.json",
@@ -117,6 +118,7 @@
     "docs/MODULOMARKET-PROFESSION-STATUS-AND-ECONOMICS-0.6.9.md",
     "docs/MODULOMARKET-RECIPE-SOURCE-FILTER-0.6.7.md",
     "docs/MODULOMARKET-ROW-STATUS-PRESENTATION-0.6.8.md",
+    "docs/MODULOMARKET-SEARCH-PERFORMANCE-0.7.1.md",
     "docs/MODULOMARKET-TOOLTIP-SEARCH-ACCOUNT-SCOPE-AND-ECONOMICS-LAYOUT-0.7.0.md",
     "docs/MODULOMARKET-TOOLTIP-STRATA-0.5.8.md",
     "docs/MODULOMARKET-UI-POLISH-0.5.9.md",
@@ -140,6 +142,7 @@
     "tests/test_foreverdb_raw_adapter.py",
     "tests/test_modulomarket_0_5_6_redesign_and_capture_cache.py",
     "tests/test_modulomarket_0_7_0_scope_search_layout.py",
+    "tests/test_modulomarket_0_7_1_search_performance.py",
     "tests/test_modulomarket_acquisition_compact_0_6_6.py",
     "tests/test_modulomarket_acquisition_sources_0_6_5.py",
     "tests/test_modulomarket_addon_grouping_0_0_5.py",
@@ -199,6 +202,11 @@
   "parentUploader": "developer",
   "parent_addon": "Modulo",
   "previousChildBundles": [
+    {
+      "bundle": "ModuloMarket-GitHub-Update-0.7.0.zip",
+      "bytes": 1675734,
+      "sha256": "02c4afece897088896dde5fb35dc3779c5ed43779ea593496e0dd7466eeef4b5"
+    },
     {
       "bundle": "ModuloMarket-GitHub-Update-0.6.8.zip",
       "bytes": 1654026,
@@ -285,14 +293,14 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.6.9_CHARACTER_AWARE_RECIPE_STATES; CRAFT_TABS_CONSOLIDATED; MATERIALS_STATUS_FILTERS; CORE_SKINNING_LEATHER_TIERS; ECONOMICS_PRICE_CHANGE_AND_RELATIONSHIP_FILTERS; FOCUSED_OFFLINE_TESTS_30_PASS; LUA_SYNTAX_9_FILES_PASS; HISTORICAL_SUITE_162_PASS_48_LEGACY_FAILURES; FOREVER_RUNTIME_NOT_RUN",
+  "runtime_status": "0.7.1_SEARCH_DEBOUNCE_AND_TOOLTIP_EVENT_COALESCING_SOURCE_IMPLEMENTED; FOCUSED_OFFLINE_TESTS_23_PASS; LUA_SYNTAX_9_FILES_PASS; HISTORICAL_SUITE_172_PASS_50_FAIL; FOREVER_RUNTIME_NOT_RUN",
   "saved_variables": [
     "ModuloMarketDB"
   ],
-  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.6.8.zip",
-  "supersedesChildBytes": 1654026,
-  "supersedesChildSha256": "043f3faa3be679311a0c3ad6050c15206549e778347ada4bf3cff34bf6b92040",
-  "version": "0.7.0",
-  "file_count": 127,
+  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.7.0.zip",
+  "supersedesChildBytes": 1675734,
+  "supersedesChildSha256": "02c4afece897088896dde5fb35dc3779c5ed43779ea593496e0dd7466eeef4b5",
+  "version": "0.7.1",
+  "file_count": 133,
   "developer_tools_version": "Embedded repository importer 0.2.0 retained; standalone ForeverDB importer 0.2.3 used for the 70888 capture and runtime compilation (separate release lifecycle)."
 }

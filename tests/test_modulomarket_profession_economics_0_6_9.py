@@ -53,6 +53,6 @@ def test_skinning_mapping_is_explicitly_a_conservative_core_tier_subset():
 
 
 def test_manifest_and_addon_versions_agree():
-    assert MANIFEST["version"] == "0.7.0"
-    assert 'MM.version = "0.7.0"' in (ROOT / "AddOns/ModuloMarket/Core.lua").read_text()
-    assert '## Version: 0.7.0' in (ROOT / "AddOns/ModuloMarket/ModuloMarket.toc").read_text()
+    assert MANIFEST["version"] == "0.7.1"
+    assert 'MM.version = "0.7.1"' in (ROOT / "AddOns/ModuloMarket/Core.lua").read_text()
+    assert '## Version: 0.7.1' in (ROOT / "AddOns/ModuloMarket/ModuloMarket.toc").read_text()

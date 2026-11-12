@@ -44,6 +44,8 @@ local UI = {
     craftingScope = "account",
     tooltipSearchCache = {},
     tooltipSearchRequested = {},
+    searchBuildDueAt = nil,
+    tooltipRefreshDueAt = nil,
 }
 MM.MarketUI = UI
 
@@ -85,7 +87,7 @@ local function GetTooltipSearchText(itemID)
     itemID = tonumber(itemID)
     if not itemID then return "" end
     local cached = UI.tooltipSearchCache[itemID]
-    if cached ~= nil then return NormalizeSearchText(cached or "") end
+    if cached ~= nil then return cached or "" end
     if not searchTooltip then
         searchTooltip = CreateFrame("GameTooltip", "ModuloMarketSearchTooltip", UIParent, "GameTooltipTemplate")
         searchTooltip:SetOwner(UIParent, "ANCHOR_NONE")
@@ -125,9 +127,12 @@ local function GetTooltipSearchText(itemID)
     end
     searchTooltip:Hide()
     local text = table.concat(lines, " ")
-    UI.tooltipSearchCache[itemID] = text ~= "" and text or false
+    -- Store normalized text once. Re-normalizing every cached tooltip on every
+    -- keystroke was avoidable work in the hottest search path.
+    local normalized = NormalizeSearchText(text)
+    UI.tooltipSearchCache[itemID] = normalized ~= "" and normalized or false
     UI.tooltipSearchRequested[itemID] = nil
-    return NormalizeSearchText(text)
+    return normalized
 end
 
 local function MatchesSearch(item, query, isCrafting)
@@ -804,6 +809,8 @@ end
 
 function UI.StartViewBuild()
     if not UI.search or UI.catalogBuild then return end
+    UI.searchBuildDueAt = nil
+    UI.tooltipRefreshDueAt = nil
     local query = NormalizeSearchText(UI.search:GetText() or "")
     UI.listOffset = 0
     UI.viewRows = {}
@@ -844,6 +851,23 @@ function UI.StartViewBuild()
         UI.scrollChild:SetHeight(1)
     end
     if UI.resultCount then UI.resultCount:SetText("Filtering…") end
+end
+
+-- Text entry is intentionally debounced. Tooltip lookup is relatively expensive
+-- on the target client, so rebuilding the full catalogue for every typed character
+-- creates unnecessary work and can starve the visible UI.
+local SEARCH_DEBOUNCE_SECONDS = 0.25
+local TOOLTIP_REFRESH_COALESCE_SECONDS = 0.30
+
+local function ScheduleSearchBuild()
+    UI.viewBuild = nil
+    UI.rankSort = nil
+    UI.searchBuildDueAt = Now() + SEARCH_DEBOUNCE_SECONDS
+    if UI.resultCount then UI.resultCount:SetText("Waiting…") end
+end
+
+local function ScheduleTooltipRefresh()
+    UI.tooltipRefreshDueAt = Now() + TOOLTIP_REFRESH_COALESCE_SECONDS
 end
 
 local function StepView()
@@ -2429,7 +2453,7 @@ local function CreateUI()
     UI.search:SetPoint("TOPLEFT", frame, "TOPLEFT", 32, -220)
     UI.search:SetAutoFocus(false)
     UI.search:SetMaxLetters(80)
-    UI.search:SetScript("OnTextChanged", function() UI.StartViewBuild() end)
+    UI.search:SetScript("OnTextChanged", function() ScheduleSearchBuild() end)
     AttachFilterTooltip(UI.search, "Search", "Search item and recipe names, profession, IDs, reagents and loaded item tooltip descriptions/effects. Tooltip data loads asynchronously.")
 
     RefreshProfessionOptions()
@@ -2800,6 +2824,19 @@ local function CreateUI()
         UI.Refresh()
     end)
     frame:SetScript("OnUpdate", function(_, elapsed)
+        local now = Now()
+        if UI.searchBuildDueAt and now >= UI.searchBuildDueAt then
+            UI.searchBuildDueAt = nil
+            UI.StartViewBuild()
+        elseif UI.tooltipRefreshDueAt and now >= UI.tooltipRefreshDueAt then
+            UI.tooltipRefreshDueAt = nil
+            -- If the player is still typing, let the normal debounce perform the
+            -- refresh so item-load events cannot interrupt the quiet window.
+            if not UI.searchBuildDueAt and UI.search and UI.search:GetText()
+                and UI.search:GetText() ~= "" then
+                UI.StartViewBuild()
+            end
+        end
         if UI.catalogBuild then StepCatalog()
         elseif UI.economicsIndexBuild then StepEconomicsIndex()
         elseif UI.viewBuild then StepView()
@@ -2818,9 +2855,15 @@ local function CreateUI()
         itemID = tonumber(itemID)
         if itemID and UI.tooltipSearchRequested[itemID] then
             UI.tooltipSearchRequested[itemID] = nil
-            if success == false then UI.tooltipSearchCache[itemID] = false
-            else UI.tooltipSearchCache[itemID] = nil end
-            if UI.search and UI.search:GetText() and UI.search:GetText() ~= "" then UI.StartViewBuild() end
+            if success == false then
+                UI.tooltipSearchCache[itemID] = false
+            else
+                -- Leave uncached until the next single coalesced search pass reads
+                -- the now-loaded tooltip. Individual item events must not each
+                -- restart a multi-thousand-row filter build.
+                UI.tooltipSearchCache[itemID] = nil
+            end
+            if success ~= false then ScheduleTooltipRefresh() end
         end
     end)
     UI.tooltipSearchEvents = tooltipSearchEvents
