@@ -1,5 +1,5 @@
-# Modulo Market 0.6.2
-**Current player milestone:** 0.6.2 fixes an early asynchronous item-data callback race that could call the virtual row renderer before the row pool existed. The three-column workspace now allocates more width to the centre table and Materials (cost) column, keeps all three panel titles and the result count inside their header strips, constrains inspector text to the narrower right panel, and exposes evidence-separated skill-up colour thresholds in recipe inspection. Forever runtime acceptance is NOT RUN.
+# Modulo Market 0.6.3
+**Current player milestone:** 0.6.3 fixes an early asynchronous item-data callback race that could call the virtual row renderer before the row pool existed. The three-column workspace now allocates more width to the centre table and Materials (cost) column, keeps all three panel titles and the result count inside their header strips, constrains inspector text to the narrower right panel, and exposes evidence-separated skill-up colour thresholds in recipe inspection. Forever runtime acceptance is NOT RUN.
 
 ## Current 0.6.2 milestone — async renderer safety and layout correction
 
@@ -468,3 +468,8 @@ See [`tools/foreverdb_importer/README.md`](tools/foreverdb_importer/README.md) f
 - Fixed normalization of sparse scalar itemID-to-quantity reagent maps so positive item IDs below or equal to 100 are not discarded as array indexes. Contiguous 1-based scalar arrays are detected as positional arrays, while table-shaped records continue to prefer explicit `itemID` fields.
 - No new runtime dependency was added.
 - Developer-only ForeverDB importer 0.2.0 is included under `tools/foreverdb_importer/`; it does not load in WoW. It captures, inspects, normalizes the reviewed response schema, validates canonical data and compiles compact runtime Lua.
+
+
+## 0.6.3 inspector footer
+
+Profit/loss and saved-price history are grouped in a bottom-anchored inspector footer. The history graph baseline is bottom-anchored so bars rise upward within the inspector border. See `MODULOMARKET-RUNTIME-AUDIT-0.6.3.md`.

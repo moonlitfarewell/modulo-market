@@ -20,6 +20,6 @@ def test_status_has_dedicated_wrapped_height_before_controls():
 
 
 def test_version_agreement():
-    assert re.search(r"^## Version: 0\.6\.2$", TOC.read_text(), re.M)
-    assert 'MM.version = "0.6.2"' in CORE.read_text()
-    assert json.loads(MANIFEST.read_text())["version"] == "0.6.2"
+    assert re.search(r"^## Version: 0\.6\.3$", TOC.read_text(), re.M)
+    assert 'MM.version = "0.6.3"' in CORE.read_text()
+    assert json.loads(MANIFEST.read_text())["version"] == "0.6.3"
