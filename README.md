@@ -1,7 +1,7 @@
-# Modulo Market 0.7.5
+# Modulo Market 0.7.6
 **Current player milestone:** Tooltip-description search is now explicitly submitted with Enter. Typing performs only immediate name/recipe/profession/ID/reagent matching; Enter enables tooltip/effect matching. The warmup watchdog is serviced independently of other update queues, item cache state is checked when supported, and `/mmsearchdebug` exposes request/event/cache/timeout counters. Forever runtime acceptance is NOT RUN.
 
-## Current 0.7.5 milestone — structured full-tooltip search
+## Current 0.7.6 milestone — first-open filter visibility and complete tooltip loading
 
 - Normal typing no longer initiates tooltip loading. Press Enter to submit the expanded tooltip/effect search.
 - Shows immediate name/reagent matches while descriptions load; the final pass adds tooltip-only matches.
@@ -11,7 +11,7 @@
 - `/mmsearchdebug` reports the request lifecycle so a client retest can distinguish missing API, missing events, cache hits and timeout behavior.
 - Forever runtime acceptance remains NOT RUN; the 0.7.3 permanent-loading report remains open until the player retests.
 
-See `MODULOMARKET-RUNTIME-AUDIT-0.7.5.md`.
+See `MODULOMARKET-RUNTIME-AUDIT-0.7.6.md`.
 
 # Modulo Market 0.7.3
 **Current player milestone:** My Crafts and All Crafts are consolidated into Crafts. Recipe status is character-aware: known by you (green), learnable through a profession you have (gold), not learnable because the native profession list confirms you lack the profession (red), or Unknown when ownership cannot be established (also red; internal status remains distinct). Materials shares the same status filters and includes the core leather/hide Skinning tiers. Economics is now a distinct market-analysis view with cheapest price, craft cost, saved price movement, total units, best craft profit and relationship filters. Drop/loot and vendor-origin filters remain disabled because the available provider records describe recipe acquisition, not a complete item-origin catalogue. Forever runtime acceptance is NOT RUN.
@@ -538,3 +538,9 @@ Profit/loss and saved-price history are grouped in a bottom-anchored inspector f
 Full-tooltip search now prefers Forever 1.60.1's structured `C_TooltipInfo.GetItemByID` data, combining every available left/right tooltip line. The legacy hidden-GameTooltip path remains as a guarded fallback and now verifies that it actually populated readable lines before accepting the result. `/mmtooltipdebug itemID` prints the exact normalized text used by search; `/mmsearchdebug` reports extraction-path counters.
 
 Tooltip-effect search remains an explicit Enter submission so ordinary typing does not warm every item tooltip or restart catalogue work.
+
+
+## 0.7.6 runtime corrections
+
+- Applies the active tab's visibility rules during initial UI construction, after all tab-specific controls have been created.
+- Waits for `C_Item.IsItemDataCachedByID` or `GetItemInfo` before accepting structured tooltip data. A partial tooltip returned before item data is ready is no longer cached as complete; the bounded asynchronous warmup requests the item and retries after its load event.

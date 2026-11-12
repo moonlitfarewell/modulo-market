@@ -95,6 +95,38 @@ local function GetTooltipSearchText(itemID)
     end
 
     UI.tooltipSearchScansThisFrame = (UI.tooltipSearchScansThisFrame or 0) + 1
+    local api = _G.C_Item
+    local isCached = false
+    if type(api) == "table" and type(api.IsItemDataCachedByID) == "function" then
+        local cacheOK, cacheValue = pcall(api.IsItemDataCachedByID, itemID)
+        isCached = cacheOK and cacheValue == true
+    end
+    local hasCacheAPI = type(api) == "table" and type(api.IsItemDataCachedByID) == "function"
+    local loaded = hasCacheAPI and isCached
+        or (not hasCacheAPI and type(_G.GetItemInfo) == "function" and _G.GetItemInfo(itemID) ~= nil)
+    if not loaded then
+        if not UI.tooltipSearchRequested[itemID] and (UI.tooltipSearchRequestsThisFrame or 0) < 20 then
+            UI.tooltipSearchRequested[itemID] = true
+            UI.tooltipSearchRequestsThisFrame = (UI.tooltipSearchRequestsThisFrame or 0) + 1
+            UI.tooltipSearchDiagnostics.requests = UI.tooltipSearchDiagnostics.requests + 1
+            if type(api) == "table" and type(api.RequestLoadItemDataByID) == "function" then
+                local ok, accepted = pcall(api.RequestLoadItemDataByID, itemID)
+                if not ok or accepted == false then
+                    UI.tooltipSearchRequested[itemID] = nil
+                    UI.tooltipSearchCache[itemID] = false
+                    UI.tooltipSearchDiagnostics.failures = UI.tooltipSearchDiagnostics.failures + 1
+                    UI.tooltipSearchDiagnostics.lastError = ok and "item-data request rejected" or tostring(accepted)
+                end
+            else
+                UI.tooltipSearchRequested[itemID] = nil
+                UI.tooltipSearchCache[itemID] = false
+                UI.tooltipSearchDiagnostics.failures = UI.tooltipSearchDiagnostics.failures + 1
+                UI.tooltipSearchDiagnostics.lastError = "C_Item.RequestLoadItemDataByID unavailable"
+            end
+        end
+        return nil
+    end
+
     local lines = {}
     local source = "none"
     local structured = _G.C_TooltipInfo
@@ -120,36 +152,6 @@ local function GetTooltipSearchText(itemID)
     -- hidden GameTooltip, but verify that it actually produced lines: pcall()
     -- only tells us the setter did not throw, not that it populated the tooltip.
     if #lines == 0 then
-        local api = _G.C_Item
-        local isCached = false
-        if type(api) == "table" and type(api.IsItemDataCachedByID) == "function" then
-            local cacheOK, cacheValue = pcall(api.IsItemDataCachedByID, itemID)
-            isCached = cacheOK and cacheValue == true
-        end
-        local loaded = (type(_G.GetItemInfo) == "function" and _G.GetItemInfo(itemID) ~= nil) or isCached
-        if not loaded then
-            if not UI.tooltipSearchRequested[itemID] and (UI.tooltipSearchRequestsThisFrame or 0) < 20 then
-                UI.tooltipSearchRequested[itemID] = true
-                UI.tooltipSearchRequestsThisFrame = (UI.tooltipSearchRequestsThisFrame or 0) + 1
-                UI.tooltipSearchDiagnostics.requests = UI.tooltipSearchDiagnostics.requests + 1
-                if type(api) == "table" and type(api.RequestLoadItemDataByID) == "function" then
-                    local ok, accepted = pcall(api.RequestLoadItemDataByID, itemID)
-                    if not ok or accepted == false then
-                        UI.tooltipSearchRequested[itemID] = nil
-                        UI.tooltipSearchCache[itemID] = false
-                        UI.tooltipSearchDiagnostics.failures = UI.tooltipSearchDiagnostics.failures + 1
-                        UI.tooltipSearchDiagnostics.lastError = ok and "item-data request rejected" or tostring(accepted)
-                    end
-                else
-                    UI.tooltipSearchRequested[itemID] = nil
-                    UI.tooltipSearchCache[itemID] = false
-                    UI.tooltipSearchDiagnostics.failures = UI.tooltipSearchDiagnostics.failures + 1
-                    UI.tooltipSearchDiagnostics.lastError = "C_Item.RequestLoadItemDataByID unavailable"
-                end
-            end
-            return nil
-        end
-
         if not searchTooltip then
             searchTooltip = CreateFrame("GameTooltip", "ModuloMarketSearchTooltip", UIParent, "GameTooltipTemplate")
             searchTooltip:SetOwner(UIParent, "ANCHOR_NONE")
@@ -3032,6 +3034,9 @@ local function CreateUI()
         end
     end)
     UI.tooltipSearchEvents = tooltipSearchEvents
+    -- Newly created controls default to visible. Apply the active tab once all
+    -- tab-specific controls exist so inactive filter groups never overlap on first open.
+    SetTab(UI.activeTab or "market")
     return frame
 end
 
