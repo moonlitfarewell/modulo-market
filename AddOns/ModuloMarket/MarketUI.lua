@@ -158,29 +158,23 @@ local function GetItemDisplayName(item)
     local data = MM.ProfessionData
     local tags = data and data.GetItemTags and data.GetItemTags(item and item.itemID)
     if not tags or #tags == 0 then return name end
-    local prefix, nameColor = {}, "|cffffffff"
-    for _, tag in ipairs(tags) do
-        if tag == "known" then
-            prefix[#prefix + 1] = "|cff55dd77[C]|r"
-            nameColor = "|cff8ee6a2"
-        elseif tag == "future" then
-            prefix[#prefix + 1] = "|cffffc04d[F]|r"
-            if nameColor == "|cffffffff" then nameColor = "|cffffd77a" end
-        elseif tag == "futureBorrowed" then
-            prefix[#prefix + 1] = "|cffffa64d[F?]|r"
-            if nameColor == "|cffffffff" then nameColor = "|cffffb36b" end
-        elseif tag == "futureUnknown" then
-            prefix[#prefix + 1] = "|cffb7c0cc[?]|r"
-            if nameColor == "|cffffffff" then nameColor = "|cffc4cbd3" end
-        elseif tag == "gather" then
-            prefix[#prefix + 1] = "|cff66ccff[G]|r"
-            if nameColor == "|cffffffff" then nameColor = "|cff82d9ff" end
-        elseif tag == "material" then
-            prefix[#prefix + 1] = "|cff80cfff[M]|r"
-            if nameColor == "|cffffffff" then nameColor = "|cffb6e2ff" end
-        end
+
+    -- Colour is the only row-level status cue. It mirrors the player-facing
+    -- filters: learned craft, unlearned craft, gathering resource, reagent.
+    -- Keep the internal evidence tags out of item names entirely.
+    local has = {}
+    for _, tag in ipairs(tags) do has[tag] = true end
+    local nameColor = "|cffffffff"
+    if has.known then
+        nameColor = "|cff8ee6a2"       -- Known by you / known craft output
+    elseif has.future or has.futureBorrowed or has.futureUnknown then
+        nameColor = "|cffffd77a"       -- Unlearned craft output, regardless of source evidence
+    elseif has.gather then
+        nameColor = "|cff82d9ff"       -- Gathering resource
+    elseif has.material then
+        nameColor = "|cffb6e2ff"       -- Crafting reagent
     end
-    return table.concat(prefix, " ") .. " " .. nameColor .. name .. "|r"
+    return nameColor .. name .. "|r"
 end
 
 -- Resolve real client item artwork; never substitute decorative icons for data identities.
@@ -1109,12 +1103,10 @@ function UI.RenderRows()
             local profitText = "—"
             if isCrafting then
                 local status = item.craftSourceStatus or "known"
-                local color = status == "known" and "|cff8ee6a2"
-                    or (status == "future" and "|cffffd77a"
-                    or (status == "borrowed" and "|cffffb36b" or "|cffb7c0cc"))
-                local marker = status == "known" and "[C] " or (status == "future" and "[F] "
-                    or (status == "borrowed" and "[F?] " or "[?] "))
-                button.name:SetText(marker .. color .. GetItemName(item) .. "|r")
+                local color = status == "known" and "|cff8ee6a2" or "|cffffd77a"
+                -- Known/unlearned is the player-facing distinction. Source
+                -- confidence remains in the data model, not as row prefixes.
+                button.name:SetText(color .. GetItemName(item) .. "|r")
                 button.price:SetText(item.salePriceCopper and FormatMoney(item.salePriceCopper) or "—")
                 -- Keep the table compact even for recipes with many reagents.
                 -- Full reagent detail (icons, quantities and per-line costs) is
@@ -2143,7 +2135,7 @@ local function CreateUI()
         elseif key == "crafting" then
             button.tooltipText = "Only recipes you have learned and Market has captured from your profession windows, including losses and recipes with incomplete market prices."
         elseif key == "allcrafts" then
-            button.tooltipText = "All supported profession recipes, including unlearned candidates. Borrowed or unknown acquisition sources are labelled; profit is withheld when quantities or prices are unknown."
+            button.tooltipText = "All supported profession recipes, including unlearned candidates. Names use the same learned/unlearned colours as the filters; acquisition details use the best available source."
         elseif key == "materials" then
             button.tooltipText = "Items used as reagents by known or supported unlearned recipes, with their market value and recipe relationships."
         elseif key == "low" then

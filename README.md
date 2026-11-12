@@ -1,7 +1,7 @@
-# Modulo Market 0.6.7
-**Current player milestone:** recipe-source filters are simplified to learned versus unlearned. Classic acquisition records remain usable as the default fallback when no direct Forever source supersedes them; Forever sources take precedence when available. The UI no longer splits unlearned recipes into confirmed, borrowed and unknown source categories. Provenance remains internal. Forever runtime acceptance is NOT RUN.
+# Modulo Market 0.6.8
+**Current player milestone:** item rows no longer display internal `[C]`, `[F]`, `[F?]`, `[?]`, `[G]` or `[M]` prefixes. Text colour alone communicates the same categories exposed by the filters: known craft outputs (green), unlearned craft outputs (gold), gathering resources (cyan) and crafting reagents (light blue). Borrowed and unknown acquisition evidence share the unlearned colour; source provenance remains internal and the inspector continues to show one preferred acquisition route. Forever runtime acceptance is NOT RUN.
 
-See `docs/MODULOMARKET-RECIPE-SOURCE-FILTER-0.6.7.md` for scope and acceptance.
+See `docs/MODULOMARKET-ROW-STATUS-PRESENTATION-0.6.8.md` for scope and acceptance.
 
 
 **Current player milestone:** 0.6.5 preserves and exposes the individual ForeverDB acquisition-source records in the runtime catalogue and selected-recipe inspector. Trainer/vendor NPCs, locations, coordinates, vendor costs, limited-stock metadata, recipe items, drops and quests retain their field-level evidence. Known character recipes are enriched without duplication. Forever runtime acceptance is NOT RUN.

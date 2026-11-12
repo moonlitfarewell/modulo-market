@@ -8,9 +8,9 @@ TOC = (ROOT / "AddOns" / "ModuloMarket" / "ModuloMarket.toc").read_text()
 MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.7"' in CORE
-    assert '## Version: 0.6.7' in TOC
-    assert MANIFEST["version"] == "0.6.7"
+    assert f'MM.version = "{MANIFEST["version"]}"' in CORE
+    assert f'## Version: {MANIFEST["version"]}' in TOC
+    assert MANIFEST["version"] == CORE.split('MM.version = "', 1)[1].split('"', 1)[0]
 
 def test_craft_material_cell_shows_total_only():
     assert 'button.depth:SetText(materialCost)' in UI

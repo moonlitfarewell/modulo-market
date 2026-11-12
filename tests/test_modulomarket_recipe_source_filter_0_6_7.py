@@ -33,6 +33,6 @@ def test_item_role_filter_hides_acquisition_evidence_categories():
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.7"' in CORE
-    assert '## Version: 0.6.7' in TOC
-    assert MANIFEST["version"] == "0.6.7"
+    assert f'MM.version = "{MANIFEST["version"]}"' in CORE
+    assert f'## Version: {MANIFEST["version"]}' in TOC
+    assert MANIFEST["version"] == CORE.split('MM.version = "', 1)[1].split('"', 1)[0]

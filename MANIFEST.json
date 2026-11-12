@@ -43,7 +43,8 @@
     "version_visibility": "0.5.5_LOGIN_ANNOUNCEMENT; MMVERSION_COMMAND; MARKET_FOOTER_CLIENT_BUILD; OFFLINE_TESTED; FOREVER_RUNTIME_NOT_RUN",
     "market_ui_async_render_safety": "0.6.2_EARLY_ITEM_DATA_CALLBACK_GUARD; ROW_POOL_BOUNDS_CHECK; SPARSE_ROW_GUARD; PROFESSIONMASTER_ASYNC_INIT_STACK_ROOT_CAUSE; OFFLINE_REGRESSION_COVERAGE; FOREVER_RUNTIME_NOT_RUN",
     "foreverdb_acquisition_sources": "0.6.6_PRESERVES_FIELD_LEVEL_SOURCE_ROWS; SINGLE_PRIMARY_SOURCE_PER_RECIPE; DIRECT_FOREVER_OBSERVED_PREFERRED_THEN_CLASSIC_FALLBACK; TYPE_NAME_LOCATION_COST_PRESENTATION; LEARN_AT_SKILL_EXPOSED; RAW_EVIDENCE_RETAINED_IN_DATA; FOREVER_RUNTIME_NOT_RUN",
-    "recipe_source_filter": "0.6.7_LEARNED_VS_UNLEARNED_ONLY; CLASSIC_SOURCE_FALLBACK_INCLUDED; FOREVER_SOURCE_PREFERRED_WHEN_AVAILABLE; EVIDENCE_PROVENANCE_RETAINED_INTERNALLY; FOREVER_RUNTIME_NOT_RUN"
+    "recipe_source_filter": "0.6.7_LEARNED_VS_UNLEARNED_ONLY; CLASSIC_SOURCE_FALLBACK_INCLUDED; FOREVER_SOURCE_PREFERRED_WHEN_AVAILABLE; EVIDENCE_PROVENANCE_RETAINED_INTERNALLY; FOREVER_RUNTIME_NOT_RUN",
+    "item_row_status_presentation": "0.6.8_NO_INTERNAL_PREFIXES; KNOWN_GREEN_UNLEARNED_GOLD_GATHERING_CYAN_CRAFTING_REAGENT_LIGHT_BLUE; OVERLAP_PRECEDENCE_KNOWN_THEN_UNLEARNED_THEN_GATHER_THEN_MATERIAL; FOREVER_RUNTIME_NOT_RUN"
   },
   "category": "Modulo By Wells",
   "dependencies": [
@@ -100,6 +101,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.6.5.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.6.6.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.6.7.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.6.8.md",
     "README.md",
     "data/ForeverDB-Canonical-1.60.1.70862.json",
     "data/ForeverDB-Canonical-1.60.1.70888.json",
@@ -109,6 +111,7 @@
     "docs/FOREVERDB-DATA-REVIEW-2026-11-12.md",
     "docs/FOREVERDB-INTEGRATION-PLAN.md",
     "docs/MODULOMARKET-RECIPE-SOURCE-FILTER-0.6.7.md",
+    "docs/MODULOMARKET-ROW-STATUS-PRESENTATION-0.6.8.md",
     "docs/MODULOMARKET-TOOLTIP-STRATA-0.5.8.md",
     "docs/MODULOMARKET-UI-POLISH-0.5.9.md",
     "docs/MODULOMARKET-UI-REDESIGN-0.5.6.md",
@@ -149,6 +152,7 @@
     "tests/test_modulomarket_recipe_source_filter_0_6_7.py",
     "tests/test_modulomarket_replicate_inspection_0_0_12.py",
     "tests/test_modulomarket_replicate_probe_0_0_10.py",
+    "tests/test_modulomarket_row_status_presentation_0_6_8.py",
     "tests/test_modulomarket_scan_status_display_0_0_13.py",
     "tests/test_modulomarket_snapshot_0_0_5.py",
     "tests/test_modulomarket_throttle_0_0_8.py",
@@ -185,6 +189,11 @@
   "parentUploader": "developer",
   "parent_addon": "Modulo",
   "previousChildBundles": [
+    {
+      "bundle": "ModuloMarket-GitHub-Update-0.6.7.zip",
+      "bytes": 1648603,
+      "sha256": "2f8469e18729affabfda77574b5b8ddf3ad00aaacf508d41edd91cea25083186"
+    },
     {
       "bundle": "ModuloMarket-GitHub-Update-0.6.6.zip",
       "bytes": 1644145,
@@ -261,14 +270,14 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.6.6_COMPACT_PRIMARY_ACQUISITION_SOURCE; DIRECT_FOREVER_SOURCE_PREFERRED_WITH_CLASSIC_FALLBACK; ACQUISITION_TYPE_LOCATION_COST; PROFESSION_LEARN_AT_SKILL_EXPOSED; INSPECTOR_DUPLICATE_STATUS_TEXT_REMOVED; HISTORY_BAR_PERCENTAGES; FOCUSED_44_TESTS_PASS; FULL_HISTORICAL_SUITE_156_PASS_33_LEGACY_FAILURES; FOREVER_RUNTIME_NOT_RUN",
+  "runtime_status": "0.6.8_FILTER_ALIGNED_ROW_COLOURS; INTERNAL_BRACKET_PREFIXES_REMOVED; KNOWN_GREEN_UNLEARNED_GOLD_GATHERING_CYAN_REAGENT_LIGHT_BLUE; FOCUSED_OFFLINE_TESTS_PASS; FOREVER_RUNTIME_NOT_RUN",
   "saved_variables": [
     "ModuloMarketDB"
   ],
-  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.6.6.zip",
-  "supersedesChildBytes": 1644145,
-  "supersedesChildSha256": "ec3a2304ec44c7c8d509d7dfcb352bcb1ef79910b88a02ed191bc375926535c2",
-  "version": "0.6.7",
-  "file_count": 119,
+  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.6.7.zip",
+  "supersedesChildBytes": 1648603,
+  "supersedesChildSha256": "2f8469e18729affabfda77574b5b8ddf3ad00aaacf508d41edd91cea25083186",
+  "version": "0.6.8",
+  "file_count": 122,
   "developer_tools_version": "Embedded repository importer 0.2.0 retained; standalone ForeverDB importer 0.2.3 used for the 70888 capture and runtime compilation (separate release lifecycle)."
 }

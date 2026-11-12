@@ -14,9 +14,9 @@ def records(doc):
     return {(p["slug"], str(r["recipe_id"])): r for p in doc["professions"] for r in p["recipes"]}
 
 def test_release_versions_and_runtime_build_agree():
-    assert MANIFEST["version"] == "0.6.7"
-    assert 'MM.version = "0.6.7"' in CORE
-    assert "## Version: 0.6.7" in TOC
+    assert MANIFEST["version"] == CORE.split('MM.version = "', 1)[1].split('"', 1)[0]
+    assert f'MM.version = "{MANIFEST["version"]}"' in CORE
+    assert f"## Version: {MANIFEST['version']}" in TOC
     assert CANONICAL["client_build"] == "1.60.1.70888"
     assert '["clientBuild"]="1.60.1.70888"' in DATA
 
