@@ -816,6 +816,9 @@ local function StepView()
                     item.recipeData.acquisitionSources = providerDetails.acquisitionSources
                     item.recipeData.trainerCostCopper = providerDetails.trainerCostCopper
                     item.recipeData.trainerCostEvidence = providerDetails.trainerCostEvidence
+                    item.professionSkill = providerDetails.learnAtSkill or item.professionSkill
+                    item.recipeData.professionSkill = providerDetails.learnAtSkill or item.recipeData.professionSkill
+                    item.trainerCostCopper = providerDetails.trainerCostCopper
                 else
                     item.acquisitionSources = sourceItem.acquisitionSources
                 end
@@ -1189,6 +1192,7 @@ function UI.RenderHistory()
     if not item then
         UI.historyText:SetText("Select an item to compare saved prices.")
         for _, bar in ipairs(UI.historyBars or {}) do bar:Hide() end
+        for _, label in ipairs(UI.historyBarLabels or {}) do label:Hide() end
         return
     end
     local history = MM.db and MM.db.marketHistory or {}
@@ -1207,6 +1211,7 @@ function UI.RenderHistory()
     if #points == 0 then
         UI.historyText:SetText("No saved full-market history yet. Each completed full scan adds a comparison point.")
         for _, bar in ipairs(UI.historyBars or {}) do bar:Hide() end
+        for _, label in ipairs(UI.historyBarLabels or {}) do label:Hide() end
         return
     end
     local lines = {}
@@ -1227,12 +1232,26 @@ function UI.RenderHistory()
     local span = math.max(1, maxPrice - minPrice)
     for i, bar in ipairs(UI.historyBars or {}) do
         local point = points[i]
+        local percentLabel = UI.historyBarLabels and UI.historyBarLabels[i]
         if point then
             local height = 8 + ((point.price - minPrice) / span) * 34
             bar:ClearAllPoints()
             bar:SetPoint("BOTTOMLEFT", UI.historyGraph, "BOTTOMLEFT", (i - 1) * 58 + 8, 4)
             bar:SetSize(38, height)
             local previous = points[i - 1]
+            local change = previous and previous.price > 0
+                and ((point.price - previous.price) / previous.price * 100) or 0
+            if percentLabel then
+                percentLabel:ClearAllPoints()
+                percentLabel:SetPoint("BOTTOM", UI.historyGraph, "BOTTOMLEFT", (i - 1) * 58 + 27, math.min(height + 1, 44))
+                percentLabel:SetText(string.format("%+.1f%%", change))
+                if type(percentLabel.SetTextColor) == "function" then
+                    percentLabel:SetTextColor(change > 0 and 0.35 or (change < 0 and 1 or 0.85),
+                        change > 0 and 1 or (change < 0 and 0.38 or 0.82),
+                        change > 0 and 0.48 or (change < 0 and 0.32 or 0.55))
+                end
+                percentLabel:Show()
+            end
             if previous and point.price > previous.price then
                 bar:SetColorTexture(0.22, 0.72, 0.38, 0.95)
             elseif previous and point.price < previous.price then
@@ -1243,6 +1262,7 @@ function UI.RenderHistory()
             bar:Show()
         else
             bar:Hide()
+            if percentLabel then percentLabel:Hide() end
         end
     end
 end
@@ -1271,102 +1291,52 @@ local function AppendSkillThresholdLines(lines, thresholds)
     end
 end
 
-local function AcquisitionEvidenceLabel(source)
-    local evidence = type(source) == "table" and source.evidence or "UNKNOWN"
-    if evidence == "FOREVER_OBSERVED" then return "|cff55dd77FOREVER OBSERVED|r" end
-    if evidence == "FOREVER_CLIENT" then return "|cff66ccffFOREVER CLIENT|r" end
-    if evidence == "CLASSIC_BORROWED" then return "|cffffaa44CLASSIC BORROWED — UNCONFIRMED|r" end
-    return "|cffb7c0ccUNKNOWN / UNVERIFIED|r"
-end
-
-local function AcquisitionSourceText(source)
-    if type(source) ~= "table" then return nil end
-    local kind = tostring(source.type or "source"):gsub("_", " ")
-    local name = type(source.name) == "string" and source.name or nil
-    local label = kind:gsub("^%l", string.upper)
-    local text = label .. (name and (": " .. name) or "")
-    if source.faction and source.faction ~= "Both" then text = text .. " · " .. tostring(source.faction) end
-    if source.title and source.title ~= "" then text = text .. " · " .. tostring(source.title) end
-    if source.zone and source.zone ~= "" then text = text .. " — " .. tostring(source.zone) end
-    if source.npc_id then text = text .. " (NPC " .. tostring(source.npc_id) .. ")" end
-    if source.x and source.y then
-        text = text .. string.format(" · %.1f, %.1f", tonumber(source.x), tonumber(source.y))
-    end
-    if source.type == "vendor" then
-        local price = tonumber(source.price_per_item_copper or source.price_copper)
-        if price and price > 0 then text = text .. " · " .. FormatMoney(price) .. "/item" end
-        if source.limited_stock == true then
-            text = text .. " · limited stock" .. (source.limited_stock_count and (" (" .. tostring(source.limited_stock_count) .. ")") or "")
-        end
-        if type(source.costs) == "table" and #source.costs > 0 then
-            local costs = {}
-            for _, cost in ipairs(source.costs) do
-                if type(cost) == "table" then
-                    costs[#costs + 1] = tostring(cost.name or ("Currency #" .. tostring(cost.id or "?")))
-                        .. (cost.amount and (" × " .. tostring(cost.amount)) or "")
-                end
-            end
-            if #costs > 0 then text = text .. " · Cost: " .. table.concat(costs, ", ") end
-        end
-        if type(source.reputation_faction) == "table" and source.reputation_faction.name then
-            text = text .. " · Reputation: " .. tostring(source.reputation_faction.name)
-        end
-    elseif source.type == "drop" and source.chance_percent then
-        text = text .. " · " .. tostring(source.chance_percent) .. "% drop chance"
-    elseif source.type == "quest" and source.quest_id then
-        text = text .. " · Quest " .. tostring(source.quest_id)
-        if source.in_forever_client == true then text = text .. " (quest exists in Forever client; link unverified)" end
-    elseif source.type == "recipe_item" or source.type == "recipe_item_hidden"
-        or source.type == "recipe_item_not_in_client" then
-        if source.item_id then text = text .. " · Item " .. tostring(source.item_id) end
-        if source.visibility and source.visibility ~= "normal" then text = text .. " · " .. tostring(source.visibility) end
-    elseif source.type == "trainer_observation" then
-        text = text .. " · trainer name observed; exact teaching route not detailed"
-    end
-    if source.inferred == true then
-        text = text .. " · inferred recipe link"
-    end
-    return text
-end
-
-local function AppendAcquisitionSourceLines(lines, sources, limit)
-    if type(sources) ~= "table" or #sources == 0 then
-        lines[#lines + 1] = "No detailed acquisition records are supplied for this recipe."
-        return
-    end
-    local ordered = {}
-    local priority = { "FOREVER_OBSERVED", "FOREVER_CLIENT", "CLASSIC_BORROWED", "UNKNOWN" }
-    -- Bucket in a single pass rather than sorting: this runs on hover/selection
-    -- paths and must not add a synchronous sort to the large catalogue pipeline.
-    for _, evidence in ipairs(priority) do
+local function SelectPrimaryAcquisitionSource(sources)
+    if type(sources) ~= "table" then return nil end
+    local priorities = { "FOREVER_OBSERVED", "CLASSIC_BORROWED", "FOREVER_CLIENT", "UNKNOWN" }
+    -- Prefer a direct Forever recipe/source relationship. If none exists, use
+    -- the Classic route as the useful default rather than dumping every route.
+    for _, evidence in ipairs(priorities) do
         for _, source in ipairs(sources) do
-            if type(source) == "table" and source.evidence == evidence then
-                ordered[#ordered + 1] = source
+            if type(source) == "table" and source.evidence == evidence
+                and source.type ~= "trainer_observation" and source.inferred ~= true then
+                return source
             end
         end
     end
     for _, source in ipairs(sources) do
-        if type(source) == "table" and source.evidence ~= "FOREVER_OBSERVED"
-            and source.evidence ~= "FOREVER_CLIENT" and source.evidence ~= "CLASSIC_BORROWED"
-            and source.evidence ~= "UNKNOWN" then
-            ordered[#ordered + 1] = source
-        end
+        if type(source) == "table" and source.type ~= "trainer_observation" then return source end
     end
-    local shown = math.min(#ordered, tonumber(limit) or #ordered)
-    for i = 1, shown do
-        local source = ordered[i]
-        lines[#lines + 1] = AcquisitionEvidenceLabel(source)
-        lines[#lines + 1] = AcquisitionSourceText(source) or "Unspecified acquisition source"
-        if source.evidence == "UNKNOWN" and source.entity_evidence == "FOREVER_OBSERVED" then
-            lines[#lines + 1] = "NPC observed on Forever; this recipe-to-NPC link is not confirmed."
-        end
-        if source.source_text and source.evidence == "FOREVER_OBSERVED" then
-            lines[#lines + 1] = tostring(source.source_text)
-        end
+    return nil
+end
+
+local function AppendPrimaryAcquisitionLines(lines, recipe, item)
+    local sources = recipe.acquisitionSources or item.acquisitionSources
+    local source = SelectPrimaryAcquisitionSource(sources)
+    if not source then
+        lines[#lines + 1] = "Acquisition: Unknown"
+        return
     end
-    if #ordered > shown then
-        lines[#lines + 1] = string.format("%d additional source records; hover the recipe for the full list.", #ordered - shown)
+    local kind = source.type
+    local label = kind == "trainer" and "Trainer"
+        or kind == "vendor" and "Vendor"
+        or (kind == "recipe_item" or kind == "recipe_item_hidden" or kind == "recipe_item_not_in_client") and "Recipe"
+        or kind == "drop" and "Drop"
+        or kind == "quest" and "Quest"
+        or kind == "automatic" and "Automatic"
+        or "Source"
+    local name = source.name or (kind == "automatic" and "Learned automatically") or "Unknown"
+    lines[#lines + 1] = label .. ": " .. tostring(name)
+    if source.zone and source.zone ~= "" then
+        lines[#lines + 1] = "Location: " .. tostring(source.zone)
     end
+    local cost
+    if kind == "trainer" then
+        cost = tonumber(recipe.trainerCostCopper or item.trainerCostCopper)
+    elseif kind == "vendor" then
+        cost = tonumber(source.price_per_item_copper or source.price_copper)
+    end
+    if cost and cost > 0 then lines[#lines + 1] = "Cost: " .. FormatMoney(cost) end
 end
 
 local function RenderCraftDetail(item)
@@ -1377,39 +1347,14 @@ local function RenderCraftDetail(item)
         return
     end
     local lines = {
-        "|cffffd100" .. tostring(recipe.professionName or "Profession") .. "|r"
-            .. (recipe.professionSkill and (" · Skill " .. tostring(recipe.professionSkill)) or ""),
-        "Recipe: " .. tostring(recipe.recipeName or "Unknown recipe"),
+        "Recipe: " .. tostring(recipe.recipeName or item.recipeName or "Unknown recipe"),
         "Output: " .. tostring(item.outputQuantity or "?") .. " × " .. tostring(item.itemName or ("Item #" .. tostring(item.itemID or "?"))),
-        "Sale price / unit: " .. (item.salePriceCopper and FormatMoney(item.salePriceCopper) or "No market price"),
-        "At price: " .. (item.minPriceQuantity ~= nil and tostring(item.minPriceQuantity) or "—"),
-        "Total listed: " .. (item.totalQuantity ~= nil and tostring(item.totalQuantity) or "—") .. " units",
+        "",
+        "|cffffd100ACQUISITION|r",
     }
+    AppendPrimaryAcquisitionLines(lines, recipe, item)
     if item.variableYield then
         lines[#lines + 1] = "|cffffaa44Variable output; profit uses minimum yield.|r"
-    end
-    local sourceStatus = item.craftSourceStatus or "known"
-    if sourceStatus == "borrowed" then
-        lines[#lines + 1] = "|cffffaa44Acquisition source borrowed from Vanilla; not confirmed in Forever.|r"
-    elseif sourceStatus == "unknown" or item.sourceUnknown then
-        lines[#lines + 1] = "|cffffaa44Acquisition source unknown; availability is not established.|r"
-    elseif sourceStatus == "future" then
-        lines[#lines + 1] = "Unlearned recipe with a recorded acquisition source."
-    end
-    if item.requiredSkill then
-        lines[#lines + 1] = "Recorded learning skill: " .. tostring(item.requiredSkill)
-            .. (item.borrowedSkill and " (borrowed; unconfirmed)" or "")
-    end
-    AppendSkillThresholdLines(lines, recipe.skillThresholds or item.skillThresholds)
-    lines[#lines + 1] = "Acquisition: " .. (sourceStatus == "known" and "Known by this character"
-        or (sourceStatus == "future" and "Recorded source; not learned"
-        or (sourceStatus == "borrowed" and "Classic-borrowed; Forever unconfirmed" or "Unknown / not established")))
-    lines[#lines + 1] = ""
-    lines[#lines + 1] = "|cffffd100ACQUISITION SOURCES|r"
-    AppendAcquisitionSourceLines(lines, recipe.acquisitionSources or item.acquisitionSources, 3)
-    if recipe.trainerCostCopper and recipe.trainerCostEvidence then
-        lines[#lines + 1] = "Trainer learning cost: " .. FormatMoney(recipe.trainerCostCopper)
-            .. " · " .. tostring(recipe.trainerCostEvidence)
     end
     if not item.outputQuantity then
         lines[#lines + 1] = "|cffffaa44Output quantity unavailable; profit is withheld.|r"
@@ -1680,10 +1625,13 @@ SelectItem = function(item)
         or (item.salePriceCopper and FormatMoney(item.salePriceCopper))
         or (vendorPrice and FormatMoney(vendorPrice)) or "No buyout")
     UI.detailSupply:SetText(string.format("%d units", tonumber(item.totalQuantity) or 0))
+    if UI.detailAtPrice then
+        UI.detailAtPrice:SetText(item.minPriceQuantity ~= nil and tostring(item.minPriceQuantity) or "—")
+    end
     if item.recipeData then
-        UI.detailVariants:SetText(string.format("%s · Skill %s · Recipe #%s",
+        UI.detailVariants:SetText(string.format("%s · Skill %s",
             tostring(item.professionName or "Profession"),
-            tostring(item.professionSkill or "?"), tostring(item.recipeID or "?")))
+            tostring(item.professionSkill or item.recipeData.professionSkill or "?")))
         RenderCraftDetail(item)
     else
         UI.detailVariants:SetText(item.noMarketData and "No current Auction House listing"
@@ -1851,22 +1799,13 @@ local function ShowMarketItemTooltip(owner, item, showRecipe)
         GameTooltip:SetText(GetItemName(item))
     end
     if showRecipe and recipeID then
-        GameTooltip:AddLine("Recipe ID: " .. tostring(recipeID), 0.85, 0.75, 0.5, true)
         if item.professionName then
             GameTooltip:AddLine(tostring(item.professionName)
                 .. " · Skill " .. tostring(item.professionSkill or "?"), 0.8, 0.8, 0.8, true)
         end
-        local sources = item.acquisitionSources or (item.recipeData and item.recipeData.acquisitionSources)
-        if type(sources) == "table" and #sources > 0 then
-            GameTooltip:AddLine("Acquisition sources", 1, 0.82, 0.2, true)
-            local sourceLines = {}
-            AppendAcquisitionSourceLines(sourceLines, sources, #sources)
-            for _, line in ipairs(sourceLines) do
-                GameTooltip:AddLine(line:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""), 0.9, 0.9, 0.9, true)
-            end
-        else
-            GameTooltip:AddLine("Acquisition source details unavailable", 0.65, 0.65, 0.65, true)
-        end
+        local sourceLines = {}
+        AppendPrimaryAcquisitionLines(sourceLines, item.recipeData or {}, item)
+        for _, line in ipairs(sourceLines) do GameTooltip:AddLine(line, 0.9, 0.9, 0.9, true) end
     elseif item.recipeID then
         GameTooltip:AddLine("Recipe: " .. tostring(item.recipeName or item.recipeID), 0.8, 0.8, 0.8, true)
     end
@@ -2549,28 +2488,30 @@ local function CreateUI()
     UI.detailPrice = AddLabel(frame, "—", 1274, -264, 132, 18, "GameFontHighlight")
     AddLabel(frame, "TOTAL LISTED", 1142, -290, 128, 18, "GameFontNormalSmall")
     UI.detailSupply = AddLabel(frame, "—", 1274, -290, 132, 18, "GameFontHighlight")
-    UI.detailVariants = AddLabel(frame, "", 1142, -316, 268, 32, "GameFontDisableSmall")
+    UI.detailVariants = AddLabel(frame, "", 1142, -342, 268, 24, "GameFontDisableSmall")
     UI.detailVariants:SetWordWrap(true)
     if UI.detailVariants.SetNonSpaceWrap then UI.detailVariants:SetNonSpaceWrap(true) end
     UI.detailItemTooltip = CreateFrame("Button", nil, frame)
     UI.detailItemTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1142, -200)
-    UI.detailItemTooltip:SetSize(268, 48)
+    UI.detailItemTooltip:SetSize(46, 48)
     UI.detailItemTooltip:SetFrameLevel(frame:GetFrameLevel() + 2)
     UI.detailItemTooltip:SetScript("OnEnter", function(self)
         if UI.selectedItem then ShowMarketItemTooltip(self, UI.selectedItem, false) end
     end)
     UI.detailItemTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
     UI.detailRecipeTooltip = CreateFrame("Button", nil, frame)
-    UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1194, -230)
-    UI.detailRecipeTooltip:SetSize(214, 18)
+    UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1194, -200)
+    UI.detailRecipeTooltip:SetSize(214, 28)
     UI.detailRecipeTooltip:SetFrameLevel(frame:GetFrameLevel() + 2)
     UI.detailRecipeTooltip:SetScript("OnEnter", function(self)
         if UI.selectedItem then ShowMarketItemTooltip(self, UI.selectedItem, true) end
     end)
     UI.detailRecipeTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
+    AddLabel(frame, "AT PRICE", 1142, -316, 128, 18, "GameFontNormalSmall")
+    UI.detailAtPrice = AddLabel(frame, "—", 1274, -316, 132, 18, "GameFontHighlight")
     UI.detailEconomics = AddLabel(frame,
         "Open each profession window once. Market records your known recipes automatically. Install LibProfessionDB 1.9.1 to identify supported unlearned recipes.",
-        1142, -344, 268, 340, "GameFontHighlightSmall")
+        1142, -370, 268, 366, "GameFontHighlightSmall")
     UI.detailEconomics:SetWordWrap(true)
     if UI.detailEconomics.SetNonSpaceWrap then UI.detailEconomics:SetNonSpaceWrap(true) end
     UI.detailEconomics:SetJustifyH("LEFT")
@@ -2587,8 +2528,14 @@ local function CreateUI()
     if UI.historyText.SetNonSpaceWrap then UI.historyText:SetNonSpaceWrap(true) end
     UI.historyGraph = CreateFrame("Frame", nil, UI.detailFooter)
     UI.historyGraph:SetPoint("BOTTOMLEFT", UI.detailFooter, "BOTTOMLEFT", 4, 0)
-    UI.historyGraph:SetSize(220, 48)
+    UI.historyGraph:SetSize(236, 60)
+    UI.historyBarLabels = {}
     for i = 1, 4 do
+        local label = UI.historyGraph:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        label:SetWidth(54)
+        label:SetJustifyH("CENTER")
+        UI.historyBarLabels[i] = label
+        label:Hide()
         local bar = UI.historyGraph:CreateTexture(nil, "ARTWORK")
         bar:SetColorTexture(0.72, 0.62, 0.36, 0.95)
         UI.historyBars[i] = bar

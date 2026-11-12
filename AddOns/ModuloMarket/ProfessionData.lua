@@ -328,6 +328,7 @@ local function AddForeverDBRecipes()
                                 sourceUnknown = sourceRecipe.sourceUnknown == true,
                                 trainerCostCopper = tonumber(sourceRecipe.trainerCostCopper),
                                 trainerCostEvidence = sourceRecipe.trainerCostEvidence,
+                                learnAtSkill = tonumber(sourceRecipe.learnAtSkill),
                                 sourceProvider = "ForeverDB.net",
                                 sourceBuild = datasetBuild,
                             }
@@ -399,6 +400,7 @@ local function AddForeverDBRecipes()
                                         and sourceRecipe.acquisitionSources or {},
                                     trainerCostCopper = tonumber(sourceRecipe.trainerCostCopper),
                                     trainerCostEvidence = sourceRecipe.trainerCostEvidence,
+                                    professionSkill = tonumber(sourceRecipe.learnAtSkill),
                                     skillThresholds = sourceRecipe.skill or {},
                                     newInForever = sourceRecipe.newInForever == true,
                                     changedFromClassic = sourceRecipe.changedFromClassic,

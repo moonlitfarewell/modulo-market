@@ -42,7 +42,7 @@
     "market_snapshot_build_gate": "0.5.5_REQUIRES_SAVED_AUCTION_SNAPSHOT_CLIENT_VERSION_AND_BUILD_TO_MATCH_CURRENT_CLIENT; OLD_SNAPSHOT_PRICES_WITHHELD",
     "version_visibility": "0.5.5_LOGIN_ANNOUNCEMENT; MMVERSION_COMMAND; MARKET_FOOTER_CLIENT_BUILD; OFFLINE_TESTED; FOREVER_RUNTIME_NOT_RUN",
     "market_ui_async_render_safety": "0.6.2_EARLY_ITEM_DATA_CALLBACK_GUARD; ROW_POOL_BOUNDS_CHECK; SPARSE_ROW_GUARD; PROFESSIONMASTER_ASYNC_INIT_STACK_ROOT_CAUSE; OFFLINE_REGRESSION_COVERAGE; FOREVER_RUNTIME_NOT_RUN",
-    "foreverdb_acquisition_sources": "0.6.5_PRESERVES_10369_FIELD_LEVEL_SOURCE_ROWS_FROM_70888_CANONICAL; TRAINER_VENDOR_RECIPE_ITEM_DROP_QUEST_AUTOMATIC; NPC_ZONE_COORDINATES_VENDOR_COSTS_LIMITED_STOCK; KNOWN_RECIPE_LOOKUP_WITHOUT_DUPLICATION; INSPECTOR_AND_FULL_TOOLTIP; EVIDENCE_PER_ROW; FOREVER_RUNTIME_NOT_RUN"
+    "foreverdb_acquisition_sources": "0.6.6_PRESERVES_FIELD_LEVEL_SOURCE_ROWS; SINGLE_PRIMARY_SOURCE_PER_RECIPE; DIRECT_FOREVER_OBSERVED_PREFERRED_THEN_CLASSIC_FALLBACK; TYPE_NAME_LOCATION_COST_PRESENTATION; LEARN_AT_SKILL_EXPOSED; RAW_EVIDENCE_RETAINED_IN_DATA; FOREVER_RUNTIME_NOT_RUN"
   },
   "category": "Modulo By Wells",
   "dependencies": [
@@ -60,7 +60,6 @@
     "AddOns/ModuloMarket/RecipeEngine.lua",
     "AddOns/ModuloMarket/Replicate.lua",
     "AddOns/ModuloMarket/Scanner.lua",
-    "MANIFEST.json",
     "MODULOMARKET-PERFORMANCE-RESEARCH-2026-11-10.md",
     "MODULOMARKET-REPLICATE-PROBE-RESULT-2026-11-10.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.0.10.md",
@@ -97,6 +96,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.6.3.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.6.4.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.6.5.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.6.6.md",
     "README.md",
     "data/ForeverDB-Canonical-1.60.1.70862.json",
     "data/ForeverDB-Canonical-1.60.1.70888.json",
@@ -125,6 +125,7 @@
     "tests/test_foreverdb_importer.py",
     "tests/test_foreverdb_raw_adapter.py",
     "tests/test_modulomarket_0_5_6_redesign_and_capture_cache.py",
+    "tests/test_modulomarket_acquisition_compact_0_6_6.py",
     "tests/test_modulomarket_acquisition_sources_0_6_5.py",
     "tests/test_modulomarket_addon_grouping_0_0_5.py",
     "tests/test_modulomarket_foreverdb_0_6_1_refresh.py",
@@ -162,7 +163,8 @@
     "tools/foreverdb_importer/README.md",
     "tools/foreverdb_importer/fixtures/canonical-sample.synthetic.json",
     "tools/foreverdb_importer/market_data_importer.py",
-    "tools/foreverdb_importer/recipe-data-v1.schema.json"
+    "tools/foreverdb_importer/recipe-data-v1.schema.json",
+    "MANIFEST.json"
   ],
   "folder": "ModuloMarket",
   "group": "Modulo",
@@ -179,6 +181,11 @@
   "parentUploader": "developer",
   "parent_addon": "Modulo",
   "previousChildBundles": [
+    {
+      "bundle": "ModuloMarket-GitHub-Update-0.6.5.zip",
+      "bytes": 1812249,
+      "sha256": "460543e651df52a95ce4599532f55206658ce38f729f76d4b76da916c816cddc"
+    },
     {
       "bundle": "ModuloMarket-GitHub-Update-0.6.1.zip",
       "bytes": 1473817,
@@ -245,14 +252,14 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.6.5_FIELD_LEVEL_FOREVERDB_ACQUISITION_SOURCES_PRESERVED; KNOWN_RECIPE_DETAILS_INDEXED_WITHOUT_DUPLICATION; INSPECTOR_TOP_3_AND_FULL_RECIPE_TOOLTIP; EVIDENCE_SEPARATION_RETAINED; FOCUSED_39_TESTS_PASS; FULL_HISTORICAL_SUITE_156_PASS_29_LEGACY_FAIL; FOREVER_RUNTIME_NOT_RUN",
+  "runtime_status": "0.6.6_COMPACT_PRIMARY_ACQUISITION_SOURCE; DIRECT_FOREVER_SOURCE_PREFERRED_WITH_CLASSIC_FALLBACK; ACQUISITION_TYPE_LOCATION_COST; PROFESSION_LEARN_AT_SKILL_EXPOSED; INSPECTOR_DUPLICATE_STATUS_TEXT_REMOVED; HISTORY_BAR_PERCENTAGES; FOCUSED_44_TESTS_PASS; FULL_HISTORICAL_SUITE_156_PASS_33_LEGACY_FAILURES; FOREVER_RUNTIME_NOT_RUN",
   "saved_variables": [
     "ModuloMarketDB"
   ],
-  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.6.4.zip",
-  "supersedesChildBytes": 1495379,
-  "supersedesChildSha256": "88dbe8416e16ece06513cd9ad019c6c6c707cf97a5d9a41366ecaa3e6ab28032",
-  "version": "0.6.5",
-  "file_count": 114,
+  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.6.5.zip",
+  "supersedesChildBytes": 1812249,
+  "supersedesChildSha256": "460543e651df52a95ce4599532f55206658ce38f729f76d4b76da916c816cddc",
+  "version": "0.6.6",
+  "file_count": 116,
   "developer_tools_version": "Embedded repository importer 0.2.0 retained; standalone ForeverDB importer 0.2.3 used for the 70888 capture and runtime compilation (separate release lifecycle)."
 }

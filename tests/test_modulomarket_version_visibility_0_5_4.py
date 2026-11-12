@@ -9,9 +9,9 @@ def test_version_is_consistent_across_toc_core_and_manifest():
     toc = (ADDON / "ModuloMarket.toc").read_text()
     core = (ADDON / "Core.lua").read_text()
     manifest = json.loads((ROOT / "MANIFEST.json").read_text())
-    assert "## Version: 0.6.5" in toc
-    assert 'MM.version = "0.6.5"' in core
-    assert manifest["version"] == "0.6.5"
+    assert "## Version: 0.6.6" in toc
+    assert 'MM.version = "0.6.6"' in core
+    assert manifest["version"] == "0.6.6"
 
 
 def test_login_announcement_and_version_command_include_build():

@@ -1,4 +1,6 @@
-# Modulo Market 0.6.5
+# Modulo Market 0.6.6
+**Current player milestone:** compact acquisition presentation and inspector cleanup. Each recipe now shows one primary source (Forever-observed when available, otherwise Classic fallback), with only source type/name, location and cost. Raw evidence and alternative records remain in the dataset, not in the normal player-facing panel. Profession learning skill is surfaced, recipe IDs are removed from the inspector, the native recipe tooltip is attached to the recipe title, and history bars show percentage change. Forever runtime acceptance is NOT RUN.
+
 **Current player milestone:** 0.6.5 preserves and exposes the individual ForeverDB acquisition-source records in the runtime catalogue and selected-recipe inspector. Trainer/vendor NPCs, locations, coordinates, vendor costs, limited-stock metadata, recipe items, drops and quests retain their field-level evidence. Known character recipes are enriched without duplication. Forever runtime acceptance is NOT RUN.
 
 

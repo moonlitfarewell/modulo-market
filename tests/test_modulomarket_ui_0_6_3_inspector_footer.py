@@ -8,9 +8,9 @@ TOC = (ROOT / "AddOns" / "ModuloMarket" / "ModuloMarket.toc").read_text()
 MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.5"' in CORE
-    assert '## Version: 0.6.5' in TOC
-    assert MANIFEST["version"] == "0.6.5"
+    assert 'MM.version = "0.6.6"' in CORE
+    assert '## Version: 0.6.6' in TOC
+    assert MANIFEST["version"] == "0.6.6"
 
 def test_profit_and_history_footer_is_a_child_container_inside_inspector():
     body = UI.split('UI.detailFooter = CreateFrame("Frame", nil, frame)', 1)[1].split('for i = 1, 4 do', 1)[0]
@@ -22,7 +22,7 @@ def test_profit_and_history_footer_is_a_child_container_inside_inspector():
 def test_history_graph_baseline_is_bottom_anchored_and_bars_grow_upward():
     body = UI.split('UI.historyGraph = CreateFrame("Frame", nil, UI.detailFooter)', 1)[1].split('for i = 1, 4 do', 1)[0]
     assert 'UI.historyGraph:SetPoint("BOTTOMLEFT", UI.detailFooter, "BOTTOMLEFT", 4, 0)' in body
-    assert 'UI.historyGraph:SetSize(220, 48)' in body
+    assert 'UI.historyGraph:SetSize(236, 60)' in body
     render = UI.split('function UI.RenderHistory()', 1)[1].split('SelectItem = function(item)', 1)[0]
     assert 'bar:SetPoint("BOTTOMLEFT", UI.historyGraph, "BOTTOMLEFT"' in render
     assert 'bar:SetSize(38, height)' in render

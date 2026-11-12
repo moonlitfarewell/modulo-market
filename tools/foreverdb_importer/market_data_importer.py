@@ -1057,6 +1057,7 @@ def compile_runtime(data: dict[str, Any], output: Path, *, allow_fixture: bool =
                 "acquisitionSources": acquisition_sources,
                 "trainerCostCopper": provider_metadata.get("trainer_cost_copper"),
                 "trainerCostEvidence": provider_metadata.get("trainer_cost_evidence"),
+                "learnAtSkill": provider_metadata.get("learn_at_skill"),
                 "speculative": provider_metadata.get("speculation") is True,
             })
         professions[prof["slug"]] = {

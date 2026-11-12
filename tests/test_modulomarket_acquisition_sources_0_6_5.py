@@ -46,10 +46,10 @@ def test_profession_index_exposes_known_and_unlearned_recipe_source_details():
     assert "trainerCostEvidence" in PROFESSION
 
 
-def test_inspector_and_recipe_tooltip_show_each_evidence_level_without_promoting_unknown():
-    for label in ("FOREVER OBSERVED", "FOREVER CLIENT", "CLASSIC BORROWED", "UNKNOWN / UNVERIFIED"):
-        assert label in UI
-    assert "NPC observed on Forever; this recipe-to-NPC link is not confirmed." in UI
-    assert "additional source records; hover the recipe for the full list." in UI
-    assert "Acquisition sources" in UI
-    assert "CLASSIC BORROWED — UNCONFIRMED" in UI
+def test_raw_evidence_is_retained_even_though_normal_inspector_is_compact():
+    for label in ("FOREVER_OBSERVED", "FOREVER_CLIENT", "CLASSIC_BORROWED", "UNKNOWN"):
+        assert label in RUNTIME
+    assert "SelectPrimaryAcquisitionSource" in UI
+    assert "AppendPrimaryAcquisitionLines" in UI
+    assert "FOREVER OBSERVED" not in UI
+    assert "CLASSIC BORROWED — UNCONFIRMED" not in UI
