@@ -22,8 +22,10 @@ def test_filter_categories_map_to_consistent_text_colours():
     block = UI.split("local function GetItemDisplayName(item)", 1)[1].split("local function", 1)[0]
     assert 'if has.known then' in block
     assert 'nameColor = "|cff8ee6a2"' in block
-    assert 'elseif has.future or has.futureBorrowed or has.futureUnknown then' in block
+    assert 'elseif has.future then' in block
     assert 'nameColor = "|cffffd77a"' in block
+    assert 'elseif has.unlearnable then' in block
+    assert 'nameColor = "|cffff6666"' in block
     assert 'elseif has.gather then' in block
     assert 'nameColor = "|cff82d9ff"' in block
     assert 'elseif has.material then' in block
@@ -32,12 +34,12 @@ def test_filter_categories_map_to_consistent_text_colours():
 
 def test_unlearned_source_classes_share_one_player_facing_colour():
     block = UI.split("local function GetItemDisplayName(item)", 1)[1].split("local function", 1)[0]
-    assert "futureBorrowed" in block and "futureUnknown" in block
+    assert "futureBorrowed" not in block and "futureUnknown" not in block
     assert "|cffffb36b" not in block
     assert "|cffc4cbd3" not in block
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.8"' in CORE
-    assert '## Version: 0.6.8' in TOC
-    assert MANIFEST["version"] == "0.6.8"
+    assert 'MM.version = "0.6.9"' in CORE
+    assert '## Version: 0.6.9' in TOC
+    assert MANIFEST["version"] == "0.6.9"

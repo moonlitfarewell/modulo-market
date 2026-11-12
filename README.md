@@ -1,6 +1,7 @@
-# Modulo Market 0.6.8
-**Current player milestone:** item rows no longer display internal `[C]`, `[F]`, `[F?]`, `[?]`, `[G]` or `[M]` prefixes. Text colour alone communicates the same categories exposed by the filters: known craft outputs (green), unlearned craft outputs (gold), gathering resources (cyan) and crafting reagents (light blue). Borrowed and unknown acquisition evidence share the unlearned colour; source provenance remains internal and the inspector continues to show one preferred acquisition route. Forever runtime acceptance is NOT RUN.
+# Modulo Market 0.6.9
+**Current player milestone:** My Crafts and All Crafts are consolidated into Crafts. Recipe status is character-aware: known by you (green), learnable through a profession you have (gold), not learnable because the native profession list confirms you lack the profession (red), or neutral Unknown when ownership cannot be established. Materials shares the same status filters and includes the core leather/hide Skinning tiers. Economics is now a distinct market-analysis view with cheapest price, craft cost, saved price movement, total units, best craft profit and relationship filters. Drop/loot and vendor-origin filters remain disabled because the available provider records describe recipe acquisition, not a complete item-origin catalogue. Forever runtime acceptance is NOT RUN.
 
+See `docs/MODULOMARKET-PROFESSION-STATUS-AND-ECONOMICS-0.6.9.md` for scope and acceptance.
 See `docs/MODULOMARKET-ROW-STATUS-PRESENTATION-0.6.8.md` for scope and acceptance.
 
 
@@ -28,7 +29,7 @@ See `docs/MODULOMARKET-ROW-STATUS-PRESENTATION-0.6.8.md` for scope and acceptanc
 
 
 
-**Retained product capabilities:** seven distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
+**Retained product capabilities:** six distinct market views; automatic item, recipe and material economics; known/future recipe-state de-duplication; asynchronous vendor-value loading through both supported client item-data events; clearly explained item-role filters; role-aware gathering/material classification; price-change history; adjustable background opacity; draggable minimap launcher; frontmost, ESC-closeable window.
 
 Modulo Market is a separate optional child addon under MODULO.
 

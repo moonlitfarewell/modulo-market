@@ -10,11 +10,24 @@ if not MM then return end
 -- This file vendors item-ID facts only; Market does not depend on ProfessionMaster.
 -- Required skill is the first (orange) threshold from the gathering skill record.
 -- For secondary mining drops, it is the minimum skill of any documented source node.
--- Skinning is intentionally excluded because no equivalent creature-to-item output
--- map with skill thresholds was present in the supplied source evidence.
+-- Skinning includes the core classic leather/hide progression items whose minimum
+-- profession thresholds are stable in the classic profession model. This is a
+-- conservative subset, not a complete creature-to-item loot map.
 
 MM.GatheringItems = {
     -- [itemID] = { professionID, requiredSkill }
+    -- Skinning: core leather and hide tiers. Special creature leathers/scales are
+    -- intentionally omitted until their exact skill gates are evidenced.
+    [783] = { 393, 1 },       -- Light Hide
+    [2318] = { 393, 1 },      -- Light Leather
+    [4232] = { 393, 100 },    -- Medium Hide
+    [2319] = { 393, 100 },    -- Medium Leather
+    [4235] = { 393, 200 },    -- Heavy Hide
+    [4234] = { 393, 200 },    -- Heavy Leather
+    [4305] = { 393, 250 },    -- Thick Hide
+    [4304] = { 393, 250 },    -- Thick Leather
+    [8171] = { 393, 300 },    -- Rugged Hide
+    [8170] = { 393, 300 },    -- Rugged Leather
 
     [765] = { 182, 1 },
     [774] = { 186, 1 },

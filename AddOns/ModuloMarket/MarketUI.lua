@@ -22,6 +22,7 @@ local UI = {
     professionFilter = 0,
     tabFilterState = {},
     craftFilters = { craftableOnly = false, profitableOnly = false, reviewOnly = false, hideLowProfit = false },
+    economicsFilters = { crafted = false, gathered = false, material = false, other = false },
     economicsByItemID = nil,
     vendorPriceCache = {},
     vendorPriceRequested = {},
@@ -32,8 +33,7 @@ local UI = {
     sortByTab = {
         market = { key = "name", ascending = true },
         economics = { key = "profit", ascending = false },
-        crafting = { key = "name", ascending = true },
-        allcrafts = { key = "profit", ascending = false },
+        crafts = { key = "profit", ascending = false },
         materials = { key = "name", ascending = true },
         low = { key = "name", ascending = true },
         history = { key = "change", ascending = false },
@@ -167,8 +167,10 @@ local function GetItemDisplayName(item)
     local nameColor = "|cffffffff"
     if has.known then
         nameColor = "|cff8ee6a2"       -- Known by you / known craft output
-    elseif has.future or has.futureBorrowed or has.futureUnknown then
-        nameColor = "|cffffd77a"       -- Unlearned craft output, regardless of source evidence
+    elseif has.future then
+        nameColor = "|cffffd77a"       -- A profession you have; skill may still be required
+    elseif has.unlearnable then
+        nameColor = "|cffff6666"       -- Required profession not currently learned
     elseif has.gather then
         nameColor = "|cff82d9ff"       -- Gathering resource
     elseif has.material then
@@ -291,8 +293,8 @@ local function GetAllCraftSources()
         local key = tostring(recipe.professionID or "") .. ":" .. tostring(recipe.recipeID or "")
         if not seen[key] then
             seen[key] = true
-            recipe.craftSourceStatus = recipe.borrowedSources and "borrowed"
-                or (recipe.sourceUnknown and "unknown" or "future")
+            recipe.craftSourceStatus = MM.ProfessionData and MM.ProfessionData.GetRecipeLearningStatus
+                and MM.ProfessionData.GetRecipeLearningStatus(recipe) or "learnable"
             result[#result + 1] = recipe
         end
     end
@@ -745,11 +747,9 @@ function UI.StartViewBuild()
     UI.listOffset = 0
     UI.viewRows = {}
     UI.rankSort = nil
-    local isCrafting = UI.activeTab == "crafting" or UI.activeTab == "allcrafts"
+    local isCrafting = UI.activeTab == "crafts"
     local source
-    if UI.activeTab == "crafting" then
-        source = MM.Recipes and MM.Recipes.GetAllRecipes() or {}
-    elseif UI.activeTab == "allcrafts" then
+    if UI.activeTab == "crafts" then
         source = GetAllCraftSources()
     elseif UI.activeTab == "materials" then
         source = GetMaterialCatalog()
@@ -764,6 +764,12 @@ function UI.StartViewBuild()
         index = 1, query = query, rows = {}, tab = UI.activeTab,
         professionFilter = UI.professionFilter,
         itemRoleFilter = UI.itemRoleFilter,
+        economicsFilters = {
+            crafted = UI.economicsFilters.crafted,
+            gathered = UI.economicsFilters.gathered,
+            material = UI.economicsFilters.material,
+            other = UI.economicsFilters.other,
+        },
         craftFilters = {
             craftableOnly = UI.craftFilters.craftableOnly,
             profitableOnly = UI.craftFilters.profitableOnly,
@@ -788,7 +794,7 @@ local function StepView()
     while build.index <= stop do
         local sourceItem = source[build.index]
         local item = sourceItem
-        local isCrafting = build.tab == "crafting" or build.tab == "allcrafts"
+        local isCrafting = build.tab == "crafts"
         if isCrafting and MM.Recipes then
             item = MM.Recipes.BuildEconomics(sourceItem, function(itemID)
                 return GetMarketPrice(itemID)
@@ -799,6 +805,9 @@ local function StepView()
                 item.itemName = item.itemName or sourceItem.recipeName
                 item.craftSourceStatus = sourceItem.craftSourceStatus or "known"
                 item.requiredSkill = sourceItem.requiredSkill
+                item.currentProfessionSkill = sourceItem.currentProfessionSkill
+                item.canLearnNow = sourceItem.canLearnNow
+                item.learningStatus = sourceItem.learningStatus
                 item.borrowedSkill = sourceItem.borrowedSkill
                 item.borrowedSources = sourceItem.borrowedSources
                 item.sourceUnknown = sourceItem.sourceUnknown
@@ -835,14 +844,28 @@ local function StepView()
             end
             if matches and isCrafting and build.itemRoleFilter ~= "all" then
                 local status = item.craftSourceStatus or "known"
-                if build.itemRoleFilter == "known" then
-                    matches = status == "known"
-                elseif build.itemRoleFilter == "unlearned" then
-                    matches = status ~= "known"
+                if build.itemRoleFilter == "known" or build.itemRoleFilter == "learnable"
+                    or build.itemRoleFilter == "unlearnable" then
+                    matches = status == build.itemRoleFilter
                 end
             elseif matches and not isCrafting and build.itemRoleFilter ~= "all" then
                 matches = MM.ProfessionData and MM.ProfessionData.Matches(item.itemID, 0,
                     build.itemRoleFilter) or false
+            end
+            if matches and build.tab == "economics" then
+                local filters = build.economicsFilters or {}
+                local any = filters.crafted or filters.gathered or filters.material or filters.other
+                if any then
+                    local data = MM.ProfessionData
+                    local crafted = data and (data.Matches(item.itemID, 0, "known")
+                        or data.Matches(item.itemID, 0, "learnable")
+                        or data.Matches(item.itemID, 0, "unlearnable")) or false
+                    local gathered = data and data.Matches(item.itemID, 0, "gather") or false
+                    local material = data and data.Matches(item.itemID, 0, "material") or false
+                    local other = not crafted and not gathered and not material
+                    matches = (filters.crafted and crafted) or (filters.gathered and gathered)
+                        or (filters.material and material) or (filters.other and other)
+                end
             end
             if matches and build.tab == "materials" then
                 matches = MM.ProfessionData and MM.ProfessionData.IsMaterial
@@ -908,8 +931,7 @@ local function StepView()
             or (sort.key == "depth" and "at-price quantity"
             or (sort.key == "change" and "price change" or "profit")))
         SetStatus(string.format("Sorting all %d %s by %s…", #build.rows,
-            (build.tab == "allcrafts" and "profession crafts")
-            or (build.tab == "crafting" and "known crafts") or "items", sortLabel))
+            (build.tab == "crafts" and "profession crafts") or "items", sortLabel))
         return
     end
     UI.FinishView(build.rows)
@@ -1078,7 +1100,7 @@ function UI.RenderRows()
     local rowPoolCount = #UI.rows
     if rowPoolCount == 0 then return end
     local startIndex = math.floor((UI.listOffset or 0) / UI.rowHeight) + 1
-    local isCrafting = UI.activeTab == "crafting" or UI.activeTab == "allcrafts"
+    local isCrafting = UI.activeTab == "crafts"
     for i = 1, math.min(UI.visibleCount or rowPoolCount, rowPoolCount) do
         local index = startIndex + i - 1
         local item = UI.viewRows[index]
@@ -1103,7 +1125,9 @@ function UI.RenderRows()
             local profitText = "—"
             if isCrafting then
                 local status = item.craftSourceStatus or "known"
-                local color = status == "known" and "|cff8ee6a2" or "|cffffd77a"
+                local color = status == "known" and "|cff8ee6a2"
+                    or (status == "learnable" and "|cffffd77a"
+                    or (status == "unlearnable" and "|cffff6666" or "|cffb7c0cc"))
                 -- Known/unlearned is the player-facing distinction. Source
                 -- confidence remains in the data model, not as row prefixes.
                 button.name:SetText(color .. GetItemName(item) .. "|r")
@@ -1123,13 +1147,17 @@ function UI.RenderRows()
                 end
             elseif UI.activeTab == "economics" then
                 local economics = item.economics
-                local vendorPrice = GetVendorInfo(item.itemID)
                 button.name:SetText(GetItemDisplayName(item))
-                button.price:SetText(item.minPriceCopper and FormatMoney(item.minPriceCopper)
-                    or (vendorPrice and FormatMoney(vendorPrice) or "—"))
+                button.price:SetText(item.minPriceCopper and FormatMoney(item.minPriceCopper) or "No buyout")
                 button.depth:SetText(economics and economics.materialCostCopper
                     and FormatMoney(economics.materialCostCopper) or "—")
-                button.atPrice:SetText(item.minPriceQuantity ~= nil and tostring(item.minPriceQuantity) or "—")
+                local delta = tonumber(item.historyDeltaCopper)
+                local deltaText = "—"
+                if delta ~= nil then
+                    local deltaColor = delta > 0 and "|cff55dd77+" or (delta < 0 and "|cffff6666-" or "|cffcccccc")
+                    deltaText = deltaColor .. FormatMoney(math.abs(delta)) .. "|r"
+                end
+                button.atPrice:SetText(deltaText)
                 button.total:SetText(tostring(item.totalQuantity or 0))
                 if economics and economics.profitCopper ~= nil then
                     local profitColor = economics.profitCopper >= 0 and "|cff55dd77" or "|cffff6666"
@@ -1595,8 +1623,8 @@ SelectItem = function(item)
         if item.recipeData then
             local state = item.craftSourceStatus or "known"
             tags[#tags + 1] = state == "known" and "|cff55dd77KNOWN|r"
-                or (state == "future" and "|cffffd166FUTURE|r"
-                or (state == "borrowed" and "|cffffa64dBORROWED|r" or "|cffb7c0ccUNKNOWN|r"))
+                or (state == "learnable" and "|cffffd166LEARNABLE|r"
+                or (state == "unlearnable" and "|cffff6666NOT LEARNABLE|r" or "|cffb7c0ccUNKNOWN|r"))
             local freshness = item.freshnessStatus
                 or (item.recipeData and item.recipeData.freshnessStatus)
             if freshness == "review" then tags[#tags + 1] = "|cffffc04dREVIEW|r"
@@ -1617,9 +1645,25 @@ SelectItem = function(item)
         UI.detailAtPrice:SetText(item.minPriceQuantity ~= nil and tostring(item.minPriceQuantity) or "—")
     end
     if item.recipeData then
-        UI.detailVariants:SetText(string.format("%s · Skill %s",
-            tostring(item.professionName or "Profession"),
-            tostring(item.professionSkill or item.recipeData.professionSkill or "?")))
+        local requiredSkill = tonumber(item.requiredSkill or item.professionSkill
+            or item.recipeData.professionSkill)
+        local currentSkill, hasProfession
+        if MM.ProfessionData and MM.ProfessionData.GetCharacterProfessionSkill then
+            currentSkill, hasProfession = MM.ProfessionData.GetCharacterProfessionSkill(item.professionID)
+        end
+        local skillSummary
+        if hasProfession then
+            skillSummary = "Your skill " .. tostring(currentSkill or "?")
+                .. (requiredSkill and (" · Requires " .. tostring(requiredSkill)) or " · Requirement unknown")
+        elseif MM.ProfessionData and MM.ProfessionData.HasAuthoritativeProfessionList
+            and MM.ProfessionData.HasAuthoritativeProfessionList() then
+            skillSummary = "Profession not learned"
+                .. (requiredSkill and (" · Requires " .. tostring(requiredSkill)) or "")
+        else
+            skillSummary = "Profession status unknown"
+                .. (requiredSkill and (" · Requires " .. tostring(requiredSkill)) or "")
+        end
+        UI.detailVariants:SetText(tostring(item.professionName or "Profession") .. " · " .. skillSummary)
         RenderCraftDetail(item)
     else
         UI.detailVariants:SetText(item.noMarketData and "No current Auction House listing"
@@ -1812,6 +1856,10 @@ local function SetTab(tab)
     UI.tabFilterState[previousTab].search = UI.search and UI.search:GetText() or ""
     UI.tabFilterState[previousTab].profession = UI.professionFilter
     UI.tabFilterState[previousTab].role = UI.itemRoleFilter
+    UI.tabFilterState[previousTab].economicsFilters = {
+        crafted = UI.economicsFilters.crafted, gathered = UI.economicsFilters.gathered,
+        material = UI.economicsFilters.material, other = UI.economicsFilters.other,
+    }
     UI.tabFilterState[previousTab].craftFilters = {
         craftableOnly = UI.craftFilters.craftableOnly,
         profitableOnly = UI.craftFilters.profitableOnly,
@@ -1826,18 +1874,22 @@ local function SetTab(tab)
     local saved = UI.tabFilterState[tab] or {}
     UI.professionFilter = tonumber(saved.profession) or 0
     UI.itemRoleFilter = saved.role or "all"
+    local savedEconomics = saved.economicsFilters or {}
+    UI.economicsFilters.crafted = savedEconomics.crafted == true
+    UI.economicsFilters.gathered = savedEconomics.gathered == true
+    UI.economicsFilters.material = savedEconomics.material == true
+    UI.economicsFilters.other = savedEconomics.other == true
     local savedCraft = saved.craftFilters or {}
     UI.craftFilters.craftableOnly = savedCraft.craftableOnly == true
     UI.craftFilters.profitableOnly = savedCraft.profitableOnly == true
     UI.craftFilters.reviewOnly = savedCraft.reviewOnly == true
     UI.craftFilters.hideLowProfit = savedCraft.hideLowProfit == true
     if UI.search then UI.search:SetText(saved.search or "") end
-    if UI.centerHeading then UI.centerHeading:SetText(tab == "allcrafts" and "All Crafts"
-        or (tab == "crafting" and "My Crafts" or (tab == "market" and "All Items"
-        or (tab == "low" and "Low Supply" or tab:gsub("^%l", string.upper))))) end
-    if UI.filterHeading then UI.filterHeading:SetText("Filters — " .. (tab == "allcrafts" and "All Crafts"
-        or (tab == "crafting" and "My Crafts" or (tab == "market" and "All Items"
-        or (tab == "low" and "Low Supply" or (tab:gsub("^%l", string.upper))))))) end
+    local tabTitle = tab == "market" and "All Items"
+        or (tab == "crafts" and "Crafts"
+        or (tab == "low" and "Low Supply" or tab:gsub("^%l", string.upper)))
+    if UI.centerHeading then UI.centerHeading:SetText(tabTitle) end
+    if UI.filterHeading then UI.filterHeading:SetText("Filters — " .. tabTitle) end
     if UI.professionDropdown and UI.professionDropdown.RefreshText then UI.professionDropdown.RefreshText() end
     for name, button in pairs(UI.tabs) do
         if name == tab then
@@ -1851,14 +1903,15 @@ local function SetTab(tab)
         end
     end
 
-    local craftTab = tab == "crafting" or tab == "allcrafts"
+    local craftTab = tab == "crafts"
     local labels = { "Item / Recipe", "Cheapest", "Materials", "At Price", "Total", "Profit / Craft" }
     local keys = { "name", "price", "materials", "depth", "total", "profit" }
     if craftTab then
         labels = { "Recipe", "Materials (cost)", "Sale / Unit", "At Price", "Total", "Profit / Craft" }
         keys = { "name", "materials", "price", "depth", "total", "profit" }
     elseif tab == "economics" then
-        labels = { "Item", "Sale / Unit", "Materials", "At Price", "Total", "Profit / Loss" }
+        labels = { "Item", "Cheapest", "Craft cost", "Price change", "Total units", "Best craft profit" }
+        keys = { "name", "price", "materials", "change", "total", "profit" }
     elseif tab == "materials" then
         labels = { "Item", "Cheapest", "At Price", "Total Units", "Best Craft Profit" }
         keys = { "name", "price", "depth", "total", "profit" }
@@ -1900,6 +1953,29 @@ local function SetTab(tab)
             row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", 484, 0); row.atPrice:SetWidth(70)
             row.total:ClearAllPoints(); row.total:SetPoint("LEFT", row, "LEFT", 560, 0); row.total:SetWidth(70)
             row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(170)
+        end
+    elseif tab == "economics" then
+        local economicsColumns = {
+            { x = 302, w = 205, justify = "LEFT" },
+            { x = 510, w = 105, justify = "RIGHT" },
+            { x = 620, w = 150, justify = "RIGHT" },
+            { x = 776, w = 72, justify = "RIGHT" },
+            { x = 852, w = 72, justify = "RIGHT" },
+            { x = 930, w = 176, justify = "RIGHT" },
+        }
+        for i, column in ipairs(economicsColumns) do
+            local header = UI.headerButtons[i]
+            header:ClearAllPoints(); header:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", column.x, -218); header:SetWidth(column.w)
+            header.label:SetWidth(column.w - 14); header.label:SetJustifyH(column.justify)
+        end
+        for _, row in ipairs(UI.rows or {}) do
+            row.total:Show()
+            row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(182)
+            row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", 212, 0); row.price:SetWidth(105)
+            row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 322, 0); row.depth:SetWidth(150)
+            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", 478, 0); row.atPrice:SetWidth(72)
+            row.total:ClearAllPoints(); row.total:SetPoint("LEFT", row, "LEFT", 554, 0); row.total:SetWidth(72)
+            row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(176)
         end
     elseif tab == "materials" then
         local materialColumns = {
@@ -1948,8 +2024,8 @@ local function SetTab(tab)
         end
     end
     if UI.roleLabel then
-        UI.roleLabel:SetText(craftTab and (tab == "allcrafts" and "Known status" or "Recipe status")
-            or "Recipe source / item role")
+        UI.roleLabel:SetText(craftTab and "Recipe status"
+            or (tab == "materials" and "Material relationship" or "Item role"))
     end
     UpdateHeaderIndicators()
 
@@ -1957,7 +2033,7 @@ local function SetTab(tab)
         UI.roleDropdown:Enable()
         if UI.roleDropdown.RefreshText then UI.roleDropdown.RefreshText() end
     end
-    local showCraftFilters = tab == "crafting" or tab == "allcrafts"
+    local showCraftFilters = tab == "crafts"
     if UI.craftFilterHeading then
         if showCraftFilters then UI.craftFilterHeading:Show() else UI.craftFilterHeading:Hide() end
     end
@@ -1968,6 +2044,17 @@ local function SetTab(tab)
             if showCraftFilters then control.label:Show() else control.label:Hide() end
         end
     end
+    local showEconomicsFilters = tab == "economics"
+    if UI.economicsFilterHeading then
+        if showEconomicsFilters then UI.economicsFilterHeading:Show() else UI.economicsFilterHeading:Hide() end
+    end
+    for key, control in pairs(UI.economicsFilterControls or {}) do
+        if showEconomicsFilters then control:Show() else control:Hide() end
+        if control.SetChecked then control:SetChecked(UI.economicsFilters[key] == true) end
+        if control.label then
+            if showEconomicsFilters then control.label:Show() else control.label:Hide() end
+        end
+    end
     if UI.detailHeading then UI.detailHeading:SetText(craftTab and "Selected Recipe" or "Selected Item") end
     if UI.detailName then UI.detailName:SetText("Loading selection…") end
     if UI.detailIcon then UI.detailIcon:Hide() end
@@ -1976,13 +2063,12 @@ local function SetTab(tab)
     if UI.detailSupply then UI.detailSupply:SetText("—") end
     if UI.detailVariants then UI.detailVariants:SetText("") end
     SetDetailEconomics(craftTab
-        and (tab == "crafting" and "Your known recipes, including losses and incomplete prices."
-            or "All recipe candidates. Acquisition source and price-data certainty are shown per recipe.")
+        and ("All supported recipes. Known, learnable and unavailable recipes are grouped by your professions.")
         or (tab == "materials" and "Materials used by known and supported unlearned recipes."
             or "Select an item to inspect its market, vendor value and recipe relationships."))
     if UI.detailProfit then
         UI.detailProfit:SetText(tab == "economics" and "Auction and vendor sale comparison"
-            or (tab == "allcrafts" and "All profession recipes" or "Automatic recipe valuation"))
+            or (tab == "crafts" and "All profession recipes" or "Automatic recipe valuation"))
     end
     if UI.historyGraph then
         for _, bar in ipairs(UI.historyBars or {}) do bar:Hide() end
@@ -2100,8 +2186,7 @@ local function CreateUI()
     local tabSpecs = {
         { "market", "All Items", 194 },
         { "economics", "Economics", 194 },
-        { "crafting", "My Crafts", 194 },
-        { "allcrafts", "All Crafts", 194 },
+        { "crafts", "Crafts", 194 },
         { "materials", "Materials", 194 },
         { "low", "Low Supply", 194 },
         { "history", "History", 194 },
@@ -2131,11 +2216,9 @@ local function CreateUI()
         if key == "market" then
             button.tooltipText = "Every item in the saved Auction House market snapshot."
         elseif key == "economics" then
-            button.tooltipText = "Every market item with its best known craft cost, auction profit and vendor alternative where data is available."
-        elseif key == "crafting" then
-            button.tooltipText = "Only recipes you have learned and Market has captured from your profession windows, including losses and recipes with incomplete market prices."
-        elseif key == "allcrafts" then
-            button.tooltipText = "All supported profession recipes, including unlearned candidates. Names use the same learned/unlearned colours as the filters; acquisition details use the best available source."
+            button.tooltipText = "Market analysis with price movement, best craft cost/profit and relationship filters. Drop and item-vendor source filters remain unavailable until reliable item-acquisition data is mapped."
+        elseif key == "crafts" then
+            button.tooltipText = "All supported profession recipes, grouped by whether you know them, can learn them with your professions, or lack the required profession."
         elseif key == "materials" then
             button.tooltipText = "Items used as reagents by known or supported unlearned recipes, with their market value and recipe relationships."
         elseif key == "low" then
@@ -2224,7 +2307,10 @@ local function CreateUI()
         local futureProvider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
             and MM.ProfessionData.GetFutureProviderStatus()
         local futureReady = futureProvider and futureProvider.available
-        if UI.activeTab == "allcrafts" then
+        local professionStatusReady = MM.ProfessionData
+            and MM.ProfessionData.HasAuthoritativeProfessionList
+            and MM.ProfessionData.HasAuthoritativeProfessionList()
+        if UI.activeTab == "crafts" then
             return {
                 { text = "All recipes", value = "all",
                     tooltipTitle = "All recipes",
@@ -2232,12 +2318,13 @@ local function CreateUI()
                 { text = "Known by you", value = "known",
                     tooltipTitle = "Known recipes",
                     tooltipText = "Recipes recorded from this character's profession windows." },
-                { text = "Unlearned", value = "unlearned", disabled = not futureReady,
-                    tooltipTitle = "Unlearned recipes",
-                    tooltipText = "Show recipes not recorded as learned by this character." },
+                { text = "Learnable", value = "learnable", disabled = not futureReady or not professionStatusReady,
+                    tooltipTitle = "Learnable recipes",
+                    tooltipText = "Recipes for professions you have. Skill requirements are shown in the recipe details." },
+                { text = "Not learnable", value = "unlearnable", disabled = not futureReady or not professionStatusReady,
+                    tooltipTitle = "Not learnable",
+                    tooltipText = "Recipes for professions this character does not currently have." },
             }
-        elseif UI.activeTab == "crafting" then
-            return { { text = "Known by you", value = "all" } }
         end
         local gatherReady = MM.ProfessionData and MM.ProfessionData.HasGatheringData
             and MM.ProfessionData.HasGatheringData()
@@ -2248,14 +2335,17 @@ local function CreateUI()
             { text = "Known craft outputs", value = "known",
                 tooltipTitle = "Known craft outputs",
                 tooltipText = "Items produced by at least one recipe recorded as learned by this character." },
-            { text = futureReady and "Unlearned craft outputs" or "Unlearned crafts (install DB)",
-                value = "unlearned", disabled = not futureReady,
-                tooltipTitle = "Unlearned craft outputs",
-                tooltipText = "Items produced by recipes not recorded as learned by this character." },
+            { text = futureReady and "Learnable craft outputs" or "Craft data unavailable",
+                value = "learnable", disabled = not futureReady or not professionStatusReady,
+                tooltipTitle = "Learnable craft outputs",
+                tooltipText = "Items produced by recipes for professions you have." },
+            { text = "Unavailable craft outputs", value = "unlearnable", disabled = not futureReady or not professionStatusReady,
+                tooltipTitle = "Unavailable craft outputs",
+                tooltipText = "Items produced by recipes for professions this character does not have." },
             { text = gatherReady and "Gathering resources" or "Gathering data unavailable",
                 value = "gather", disabled = not gatherReady,
                 tooltipTitle = "Gathering resources",
-                tooltipText = "Items mapped to Mining, Herbalism or Fishing. This classification does not mean your character can gather them at their current skill. Skinning coverage is not yet mapped." },
+                tooltipText = "Items mapped to Mining, Herbalism, Fishing or the core Skinning leather progression. This classification does not guarantee current skill eligibility." },
             { text = "Crafting reagents", value = "material",
                 tooltipTitle = "Crafting reagents",
                 tooltipText = "Items used as ingredients by at least one known or supported unlearned recipe." },
@@ -2295,6 +2385,37 @@ local function CreateUI()
         UI.craftFilterControls[spec[1]] = check
     end
     UI.craftFilterHeading = AddLabel(frame, "CRAFT FILTERS", 30, -394, 230, 18, "GameFontNormal")
+    UI.economicsFilterControls = {}
+    local economicsFilterSpecs = {
+        { "crafted", "Crafted outputs", "Items produced by at least one known or supported unlearned recipe.", true },
+        { "gathered", "Gathered / collected", "Items mapped to Mining, Herbalism, Fishing or the supported Skinning leather tiers.", true },
+        { "material", "Crafting reagents", "Items used as ingredients by supported recipes.", true },
+        { "other", "Other market items", "Items without a mapped craft-output, gathering or reagent relationship.", true },
+        { "dropped", "Dropped / loot", "Disabled: this release does not have a reliable item-drop source catalogue.", false },
+        { "vendor", "Vendor sourced", "Disabled: vendor recipe-learning sources are not the same as item acquisition sources.", false },
+    }
+    for i, spec in ipairs(economicsFilterSpecs) do
+        local y = -414 - ((i - 1) * 29)
+        local check = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+        check:SetSize(22, 22)
+        check:SetPoint("TOPLEFT", frame, "TOPLEFT", 28, y)
+        local label = AddLabel(frame, spec[2], 54, y, 210, 20, "GameFontHighlightSmall")
+        check.label = label
+        check.filterKey = spec[1]
+        if not spec[4] then
+            check:Disable()
+            label:SetText("|cff777777" .. spec[2] .. "|r")
+        else
+            check:SetScript("OnClick", function(self)
+                UI.economicsFilters[self.filterKey] = self:GetChecked() == true
+                UI.StartViewBuild()
+            end)
+        end
+        check:SetScript("OnEnter", function(self) RaiseMarketTooltip(self, spec[2], spec[3]) end)
+        check:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
+        UI.economicsFilterControls[spec[1]] = check
+    end
+    UI.economicsFilterHeading = AddLabel(frame, "ECONOMICS FILTERS", 30, -394, 230, 18, "GameFontNormal")
     UI.tabFilterState[UI.activeTab] = { search = "", profession = 0, role = "all" }
     UI.tabFilterState[UI.activeTab].craftFilters = {}
     UI.resultCount = AddLabel(frame, "", 990, -166, 116, 20, "GameFontNormalSmall")
@@ -2396,7 +2517,7 @@ local function CreateUI()
         row.nameHit:SetScript("OnEnter", function(self)
             local selected = UI.visibleRows[slot]
             if selected then
-                local craftingRow = UI.activeTab == "crafting" or UI.activeTab == "allcrafts"
+                local craftingRow = UI.activeTab == "crafts"
                 ShowMarketItemTooltip(self, selected, craftingRow and selected.recipeID ~= nil)
             end
         end)
@@ -2411,7 +2532,7 @@ local function CreateUI()
         row.materialHit:SetFrameLevel(row:GetFrameLevel() + 2)
         row.materialHit:SetScript("OnEnter", function(self)
             local selected = UI.visibleRows[slot]
-            if selected and (UI.activeTab == "crafting" or UI.activeTab == "allcrafts") then
+            if selected and (UI.activeTab == "crafts") then
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:SetFrameStrata("TOOLTIP")
                 GameTooltip:SetText("Materials and cost", 1, 0.82, 0.35)
@@ -2568,7 +2689,7 @@ function UI.OnRecipesUpdated()
         end
     end
     if not UI.frame then return end
-    if UI.activeTab == "crafting" or UI.activeTab == "allcrafts"
+    if UI.activeTab == "crafts"
         or UI.activeTab == "economics" or UI.activeTab == "materials" then
         UI.StartViewBuild()
     elseif UI.selectedItem and not UI.selectedItem.recipeData then

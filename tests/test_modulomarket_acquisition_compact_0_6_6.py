@@ -39,7 +39,9 @@ def test_inspector_is_concise_and_recipe_tooltip_has_no_numeric_recipe_id():
     assert '"Total listed: "' not in detail
     assert '"Recipe ID: "' not in UI
     assert '"%s · Skill %s · Recipe #%s"' not in UI
-    assert '"%s · Skill %s"' in UI
+    assert '"Your skill "' in UI
+    assert '" · Requires "' in UI
+    assert '"Profession not learned"' in UI
     assert 'UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1194, -200)' in UI
 
 

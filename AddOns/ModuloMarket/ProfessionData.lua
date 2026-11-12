@@ -23,6 +23,9 @@ local PROFESSION_NAMES = {
 
 local index = {}
 local professions = {}
+local characterProfessions = {}
+local characterProfessionSkills = {}
+local characterProfessionDataKnown = false
 local allFutureRecipes = {}
 local foreverRecipeDetails = {}
 local futureProvider = {
@@ -640,9 +643,44 @@ local function AddFutureRecipes()
     futureProvider.borrowedSourceCount = borrowedCount
 end
 
+local function ReadCharacterProfessionSkills(summary)
+    local skills, names = {}, {}
+    local apiKnown = false
+    if type(_G.GetProfessions) == "function" and type(_G.GetProfessionInfo) == "function" then
+        local ok, p1, p2, p3, p4, p5 = pcall(_G.GetProfessions)
+        if ok then
+            apiKnown = true
+            for _, professionIndex in pairs({ p1, p2, p3, p4, p5 }) do
+                if professionIndex then
+                    local infoOK, name, _, skillLevel, _, _, _, skillLine = pcall(
+                        _G.GetProfessionInfo, professionIndex)
+                    local professionID = infoOK and tonumber(skillLine) or nil
+                    if professionID then
+                        skills[professionID] = tonumber(skillLevel) or 0
+                        names[professionID] = type(name) == "string" and name or PROFESSION_NAMES[professionID]
+                    end
+                end
+            end
+        end
+    end
+    if not apiKnown then
+        for _, profession in ipairs(summary and summary.professions or {}) do
+            local professionID = tonumber(profession.professionID)
+            if professionID then
+                skills[professionID] = tonumber(profession.skill) or 0
+                names[professionID] = profession.name or PROFESSION_NAMES[professionID]
+            end
+        end
+    end
+    return skills, names, apiKnown
+end
+
 function Data.Refresh()
     index = {}
     professions = {}
+    characterProfessions = {}
+    characterProfessionSkills = {}
+    characterProfessionDataKnown = false
     allFutureRecipes = {}
     foreverRecipeDetails = {}
     futureProvider = {
@@ -661,10 +699,12 @@ function Data.Refresh()
         end
     end
 
-    local knownProfessions = {}
-    for _, profession in ipairs(summary and summary.professions or {}) do
-        local professionID = tonumber(profession.professionID)
-        if professionID then knownProfessions[professionID] = tonumber(profession.skill) or 0 end
+    local knownProfessions, nativeNames, apiKnown = ReadCharacterProfessionSkills(summary)
+    characterProfessionDataKnown = apiKnown
+    for professionID, skill in pairs(knownProfessions) do
+        characterProfessions[professionID] = true
+        characterProfessionSkills[professionID] = skill
+        if nativeNames[professionID] then professions[professionID] = nativeNames[professionID] end
     end
 
     AddKnownRecipes()
@@ -672,6 +712,16 @@ function Data.Refresh()
         AddFutureRecipes()
     end
     AddGatheringItems(knownProfessions)
+    for _, recipe in ipairs(allFutureRecipes) do
+        local pid = tonumber(recipe.professionID)
+        recipe.characterHasProfession = pid ~= nil and characterProfessions[pid] == true
+        recipe.currentProfessionSkill = pid and characterProfessionSkills[pid] or nil
+        recipe.learningStatus = Data.GetRecipeLearningStatus(recipe)
+        local required = tonumber(recipe.requiredSkill or recipe.professionSkill or recipe.learnAtSkill)
+        recipe.requiredSkill = required
+        recipe.canLearnNow = recipe.characterHasProfession and required ~= nil
+            and recipe.currentProfessionSkill ~= nil and recipe.currentProfessionSkill >= required or false
+    end
 end
 
 function Data.GetItem(itemID)
@@ -766,6 +816,26 @@ function Data.IsMarketSnapshotCompatible(snapshot)
         and snapshotBuild == futureProvider.currentBuild, snapshotBuild
 end
 
+function Data.GetRecipeLearningStatus(recipe)
+    if type(recipe) ~= "table" then return "unknown" end
+    if recipe.craftSourceStatus == "known" or recipe.learned == true then return "known" end
+    local pid = tonumber(recipe.professionID)
+    if not pid then return "unknown" end
+    if characterProfessions[pid] then return "learnable" end
+    if not characterProfessionDataKnown then return "unknown" end
+    return "unlearnable"
+end
+
+function Data.GetCharacterProfessionSkill(professionID)
+    local pid = tonumber(professionID)
+    if not pid or not characterProfessions[pid] then return nil, false end
+    return characterProfessionSkills[pid], true
+end
+
+function Data.HasAuthoritativeProfessionList()
+    return characterProfessionDataKnown == true
+end
+
 function Data.Matches(itemID, professionID, role)
     local entry = Data.GetItem(itemID)
     if professionID and tonumber(professionID) and tonumber(professionID) ~= 0 then
@@ -773,9 +843,18 @@ function Data.Matches(itemID, professionID, role)
     end
     if role == "known" then
         return entry ~= nil and #entry.knownCrafts > 0
+    elseif role == "learnable" or role == "unlearnable" then
+        if not entry or #entry.knownCrafts > 0 then return false end
+        local recipes = {}
+        for _, recipe in ipairs(entry.futureCrafts) do recipes[#recipes + 1] = recipe end
+        for _, recipe in ipairs(entry.unknownFutureCrafts) do recipes[#recipes + 1] = recipe end
+        for _, recipe in ipairs(recipes) do
+            if Data.GetRecipeLearningStatus(recipe) == role then return true end
+        end
+        return false
     elseif role == "unlearned" then
-        return entry ~= nil and #entry.knownCrafts == 0
-            and (#entry.futureCrafts > 0 or #entry.unknownFutureCrafts > 0)
+        return Data.Matches(itemID, professionID, "learnable")
+            or Data.Matches(itemID, professionID, "unlearnable")
     elseif role == "gather" then
         return entry ~= nil and next(entry.gathering) ~= nil
     elseif role == "material" then
@@ -788,17 +867,22 @@ function Data.GetItemTags(itemID)
     local entry = Data.GetItem(itemID)
     if not entry then return nil end
     local tags = {}
-    local hasKnownCraft = #entry.knownCrafts > 0
-    if hasKnownCraft then
+    if #entry.knownCrafts > 0 then
         tags[#tags + 1] = "known"
     else
-        local hasFuture, hasBorrowed = false, false
-        for _, future in ipairs(entry.futureCrafts) do
-            if future.borrowedSources then hasBorrowed = true else hasFuture = true end
+        local hasLearnable, hasUnlearnable = false, false
+        for _, recipe in ipairs(entry.futureCrafts) do
+            local status = Data.GetRecipeLearningStatus(recipe)
+            if status == "learnable" then hasLearnable = true
+            elseif status == "unlearnable" then hasUnlearnable = true end
         end
-        if hasFuture then tags[#tags + 1] = "future" end
-        if hasBorrowed then tags[#tags + 1] = "futureBorrowed" end
-        if #entry.unknownFutureCrafts > 0 then tags[#tags + 1] = "futureUnknown" end
+        for _, recipe in ipairs(entry.unknownFutureCrafts) do
+            local status = Data.GetRecipeLearningStatus(recipe)
+            if status == "learnable" then hasLearnable = true
+            elseif status == "unlearnable" then hasUnlearnable = true end
+        end
+        if hasLearnable then tags[#tags + 1] = "future" end
+        if hasUnlearnable then tags[#tags + 1] = "unlearnable" end
     end
     if next(entry.gathering) then tags[#tags + 1] = "gather" end
     if entry.materialForCraft then tags[#tags + 1] = "material" end
