@@ -1,16 +1,22 @@
-# Modulo Market 0.7.2
+# Modulo Market 0.7.3
 **Current player milestone:** My Crafts and All Crafts are consolidated into Crafts. Recipe status is character-aware: known by you (green), learnable through a profession you have (gold), not learnable because the native profession list confirms you lack the profession (red), or Unknown when ownership cannot be established (also red; internal status remains distinct). Materials shares the same status filters and includes the core leather/hide Skinning tiers. Economics is now a distinct market-analysis view with cheapest price, craft cost, saved price movement, total units, best craft profit and relationship filters. Drop/loot and vendor-origin filters remain disabled because the available provider records describe recipe acquisition, not a complete item-origin catalogue. Forever runtime acceptance is NOT RUN.
 
 
 
-## Current 0.7.2 milestone — tooltip search restart correction
+## Current 0.7.3 milestone — single-pass tooltip search warmup
 
-- Tooltip item-data refreshes are deferred while a view build or sort is active, preventing asynchronous item-load events from repeatedly resetting a multi-thousand-row search.
-- One follow-up search is run after the active pass settles when the query is still non-empty, so newly loaded tooltip text can contribute matches.
-- Unknown and Not Learnable recipe labels both use red; their underlying status and filter semantics remain distinct.
+- Tooltip search now records unresolved item IDs during one catalogue pass, requests missing item data in bounded batches, waits for those requests, then performs one final search pass against the populated normalized cache. Individual item-data events no longer trigger full catalogue rebuilds.
+- Missing item-data responses time out after 15 seconds and fail closed for that search rather than cycling indefinitely.
+- Unknown and Not Learnable recipe names are red in both the Crafts list and selected-recipe inspector; their internal status and filter semantics remain distinct.
 - Forever runtime acceptance remains NOT RUN pending the player's retest on build 70888.
 
-See `docs/MODULOMARKET-SEARCH-PERFORMANCE-0.7.1.md` and `MODULOMARKET-RUNTIME-AUDIT-0.7.2.md` for diagnosis and acceptance.
+See `docs/MODULOMARKET-SEARCH-PERFORMANCE-0.7.1.md` and `MODULOMARKET-RUNTIME-AUDIT-0.7.3.md` for diagnosis and acceptance.
+
+## Current 0.7.2 milestone — deferred tooltip refresh
+
+- Tooltip item-data refreshes were deferred while a view build or sort was active. Runtime retest showed that repeated follow-up full searches still occurred, so this implementation is superseded by 0.7.3's pending-item warmup queue.
+- Unknown and Not Learnable recipe labels both use red in the inspector; 0.7.3 also fixes the Crafts row renderer.
+- Forever runtime acceptance remains NOT RUN.
 
 ## Current 0.7.0 milestone — tooltip search, account/character crafting scope and Economics layout
 

@@ -45,7 +45,7 @@ local UI = {
     tooltipSearchCache = {},
     tooltipSearchRequested = {},
     searchBuildDueAt = nil,
-    tooltipRefreshDueAt = nil,
+    tooltipSearchWarmup = nil,
 }
 MM.MarketUI = UI
 
@@ -93,6 +93,7 @@ local function GetTooltipSearchText(itemID)
         searchTooltip:SetOwner(UIParent, "ANCHOR_NONE")
     end
     local loaded = type(_G.GetItemInfo) == "function" and _G.GetItemInfo(itemID) ~= nil
+    if loaded then UI.tooltipSearchRequested[itemID] = nil end
     if not loaded then
         if not UI.tooltipSearchRequested[itemID] and (UI.tooltipSearchRequestsThisFrame or 0) < 20 then
             UI.tooltipSearchRequested[itemID] = true
@@ -173,6 +174,7 @@ local function MatchesSearch(item, query, isCrafting)
     end
     if not allNameTokensMatch then
         local tooltipText = GetTooltipSearchText(item.itemID)
+        if tooltipText == nil then return nil end -- pending: do not treat unloaded tooltip data as a final no-match
         if tooltipText then haystack = haystack .. " " .. tooltipText end
     end
     for token in string.gmatch(query, "%S+") do
@@ -810,7 +812,7 @@ end
 function UI.StartViewBuild()
     if not UI.search or UI.catalogBuild then return end
     UI.searchBuildDueAt = nil
-    UI.tooltipRefreshDueAt = nil
+    UI.tooltipSearchWarmup = nil
     local query = NormalizeSearchText(UI.search:GetText() or "")
     UI.listOffset = 0
     UI.viewRows = {}
@@ -844,7 +846,7 @@ function UI.StartViewBuild()
             reviewOnly = UI.craftFilters.reviewOnly,
             hideLowProfit = UI.craftFilters.hideLowProfit,
         },
-        source = source or {}, total = #(source or {}), startedAt = Now(),
+        source = source or {}, total = #(source or {}), startedAt = Now(), pendingTooltipIDs = {},
     }
     if UI.scroll then
         UI.scroll:SetVerticalScroll(0)
@@ -857,17 +859,12 @@ end
 -- on the target client, so rebuilding the full catalogue for every typed character
 -- creates unnecessary work and can starve the visible UI.
 local SEARCH_DEBOUNCE_SECONDS = 0.25
-local TOOLTIP_REFRESH_COALESCE_SECONDS = 0.30
-
 local function ScheduleSearchBuild()
     UI.viewBuild = nil
     UI.rankSort = nil
+    UI.tooltipSearchWarmup = nil
     UI.searchBuildDueAt = Now() + SEARCH_DEBOUNCE_SECONDS
     if UI.resultCount then UI.resultCount:SetText("Waiting…") end
-end
-
-local function ScheduleTooltipRefresh()
-    UI.tooltipRefreshDueAt = Now() + TOOLTIP_REFRESH_COALESCE_SECONDS
 end
 
 local function StepView()
@@ -921,6 +918,9 @@ local function StepView()
         end
         if type(item) == "table" then
             local matches = MatchesSearch(item, build.query, isCrafting)
+            if matches == nil and tonumber(item.itemID) then
+                build.pendingTooltipIDs[tonumber(item.itemID)] = true
+            end
             if matches and build.professionFilter and build.professionFilter ~= 0 then
                 if isCrafting then
                     matches = tonumber(item.professionID) == tonumber(build.professionFilter)
@@ -996,6 +996,18 @@ local function StepView()
         return
     end
     UI.lastFilterDuration = math.max(0, Now() - (build.startedAt or Now()))
+    local pendingIDs = {}
+    for itemID in pairs(build.pendingTooltipIDs or {}) do pendingIDs[#pendingIDs + 1] = itemID end
+    if build.query ~= "" and #pendingIDs > 0 then
+        UI.viewBuild = nil
+        UI.tooltipSearchWarmup = {
+            ids = pendingIDs, index = 1, outstanding = 0,
+            startedAt = Now(), query = build.query, tab = build.tab,
+            awaiting = {},
+        }
+        if UI.resultCount then UI.resultCount:SetText(string.format("Loading descriptions: 0/%d", #pendingIDs)) end
+        return
+    end
     UI.viewBuild = nil
     if #build.rows > 1 then
         local sort = UI.sortByTab[build.tab] or { key = "name", ascending = true }
@@ -1022,6 +1034,54 @@ local function StepView()
         return
     end
     UI.FinishView(build.rows)
+end
+
+local TOOLTIP_SEARCH_TIMEOUT_SECONDS = 15
+local function StepTooltipSearchWarmup()
+    local warmup = UI.tooltipSearchWarmup
+    if not warmup then return end
+    UI.tooltipSearchRequestsThisFrame = 0
+    UI.tooltipSearchScansThisFrame = 0
+    local processed = 0
+    while warmup.index <= #warmup.ids and processed < 20 do
+        local itemID = warmup.ids[warmup.index]
+        local text = GetTooltipSearchText(itemID)
+        if text == nil then
+            if UI.tooltipSearchRequested[itemID] then
+                warmup.outstanding = warmup.outstanding + 1
+                warmup.awaiting[itemID] = true
+                warmup.index = warmup.index + 1
+                processed = processed + 1
+            else
+                -- Per-frame request budget reached. Retry this ID next frame.
+                break
+            end
+        else
+            warmup.index = warmup.index + 1
+            processed = processed + 1
+        end
+    end
+    if warmup.index > #warmup.ids and warmup.outstanding <= 0 then
+        UI.tooltipSearchWarmup = nil
+        UI.StartViewBuild() -- exactly one full pass, now backed by resolved/cached tooltip data
+        return
+    end
+    if Now() - (warmup.startedAt or Now()) >= TOOLTIP_SEARCH_TIMEOUT_SECONDS then
+        -- Fail closed for providers that never answer an item-data request; do not
+        -- leave the search stuck or repeatedly restart it.
+        for _, itemID in ipairs(warmup.ids) do
+            UI.tooltipSearchRequested[itemID] = nil
+            UI.tooltipSearchCache[itemID] = false
+            warmup.awaiting[itemID] = nil
+        end
+        UI.tooltipSearchWarmup = nil
+        UI.StartViewBuild()
+        return
+    end
+    if UI.resultCount then
+        local resolved = math.max(0, warmup.index - 1 - warmup.outstanding)
+        UI.resultCount:SetText(string.format("Loading descriptions: %d/%d", resolved, #warmup.ids))
+    end
 end
 
 local function UpdateResultRange()
@@ -1214,7 +1274,8 @@ function UI.RenderRows()
                 local status = item.craftSourceStatus or "known"
                 local color = status == "known" and "|cff8ee6a2"
                     or (status == "learnable" and "|cffffd77a"
-                    or (status == "unlearnable" and "|cffff6666" or "|cffb7c0cc"))
+                    or (status == "unlearnable" and "|cffff6666"
+                    or (status == "unknown" and "|cffff6666" or "|cffff6666")))
                 -- Known/unlearned is the player-facing distinction. Source
                 -- confidence remains in the data model, not as row prefixes.
                 button.name:SetText(color .. GetItemName(item) .. "|r")
@@ -2828,25 +2889,11 @@ local function CreateUI()
         if UI.searchBuildDueAt and now >= UI.searchBuildDueAt then
             UI.searchBuildDueAt = nil
             UI.StartViewBuild()
-        elseif UI.tooltipRefreshDueAt and now >= UI.tooltipRefreshDueAt then
-            -- Item data may arrive in large asynchronous bursts while a tooltip
-            -- search is filtering thousands of rows. Never discard that active
-            -- build: keep the refresh pending until filtering and sorting finish.
-            -- The next pass then sees all item data loaded during this pass.
-            local viewBusy = UI.viewBuild ~= nil or UI.rankSort ~= nil
-                or UI.catalogBuild ~= nil or UI.economicsIndexBuild ~= nil
-            if not UI.searchBuildDueAt and not viewBusy then
-                UI.tooltipRefreshDueAt = nil
-                if UI.search and UI.search:GetText() ~= "" then
-                    UI.StartViewBuild()
-                else
-                    UI.tooltipRefreshDueAt = nil
-                end
-            end
         end
         if UI.catalogBuild then StepCatalog()
         elseif UI.economicsIndexBuild then StepEconomicsIndex()
         elseif UI.viewBuild then StepView()
+        elseif UI.tooltipSearchWarmup then StepTooltipSearchWarmup()
         elseif UI.rankSort then StepRankSort() end
         UI.refreshElapsed = UI.refreshElapsed + (tonumber(elapsed) or 0)
         if UI.refreshElapsed >= 1 then
@@ -2865,12 +2912,15 @@ local function CreateUI()
             if success == false then
                 UI.tooltipSearchCache[itemID] = false
             else
-                -- Leave uncached until the next single coalesced search pass reads
-                -- the now-loaded tooltip. Individual item events must not each
-                -- restart a multi-thousand-row filter build.
+                -- The warmup phase reads and caches this tooltip before the one
+                -- final search pass. Never schedule a whole-catalogue rebuild here.
                 UI.tooltipSearchCache[itemID] = nil
             end
-            if success ~= false then ScheduleTooltipRefresh() end
+            local warmup = UI.tooltipSearchWarmup
+            if warmup and warmup.awaiting[itemID] then
+                warmup.awaiting[itemID] = nil
+                warmup.outstanding = math.max(0, warmup.outstanding - 1)
+            end
         end
     end)
     UI.tooltipSearchEvents = tooltipSearchEvents
