@@ -1,4 +1,18 @@
-# Modulo Market 0.7.9
+# Modulo Market 0.8.0
+**Current player milestone:** Recipe status presentation fails closed. Missing or invalid `craftSourceStatus` is `unknown`, never `known`; the economics index, crafting view, filters, row renderer, selected detail and best-craft explanation share the same status semantics. The 0.7.9 snapshot schema 2 and automatic profession capture are unchanged. Forever runtime acceptance is NOT RUN.
+
+## Current 0.8.0 milestone — Root Tea status integrity
+
+- Removed six downstream fail-open defaults that promoted missing recipe status to `known`.
+- Added one status normalizer allowing only `known`, `learnable`, `unlearnable` and `unknown`.
+- Best-craft context says “Recipe known by this character” only for explicit `known` evidence.
+- Preserved the four-case Root Tea account/character acceptance matrix.
+- Snapshot schema 2 and automatic profession capture remain unchanged.
+
+See `MODULOMARKET-RUNTIME-AUDIT-0.8.0.md`.
+
+## Previous 0.7.9 milestone — snapshot schema and scope isolation
+
 **Current player milestone:** Character and account recipe recognition are isolated. Future recipe candidates are copied before scope-derived status is assigned, and only an actual learned snapshot record can assert `KNOWN`. Each profession snapshot carries a schema version, generation and addon-build provenance. Snapshots from older schemas are retained but are not treated as positive learned evidence until that character's profession is automatically recaptured. Forever runtime acceptance is NOT RUN.
 
 ## Current 0.7.9 milestone — snapshot schema and scope isolation

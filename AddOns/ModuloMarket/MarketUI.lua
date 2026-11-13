@@ -445,6 +445,17 @@ local function GetAllCraftSources()
     return result
 end
 
+-- Status is evidence, not a display default. Missing or invalid values must
+-- never be promoted to KNOWN by a downstream presentation path.
+local function GetCraftSourceStatus(recipe)
+    local status = type(recipe) == "table" and recipe.craftSourceStatus or nil
+    if status == "known" or status == "learnable"
+        or status == "unlearnable" or status == "unknown" then
+        return status
+    end
+    return "unknown"
+end
+
 local function StartEconomicsIndex()
     if UI.economicsIndexBuild then return end
     local recipes = GetAllCraftSources()
@@ -475,7 +486,7 @@ local function StepEconomicsIndex()
         local itemID = tonumber(recipe.outputItemID or recipe.craftedItemId)
         if economics and itemID then
             economics.recipeKey = tostring(recipe.professionID or "") .. ":" .. tostring(recipe.recipeID or "")
-            economics.craftSourceStatus = recipe.craftSourceStatus or "known"
+            economics.craftSourceStatus = GetCraftSourceStatus(recipe)
             economics.requiredSkill = recipe.requiredSkill
             economics.borrowedSkill = recipe.borrowedSkill
             economics.borrowedSources = recipe.borrowedSources
@@ -968,7 +979,7 @@ local function StepView()
                 item.recipeKey = tostring(sourceItem.professionID or "") .. ":" .. tostring(sourceItem.recipeID or "")
                 item.recipeName = sourceItem.recipeName
                 item.itemName = item.itemName or sourceItem.recipeName
-                item.craftSourceStatus = sourceItem.craftSourceStatus or "known"
+                item.craftSourceStatus = GetCraftSourceStatus(sourceItem)
                 item.requiredSkill = sourceItem.requiredSkill
                 item.currentProfessionSkill = sourceItem.currentProfessionSkill
                 item.canLearnNow = sourceItem.canLearnNow
@@ -1011,7 +1022,7 @@ local function StepView()
                 end
             end
             if matches and isCrafting and build.itemRoleFilter ~= "all" then
-                local status = item.craftSourceStatus or "known"
+                local status = GetCraftSourceStatus(item)
                 if build.itemRoleFilter == "known" or build.itemRoleFilter == "learnable"
                     or build.itemRoleFilter == "unlearnable" then
                     matches = status == build.itemRoleFilter
@@ -1041,7 +1052,7 @@ local function StepView()
             end
             if matches and isCrafting then
                 local filters = build.craftFilters or {}
-                local status = item.craftSourceStatus or "known"
+                local status = GetCraftSourceStatus(item)
                 local freshness = item.freshnessStatus
                     or (item.recipeData and item.recipeData.freshnessStatus)
                 local hasOutput = tonumber(item.itemID) ~= nil and (tonumber(item.outputQuantity) or 0) > 0
@@ -1379,7 +1390,7 @@ function UI.RenderRows()
             end
             local profitText = "—"
             if isCrafting then
-                local status = item.craftSourceStatus or "known"
+                local status = GetCraftSourceStatus(item)
                 local color = status == "known" and "|cff8ee6a2"
                     or (status == "learnable" and "|cffffd77a"
                     or (status == "unlearnable" and "|cffff6666"
@@ -1891,10 +1902,15 @@ local function RenderMarketRecipeContext(item)
             lines[#lines + 1] = ""
             lines[#lines + 1] = "|cffffd100BEST CRAFT ROUTE|r"
             lines[#lines + 1] = tostring(best.professionName or "Profession") .. " · " .. tostring(best.recipeName or "Recipe")
-            if best.craftSourceStatus == "future" then
-                lines[#lines + 1] = "Unlearned recipe · recorded acquisition source"
-            else
+            local routeStatus = GetCraftSourceStatus(best)
+            if routeStatus == "known" then
                 lines[#lines + 1] = "Recipe known by this character"
+            elseif routeStatus == "learnable" then
+                lines[#lines + 1] = "Unlearned recipe · profession learned"
+            elseif routeStatus == "unlearnable" then
+                lines[#lines + 1] = "Unlearned recipe · profession not learned"
+            else
+                lines[#lines + 1] = "Recipe learning status unknown"
             end
             lines[#lines + 1] = "Material cost / craft: " .. (best.materialCostCopper and FormatMoney(best.materialCostCopper) or "Incomplete")
             lines[#lines + 1] = "Auction profit / craft: " .. (best.profitCopper ~= nil and FormatMoney(best.profitCopper) or "Unavailable")
@@ -1933,7 +1949,7 @@ SelectItem = function(item)
     if UI.detailBadges then
         local tags = {}
         if item.recipeData then
-            local state = item.craftSourceStatus or "known"
+            local state = GetCraftSourceStatus(item)
             tags[#tags + 1] = state == "known" and "|cff55dd77KNOWN|r"
                 or (state == "learnable" and "|cffffd166LEARNABLE|r"
                 or (state == "unlearnable" and "|cffff6666NOT LEARNABLE|r" or "|cffff6666UNKNOWN|r"))
