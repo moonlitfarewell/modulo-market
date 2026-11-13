@@ -1,7 +1,22 @@
-# Modulo Market 0.8.2
-**Current player milestone:** All Items mockup alignment. The header is simplified, auction/recipe provenance and crafting scope are grouped in a left-side Data card, and the All Items filter panel gains four functional quick filters. The Selected Item Relationships section now presents Crafting and Gathering separately, and Market History receives more vertical space. Auction build comparison normalizes a numeric build (`70888`) against the full client identity (`1.60.1.70888`) to avoid a false mismatch. Market data, recipe facts, calculations and SavedVariables schema are unchanged. Forever runtime acceptance for the new slice is NOT RUN.
+# Modulo Market 0.8.3
+**Current player milestone:** All Items visual refinement. The All Items filter panel now separates profession-related Item role filtering from client item-class Item Types filtering. The new type filter uses class metadata from the game client, with an asynchronous warmup capped at ten item-data requests per frame and unknown metadata excluded from selected class filters. The main title receives a framed plaque, filter/data spacing is refined, table and inspector typography are more readable, and the selected-item icon and market values are enlarged. The existing six tabs, market calculations, recipe data and SavedVariables schema remain unchanged. Forever runtime acceptance for 0.8.3 is NOT RUN.
 
-## Current 0.8.2 milestone — All Items mockup alignment
+## Current 0.8.3 milestone — All Items visual refinement
+
+- Restored a distinct **Item Types** dropdown beneath **Item role** on All Items. Item role continues to filter profession/gathering/material relationships; Item Types filters the client's item class.
+- Added grounded item-class groups: All item types, Consumables (class 0), Equipment (Weapons class 2 and Armor class 4), Trade Goods (class 7), and Other item classes. These class IDs are consistent with the existing class-aware Low Supply threshold logic.
+- Reads item class IDs from the existing `C_Item.GetItemInfo` result or the legacy `GetItemInfo` classID return. It does not infer type from item names. Items without loaded/available class metadata are omitted only when a specific type is selected; All item types retains the full market view.
+- Item-class metadata requests are queued and capped at ten attempts per frame. Existing `GET_ITEM_INFO_RECEIVED` / `ITEM_DATA_LOAD_RESULT` events update the cache and schedule a single debounced All Items rebuild. Failed or unavailable metadata is marked unclassified rather than repeatedly requested.
+- The Item Types control is intentionally shown only on All Items. Other tabs retain their own specialist filters without overlapping controls.
+- Moved the All Items quick options below the new type selector and moved the Data card down to preserve spacing and keep Crafting Scope inside the card.
+- Added a dark/gold title plaque and aligned the main title. Increased key table, filter and inspector text sizes by a restrained amount without changing the 24px market row height or 25-row virtualized table.
+- Enlarged the selected-item icon to 48px, improved inspector row typography, and retained the existing scrollable Relationships section and expanded Market History graph.
+- Preserved the six existing tabs, market columns, search, sort, row selection, tooltips, scan behavior, quick-filter semantics, auction/recipe provenance, calculations and SavedVariables.
+- No new addon dependency or parent MODULO change. Parent MODULO 1.0.48 remains unchanged.
+
+Offline verification: focused regressions 65 PASS; fresh-extraction regressions 65 PASS; Lua syntax 9/9 PASS; fresh-extraction Lua syntax 9/9 PASS; profession capture harness PASS. Full historical suite: 224 PASS / 61 legacy or superseded failures; compared with 0.8.2, one historical geometry assertion now passes and no new failing test IDs were introduced. ZIP CRC PASS; manifest 154/154; fresh extraction PASS; versions aligned 0.8.3. Forever runtime NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.8.3.md`.
+
+## Previous 0.8.2 milestone — All Items mockup alignment
 
 - Reworked the top header to reduce competing data labels; retained market snapshot summary, scan state, scan controls and window opacity.
 - Moved Auction Data, Recipe Data, review-record count and Crafting Scope into a dedicated Data card in the left filter panel.

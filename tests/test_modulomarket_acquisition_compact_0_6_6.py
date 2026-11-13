@@ -42,14 +42,14 @@ def test_inspector_is_concise_and_recipe_tooltip_has_no_numeric_recipe_id():
     assert '"Your skill "' in UI
     assert '" · Requires "' in UI
     assert '"Profession not learned"' in UI
-    assert 'UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1194, -200)' in UI
+    assert 'UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1200, -200)' in UI
 
 
 def test_history_bars_show_percentage_change_labels():
     assert "UI.historyBarLabels = {}" in UI
     assert 'string.format("%+.1f%%", change)' in UI
     assert "percentLabel:Show()" in UI
-    assert 'UI.historyGraph:SetSize(236, 60)' in UI
+    assert 'UI.historyGraph:SetSize(236, 145)' in UI
 
 
 def test_release_versions_agree():

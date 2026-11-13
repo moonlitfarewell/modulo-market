@@ -31,10 +31,17 @@ local UI = {
     },
     economicsByItemID = nil,
     vendorPriceCache = {},
+    itemClassCache = {},
+    itemClassRequested = {},
+    itemClassFailed = {},
+    itemClassPendingIDs = {},
+    itemClassPendingOrder = {},
+    itemClassPendingIndex = 1,
     vendorPriceRequested = {},
     vendorPriceFailed = {},
     historyBars = {},
     itemRoleFilter = "all",
+    itemTypeFilter = "all",
     professionOptions = {},
     sortByTab = {
         market = { key = "name", ascending = true },
@@ -580,6 +587,94 @@ local function GetHistoryDelta(itemID)
     return found[1] - found[2]
 end
 
+local function GetItemClassID(itemID, requestLoad)
+    itemID = tonumber(itemID)
+    if not itemID then return nil end
+    local cached = UI.itemClassCache[itemID]
+    if cached ~= nil then return cached end
+    if UI.itemClassFailed[itemID] then return nil end
+
+    local api = _G.C_Item
+    if type(api) == "table" and type(api.GetItemInfo) == "function" then
+        local ok, info = pcall(api.GetItemInfo, itemID)
+        if ok and type(info) == "table" then
+            local classID = tonumber(info.classID or info.itemClassID)
+            if classID ~= nil then
+                UI.itemClassCache[itemID] = classID
+                return classID
+            end
+        end
+    end
+
+    local fn = _G.GetItemInfo
+    if type(fn) == "function" then
+        local ok, itemName, itemLink, quality, itemLevel, requiredLevel, itemClass,
+            itemSubClass, maxStack, equipLocation, texture, sellPrice, classID = pcall(fn, itemID)
+        classID = ok and tonumber(classID) or nil
+        if classID ~= nil then
+            UI.itemClassCache[itemID] = classID
+            return classID
+        end
+    end
+
+    if requestLoad and not UI.itemClassRequested[itemID]
+        and not UI.itemClassPendingIDs[itemID] then
+        UI.itemClassPendingIDs[itemID] = true
+        UI.itemClassPendingOrder[#UI.itemClassPendingOrder + 1] = itemID
+    end
+    return nil
+end
+
+local function StepItemClassWarmup()
+    if UI.activeTab ~= "market" or not UI.itemTypeFilter or UI.itemTypeFilter == "all" then return end
+    local order = UI.itemClassPendingOrder or {}
+    local index = tonumber(UI.itemClassPendingIndex) or 1
+    local attempted = 0
+    while attempted < 10 and index <= #order do
+        local itemID = tonumber(order[index])
+        attempted = attempted + 1
+        index = index + 1
+        if itemID then
+            UI.itemClassPendingIDs[itemID] = nil
+            if not UI.itemClassCache[itemID] and not UI.itemClassFailed[itemID]
+                and not UI.itemClassRequested[itemID] then
+                local api = _G.C_Item
+                local requestOK = false
+                if type(api) == "table" and type(api.RequestLoadItemDataByID) == "function" then
+                    local ok, accepted = pcall(api.RequestLoadItemDataByID, itemID)
+                    requestOK = ok and accepted ~= false
+                elseif type(_G.GetItemInfo) == "function" then
+                    requestOK = pcall(_G.GetItemInfo, itemID)
+                end
+                if requestOK then
+                    UI.itemClassRequested[itemID] = true
+                else
+                    UI.itemClassFailed[itemID] = true
+                end
+            end
+        end
+    end
+    if index > #order then
+        UI.itemClassPendingOrder = {}
+        UI.itemClassPendingIndex = 1
+    else
+        UI.itemClassPendingIndex = index
+    end
+end
+
+local function MatchesItemType(itemID, filter)
+    if not filter or filter == "all" then return true end
+    local classID = GetItemClassID(itemID, true)
+    if not classID then return false end
+    if filter == "consumables" then return classID == 0 end
+    if filter == "equipment" then return classID == 2 or classID == 4 end
+    if filter == "tradeGoods" then return classID == 7 end
+    if filter == "other" then
+        return classID ~= 0 and classID ~= 2 and classID ~= 4 and classID ~= 7
+    end
+    return false
+end
+
 local function GetLowSupplyThreshold(item)
     local base = tonumber(MM.db and MM.db.lowSupplyThreshold) or UI.lowSupplyThreshold
     local data = MM.ProfessionData
@@ -754,6 +849,16 @@ local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChang
     updateText()
     return dropdown
 end
+local function IncreaseFontSize(fontString, delta)
+    if not fontString or type(fontString.GetFont) ~= "function"
+        or type(fontString.SetFont) ~= "function" then return false end
+    local ok, fontPath, fontSize, flags = pcall(fontString.GetFont, fontString)
+    if not ok or not fontPath or not tonumber(fontSize) then return false end
+    local setOK = pcall(fontString.SetFont, fontString, fontPath,
+        tonumber(fontSize) + (tonumber(delta) or 1), flags)
+    return setOK == true
+end
+
 local function AddLabel(parent, text, x, y, width, height, font)
     local label = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
     label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
@@ -965,6 +1070,7 @@ function UI.StartViewBuild()
         index = 1, query = query, rows = {}, tab = UI.activeTab,
         professionFilter = UI.professionFilter,
         itemRoleFilter = UI.itemRoleFilter,
+        itemTypeFilter = UI.itemTypeFilter,
         economicsFilters = {
             crafted = UI.economicsFilters.crafted,
             gathered = UI.economicsFilters.gathered,
@@ -1079,6 +1185,9 @@ local function StepView()
             elseif matches and not isCrafting and build.itemRoleFilter ~= "all" then
                 matches = MM.ProfessionData and MM.ProfessionData.Matches(item.itemID, 0,
                     build.itemRoleFilter) or false
+            end
+            if matches and build.tab == "market" and build.itemTypeFilter ~= "all" then
+                matches = MatchesItemType(item.itemID, build.itemTypeFilter)
             end
             if matches and build.tab == "market" then
                 local filters = build.marketQuickFilters or {}
@@ -2112,13 +2221,24 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
     if not itemID then return end
     -- Item cache completion can also resolve the real icon for virtualized rows.
     itemIconCache[itemID] = nil
+    UI.itemClassCache[itemID] = nil
+    UI.itemClassRequested[itemID] = nil
+    UI.itemClassPendingIDs[itemID] = nil
+    UI.itemClassFailed[itemID] = nil
     UI.vendorPriceRequested[itemID] = nil
     if success == false then
         UI.vendorPriceFailed[itemID] = true
         UI.vendorPriceCache[itemID] = nil
+        UI.itemClassFailed[itemID] = true
     else
         UI.vendorPriceFailed[itemID] = nil
         local sellPrice = ReadVendorInfo(itemID)
+        local classID = GetItemClassID(itemID, false)
+        if classID == nil then UI.itemClassFailed[itemID] = true end
+        if UI.itemTypeFilter and UI.itemTypeFilter ~= "all" and UI.activeTab == "market"
+            and classID ~= nil then
+            UI.itemTypeRefreshDueAt = Now() + 0.25
+        end
         if sellPrice == nil then
             -- The client completed its item-data notification but still exposes no
             -- vendor value. Avoid repeatedly requesting the same unavailable item.
@@ -2348,6 +2468,7 @@ local function SetTab(tab)
     UI.tabFilterState[previousTab].search = UI.search and UI.search:GetText() or ""
     UI.tabFilterState[previousTab].profession = UI.professionFilter
     UI.tabFilterState[previousTab].role = UI.itemRoleFilter
+    UI.tabFilterState[previousTab].itemType = UI.itemTypeFilter
     UI.tabFilterState[previousTab].economicsFilters = {
         crafted = UI.economicsFilters.crafted, gathered = UI.economicsFilters.gathered,
         material = UI.economicsFilters.material, other = UI.economicsFilters.other,
@@ -2372,6 +2493,7 @@ local function SetTab(tab)
     local saved = UI.tabFilterState[tab] or {}
     UI.professionFilter = tonumber(saved.profession) or 0
     UI.itemRoleFilter = saved.role or "all"
+    UI.itemTypeFilter = saved.itemType or "all"
     local savedEconomics = saved.economicsFilters or {}
     UI.economicsFilters.crafted = savedEconomics.crafted == true
     UI.economicsFilters.gathered = savedEconomics.gathered == true
@@ -2536,6 +2658,14 @@ local function SetTab(tab)
         UI.roleDropdown:Enable()
         if UI.roleDropdown.RefreshText then UI.roleDropdown.RefreshText() end
     end
+    local showItemTypeFilter = tab == "market"
+    if UI.itemTypeLabel then
+        if showItemTypeFilter then UI.itemTypeLabel:Show() else UI.itemTypeLabel:Hide() end
+    end
+    if UI.itemTypeDropdown then
+        if showItemTypeFilter then UI.itemTypeDropdown:Show() else UI.itemTypeDropdown:Hide() end
+        if UI.itemTypeDropdown.RefreshText then UI.itemTypeDropdown.RefreshText() end
+    end
     local showCraftFilters = tab == "crafts"
     if UI.craftFilterHeading then
         if showCraftFilters then UI.craftFilterHeading:Show() else UI.craftFilterHeading:Hide() end
@@ -2631,6 +2761,21 @@ local function CreateUI()
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    local titlePlate = frame:CreateTexture(nil, "BACKGROUND")
+    titlePlate:SetColorTexture(0.055, 0.038, 0.014, 0.98)
+    titlePlate:SetPoint("TOP", frame, "TOP", 0, -1)
+    titlePlate:SetSize(270, 30)
+    local titlePlateTop = frame:CreateTexture(nil, "BORDER")
+    titlePlateTop:SetColorTexture(0.78, 0.59, 0.24, 0.95)
+    titlePlateTop:SetPoint("TOPLEFT", titlePlate, "TOPLEFT", 0, 0)
+    titlePlateTop:SetSize(270, 1)
+    local titlePlateBottom = frame:CreateTexture(nil, "BORDER")
+    titlePlateBottom:SetColorTexture(0.78, 0.59, 0.24, 0.95)
+    titlePlateBottom:SetPoint("BOTTOMLEFT", titlePlate, "BOTTOMLEFT", 0, 0)
+    titlePlateBottom:SetSize(270, 1)
+    frame.TitleText:ClearAllPoints()
+    frame.TitleText:SetPoint("CENTER", titlePlate, "CENTER", 0, 0)
+    frame.TitleText:SetSize(250, 24)
     frame.TitleText:SetText("Modulo Market")
     if frame.TitleText.SetFontObject then frame.TitleText:SetFontObject("GameFontNormalLarge") end
     if frame.TitleText.SetTextColor then frame.TitleText:SetTextColor(1, 0.82, 0.12) end
@@ -2823,16 +2968,17 @@ local function CreateUI()
     AddPanelHeader(18, -158, 260)
     AddPanelHeader(286, -158, 834)
     AddPanelHeader(1126, -158, 300)
-    AddPanelBorder(26, -574, 244, 222)
-    AddPanelHeader(26, -574, 244)
-    UI.dataHeading = AddLabel(frame, "Data", 36, -582, 220, 22, "GameFontNormal")
-    UI.auctionDataLabel = AddLabel(frame, "Auction Data: unavailable", 36, -612, 166, 18, "GameFontHighlightSmall")
-    UI.auctionDataState = AddLabel(frame, "Unknown", 204, -612, 58, 18, "GameFontNormalSmall")
-    UI.recipeDataLabel = AddLabel(frame, "Recipe Data: unavailable", 36, -640, 166, 18, "GameFontHighlightSmall")
-    UI.recipeDataState = AddLabel(frame, "Unknown", 204, -640, 58, 18, "GameFontNormalSmall")
-    UI.reviewDataLabel = AddLabel(frame, "Review records: —", 36, -668, 220, 18, "GameFontHighlightSmall")
-    UI.craftingScopeLabel = AddLabel(frame, "Crafting Scope", 36, -696, 220, 16, "GameFontNormalSmall")
-    UI.craftingScopeDropdown = CreateDropdown(frame, 220, 36, -714,
+    AddPanelBorder(26, -620, 244, 176)
+    AddPanelHeader(26, -620, 244)
+    UI.dataHeading = AddLabel(frame, "Data", 36, -628, 220, 22, "GameFontNormal")
+    IncreaseFontSize(UI.dataHeading, 1)
+    UI.auctionDataLabel = AddLabel(frame, "Auction Data: unavailable", 36, -656, 166, 18, "GameFontHighlightSmall")
+    UI.auctionDataState = AddLabel(frame, "Unknown", 204, -656, 58, 18, "GameFontNormalSmall")
+    UI.recipeDataLabel = AddLabel(frame, "Recipe Data: unavailable", 36, -682, 166, 18, "GameFontHighlightSmall")
+    UI.recipeDataState = AddLabel(frame, "Unknown", 204, -682, 58, 18, "GameFontNormalSmall")
+    UI.reviewDataLabel = AddLabel(frame, "Review records: —", 36, -708, 220, 18, "GameFontHighlightSmall")
+    UI.craftingScopeLabel = AddLabel(frame, "Crafting Scope", 36, -734, 220, 16, "GameFontNormalSmall")
+    UI.craftingScopeDropdown = CreateDropdown(frame, 220, 36, -752,
         function() return {
             { text = "Account Crafting", value = "account", tooltipTitle = "Account Crafting",
                 tooltipText = "Combines known recipes and recorded profession ownership across characters that have been captured on this account. Missing character evidence remains Unknown." },
@@ -2850,8 +2996,10 @@ local function CreateUI()
             UI.StartViewBuild()
         end)
     UI.filterHeading = AddLabel(frame, "Filters — All Items", 30, -166, 230, 24, "GameFontNormalLarge")
+    IncreaseFontSize(UI.filterHeading, 1)
     UI.centerHeading = AddLabel(frame, "All Items", 302, -166, 500, 24, "GameFontNormalLarge")
-    AddLabel(frame, "Search", 30, -198, 230, 18, "GameFontNormalSmall")
+    IncreaseFontSize(UI.centerHeading, 1)
+    AddLabel(frame, "Search", 30, -198, 230, 18, "GameFontNormal")
     UI.search = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
     UI.search:SetSize(230, 24)
     UI.search:SetPoint("TOPLEFT", frame, "TOPLEFT", 32, -220)
@@ -2880,7 +3028,7 @@ local function CreateUI()
             UI.professionFilter = tonumber(value) or 0
             UI.StartViewBuild()
         end)
-    UI.professionLabel = AddLabel(frame, "Profession", 30, -252, 230, 18, "GameFontNormalSmall")
+    UI.professionLabel = AddLabel(frame, "Profession", 30, -252, 230, 18, "GameFontNormal")
     AttachFilterTooltip(UI.professionDropdown, "Profession", "Limit the active view to one profession. All professions keeps every supported profession in the results.")
     local function GetRoleOptions()
         local futureProvider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
@@ -2910,8 +3058,8 @@ local function CreateUI()
         local gatherReady = MM.ProfessionData and MM.ProfessionData.HasGatheringData
             and MM.ProfessionData.HasGatheringData()
         local options = {
-            { text = "All item types", value = "all",
-                tooltipTitle = "All item types",
+            { text = "All item roles", value = "all",
+                tooltipTitle = "All item roles",
                 tooltipText = "Show every item in the selected view, regardless of profession relationship." },
             { text = "Known craft outputs", value = "known",
                 tooltipTitle = "Known craft outputs",
@@ -2940,8 +3088,38 @@ local function CreateUI()
             UI.itemRoleFilter = value
             UI.StartViewBuild()
         end)
-    UI.roleLabel = AddLabel(frame, "Recipe status / item role", 30, -334, 230, 18, "GameFontNormalSmall")
-    AttachFilterTooltip(UI.roleDropdown, "Recipe status / item role", "Filter by learned or unlearned recipe outputs, or by gathering and material roles where supported.")
+    UI.roleLabel = AddLabel(frame, "Item role", 30, -334, 230, 18, "GameFontNormal")
+    AttachFilterTooltip(UI.roleDropdown, "Item role", "Filter by learned or unlearned recipe outputs, or by gathering and material roles where supported.")
+
+    local function GetItemTypeOptions()
+        return {
+            { text = "All item types", value = "all",
+                tooltipTitle = "All item types",
+                tooltipText = "Include all market items, regardless of their client item class." },
+            { text = "Consumables", value = "consumables",
+                tooltipTitle = "Consumables",
+                tooltipText = "Items whose client item class is Consumable." },
+            { text = "Equipment", value = "equipment",
+                tooltipTitle = "Equipment",
+                tooltipText = "Weapons and armor, using the client's item-class metadata." },
+            { text = "Trade Goods", value = "tradeGoods",
+                tooltipTitle = "Trade Goods",
+                tooltipText = "Items whose client item class is Trade Goods." },
+            { text = "Other item classes", value = "other",
+                tooltipTitle = "Other item classes",
+                tooltipText = "Items in other reported client item classes. Items without loaded class metadata are not included." },
+        }
+    end
+    UI.itemTypeDropdown = CreateDropdown(frame, 230, 32, -448,
+        GetItemTypeOptions,
+        function() return UI.itemTypeFilter end,
+        function(value)
+            UI.itemTypeFilter = value or "all"
+            UI.StartViewBuild()
+        end)
+    UI.itemTypeLabel = AddLabel(frame, "Item Types", 30, -416, 230, 18, "GameFontNormal")
+    AttachFilterTooltip(UI.itemTypeDropdown, "Item Types",
+        "Filter by the item's class as reported by the game client. Missing item metadata is not guessed.")
 
     UI.craftFilterControls = {}
     local craftFilterSpecs = {
@@ -2980,7 +3158,7 @@ local function CreateUI()
         local check = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
         check:SetSize(22, 22)
         check:SetPoint("TOPLEFT", frame, "TOPLEFT", 28, y)
-        local label = AddLabel(frame, spec[2], 54, y, 210, 20, "GameFontHighlightSmall")
+        local label = AddLabel(frame, spec[2], 54, y, 210, 20, "GameFontHighlight")
         check.label = label
         check.filterKey = spec[1]
         if not spec[4] then
@@ -2999,7 +3177,7 @@ local function CreateUI()
     UI.economicsFilterHeading = AddLabel(frame, "ECONOMICS FILTERS", 30, -394, 230, 18, "GameFontNormal")
 
     UI.marketQuickFilterControls = {}
-    UI.marketQuickFilterHeading = AddLabel(frame, "OPTIONS", 30, -394, 230, 18, "GameFontNormal")
+    UI.marketQuickFilterHeading = AddLabel(frame, "OPTIONS", 30, -490, 230, 18, "GameFontNormalLarge")
     local marketQuickFilterSpecs = {
         { "craftingMaterialsOnly", "Crafting materials only",
             "Items used as reagents by supported recipes; uses the existing profession material catalogue." },
@@ -3011,7 +3189,7 @@ local function CreateUI()
             "Shows only items linked to recipe records explicitly marked for hotfix-linked review." },
     }
     for i, spec in ipairs(marketQuickFilterSpecs) do
-        local y = -420 - ((i - 1) * 29)
+        local y = -516 - ((i - 1) * 24)
         local check = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
         check:SetSize(22, 22)
         check:SetPoint("TOPLEFT", frame, "TOPLEFT", 28, y)
@@ -3061,6 +3239,7 @@ local function CreateUI()
         header.sortIndicator:Hide()
         header.baseLabel = h[1]
         header.label:SetText(h[1])
+        IncreaseFontSize(header.label, 1)
         header.sortKey = h[5]
         header:SetScript("OnClick", function()
             local tab = UI.activeTab
@@ -3119,6 +3298,7 @@ local function CreateUI()
         row.icon:SetPoint("LEFT", row, "LEFT", 4, 0)
         local function RowText(anchor, x, width, justify)
             local fs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            IncreaseFontSize(fs, 1)
             if anchor == "LEFT" then fs:SetPoint("LEFT", row, "LEFT", x, 0)
             else fs:SetPoint("RIGHT", row, "RIGHT", x, 0) end
             fs:SetWidth(width); fs:SetJustifyH(justify); fs:SetWordWrap(false)
@@ -3226,28 +3406,39 @@ local function CreateUI()
     UI.detailHeading = AddLabel(frame, "Selected item", 1142, -166, 268, 24, "GameFontNormalLarge")
     UI.detailHeading:SetWordWrap(false)
     UI.detailIcon = frame:CreateTexture(nil, "ARTWORK")
-    UI.detailIcon:SetSize(42, 42)
+    UI.detailIcon:SetSize(48, 48)
     UI.detailIcon:SetPoint("TOPLEFT", frame, "TOPLEFT", 1142, -204)
     UI.detailIcon:Hide()
-    UI.detailName = AddLabel(frame, "Choose an item", 1194, -204, 214, 28, "GameFontNormal")
+    UI.detailName = AddLabel(frame, "Choose an item", 1200, -204, 208, 30, "GameFontNormalLarge")
+    IncreaseFontSize(UI.detailName, 1)
     UI.detailName:SetWordWrap(true)
     if UI.detailName.SetNonSpaceWrap then UI.detailName:SetNonSpaceWrap(true) end
-    UI.detailBadges = AddLabel(frame, "", 1194, -230, 214, 18, "GameFontDisableSmall")
-    UI.detailVariants = AddLabel(frame, "", 1142, -250, 268, 18, "GameFontDisableSmall")
+    UI.detailBadges = AddLabel(frame, "", 1200, -234, 208, 18, "GameFontHighlight")
+    UI.detailVariants = AddLabel(frame, "", 1142, -254, 268, 18, "GameFontDisableSmall")
     UI.detailVariants:SetWordWrap(true)
     if UI.detailVariants.SetNonSpaceWrap then UI.detailVariants:SetNonSpaceWrap(true) end
 
-    UI.marketInfoHeading = AddLabel(frame, "Market Information", 1142, -278, 268, 22, "GameFontNormal")
-    AddLabel(frame, "SALE PRICE / UNIT", 1142, -304, 128, 18, "GameFontNormalSmall")
-    UI.detailPrice = AddLabel(frame, "—", 1274, -304, 132, 18, "GameFontHighlight")
-    AddLabel(frame, "TOTAL LISTED", 1142, -328, 128, 18, "GameFontNormalSmall")
-    UI.detailSupply = AddLabel(frame, "—", 1274, -328, 132, 18, "GameFontHighlight")
-    AddLabel(frame, "AT PRICE", 1142, -352, 128, 18, "GameFontNormalSmall")
-    UI.detailAtPrice = AddLabel(frame, "—", 1274, -352, 132, 18, "GameFontHighlight")
-    UI.detailProfitLabel = AddLabel(frame, "BEST CRAFT PROFIT", 1142, -376, 128, 18, "GameFontNormalSmall")
-    UI.detailProfit = AddLabel(frame, "—", 1274, -376, 132, 18, "GameFontHighlight")
+    local function AddDetailRowLabel(text, x, y, width)
+        local label = AddLabel(frame, text, x, y, width, 18, "GameFontNormal")
+        IncreaseFontSize(label, 1)
+        return label
+    end
+    local function AddDetailRowValue(text, x, y, width)
+        local value = AddLabel(frame, text, x, y, width, 18, "GameFontHighlightLarge")
+        IncreaseFontSize(value, 1)
+        return value
+    end
+    UI.marketInfoHeading = AddLabel(frame, "Market Information", 1142, -278, 268, 22, "GameFontNormalLarge")
+    AddDetailRowLabel("SALE PRICE / UNIT", 1142, -304, 128)
+    UI.detailPrice = AddDetailRowValue("—", 1274, -304, 132)
+    AddDetailRowLabel("TOTAL LISTED", 1142, -328, 128)
+    UI.detailSupply = AddDetailRowValue("—", 1274, -328, 132)
+    AddDetailRowLabel("AT PRICE", 1142, -352, 128)
+    UI.detailAtPrice = AddDetailRowValue("—", 1274, -352, 132)
+    UI.detailProfitLabel = AddDetailRowLabel("BEST CRAFT PROFIT", 1142, -376, 128)
+    UI.detailProfit = AddDetailRowValue("—", 1274, -376, 132)
 
-    UI.relationshipHeading = AddLabel(frame, "Relationships", 1142, -430, 268, 22, "GameFontNormal")
+    UI.relationshipHeading = AddLabel(frame, "Relationships", 1142, -430, 268, 22, "GameFontNormalLarge")
     UI.detailScroll = CreateFrame("ScrollFrame", "ModuloMarketDetailScrollFrame", frame, "UIPanelScrollFrameTemplate")
     UI.detailScroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 1140, -456)
     UI.detailScroll:SetSize(270, 74)
@@ -3261,7 +3452,8 @@ local function CreateUI()
     UI.detailScrollChild = CreateFrame("Frame", nil, UI.detailScroll)
     UI.detailScrollChild:SetSize(250, 74)
     UI.detailScroll:SetScrollChild(UI.detailScrollChild)
-    UI.detailEconomics = UI.detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    UI.detailEconomics = UI.detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    IncreaseFontSize(UI.detailEconomics, 1)
     UI.detailEconomics:SetPoint("TOPLEFT", UI.detailScrollChild, "TOPLEFT", 0, 0)
     UI.detailEconomics:SetWidth(244)
     UI.detailEconomics:SetHeight(74)
@@ -3278,15 +3470,15 @@ local function CreateUI()
 
     UI.detailItemTooltip = CreateFrame("Button", nil, frame)
     UI.detailItemTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1142, -200)
-    UI.detailItemTooltip:SetSize(46, 48)
+    UI.detailItemTooltip:SetSize(50, 50)
     UI.detailItemTooltip:SetFrameLevel(frame:GetFrameLevel() + 2)
     UI.detailItemTooltip:SetScript("OnEnter", function(self)
         if UI.selectedItem then ShowMarketItemTooltip(self, UI.selectedItem, false) end
     end)
     UI.detailItemTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
     UI.detailRecipeTooltip = CreateFrame("Button", nil, frame)
-    UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1194, -200)
-    UI.detailRecipeTooltip:SetSize(214, 28)
+    UI.detailRecipeTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1200, -200)
+    UI.detailRecipeTooltip:SetSize(208, 34)
     UI.detailRecipeTooltip:SetFrameLevel(frame:GetFrameLevel() + 2)
     UI.detailRecipeTooltip:SetScript("OnEnter", function(self)
         if UI.selectedItem then ShowMarketItemTooltip(self, UI.selectedItem, true) end
@@ -3296,8 +3488,9 @@ local function CreateUI()
     UI.detailFooter = CreateFrame("Frame", nil, frame)
     UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -552)
     UI.detailFooter:SetSize(280, 256)
-    UI.historyHeading = AddLabel(frame, "Market History", 1142, -560, 268, 22, "GameFontNormal")
-    UI.historyText = AddLabel(UI.detailFooter, "", 6, -36, 268, 58, "GameFontHighlightSmall")
+    UI.historyHeading = AddLabel(frame, "Market History", 1142, -560, 268, 22, "GameFontNormalLarge")
+    UI.historyText = AddLabel(UI.detailFooter, "", 6, -36, 268, 58, "GameFontHighlight")
+    IncreaseFontSize(UI.historyText, 1)
     UI.historyText:SetWordWrap(true)
     if UI.historyText.SetNonSpaceWrap then UI.historyText:SetNonSpaceWrap(true) end
     UI.historyGraph = CreateFrame("Frame", nil, UI.detailFooter)
@@ -3305,7 +3498,8 @@ local function CreateUI()
     UI.historyGraph:SetSize(236, 145)
     UI.historyBarLabels = {}
     for i = 1, 4 do
-        local label = UI.historyGraph:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        local label = UI.historyGraph:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        IncreaseFontSize(label, 1)
         label:SetWidth(54)
         label:SetJustifyH("CENTER")
         UI.historyBarLabels[i] = label
@@ -3347,6 +3541,13 @@ local function CreateUI()
         -- Run the warmup watchdog independently of other work queues so a stale
         -- catalogue/economics task cannot starve its hard timeout.
         if UI.tooltipSearchWarmup then StepTooltipSearchWarmup() end
+        StepItemClassWarmup()
+        if UI.itemTypeRefreshDueAt and now >= UI.itemTypeRefreshDueAt
+            and not UI.catalogBuild and not UI.economicsIndexBuild
+            and not UI.viewBuild and not UI.rankSort then
+            UI.itemTypeRefreshDueAt = nil
+            UI.StartViewBuild()
+        end
         if UI.catalogBuild then StepCatalog()
         elseif UI.economicsIndexBuild then StepEconomicsIndex()
         elseif UI.viewBuild then StepView()

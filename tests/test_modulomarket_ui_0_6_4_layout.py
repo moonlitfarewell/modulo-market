@@ -29,8 +29,8 @@ def test_inspector_text_wraps():
     assert 'UI.detailName:SetWordWrap(true)' in UI
     assert 'UI.detailVariants:SetWordWrap(true)' in UI
     assert 'UI.detailEconomics:SetWordWrap(true)' in UI
-    assert 'UI.detailProfitLabel = AddLabel(frame, "BEST CRAFT PROFIT"' in UI
-    assert 'UI.detailProfit = AddLabel(frame, "—", 1274, -376' in UI
+    assert 'UI.detailProfitLabel = AddDetailRowLabel("BEST CRAFT PROFIT"' in UI
+    assert 'UI.detailProfit = AddDetailRowValue("—", 1274, -376' in UI
     assert 'UI.historyText:SetWordWrap(true)' in UI
 
 def test_scrollbar_is_inside_middle_viewport():

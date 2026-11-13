@@ -38,10 +38,10 @@ def test_relationship_content_is_scrollable_and_not_truncated_to_fixed_panel_hei
 
 
 def test_market_information_rows_reuse_existing_market_and_profit_values():
-    assert 'AddLabel(frame, "SALE PRICE / UNIT", 1142, -304' in UI
-    assert 'AddLabel(frame, "TOTAL LISTED", 1142, -328' in UI
-    assert 'AddLabel(frame, "AT PRICE", 1142, -352' in UI
-    assert 'UI.detailProfitLabel = AddLabel(frame, "BEST CRAFT PROFIT"' in UI
+    assert 'AddDetailRowLabel("SALE PRICE / UNIT", 1142, -304' in UI
+    assert 'AddDetailRowLabel("TOTAL LISTED", 1142, -328' in UI
+    assert 'AddDetailRowLabel("AT PRICE", 1142, -352' in UI
+    assert 'UI.detailProfitLabel = AddDetailRowLabel("BEST CRAFT PROFIT"' in UI
     assert "local best = UI.economicsByItemID and UI.economicsByItemID[itemID]" in UI
     assert 'UI.detailPrice:SetText(item.minPriceCopper' in UI
     assert 'UI.detailSupply:SetText(string.format("%d units"' in UI
@@ -78,14 +78,14 @@ def test_scan_indicator_does_not_claim_unavailable_percentage_progress():
 
 def test_existing_opacity_scope_and_whole_window_fade_are_preserved():
     assert "ApplyBackgroundOpacity(frame, value)" in UI
-    assert 'UI.craftingScopeDropdown = CreateDropdown(frame, 220, 36, -714' in UI
+    assert 'CreateDropdown(frame, 220, 36, -752' in UI
     assert 'if frame and type(frame.SetAlpha) == "function" then frame:SetAlpha(alpha) end' in UI
 
 
 def test_release_versions_and_manifest_inventory_align():
-    assert 'MM.version = "0.8.2"' in CORE
-    assert '## Version: 0.8.2' in TOC
-    assert MANIFEST["version"] == "0.8.2"
-    assert "MODULOMARKET-RUNTIME-AUDIT-0.8.2.md" in MANIFEST["files"]
+    assert 'MM.version = "0.8.3"' in CORE
+    assert '## Version: 0.8.3' in TOC
+    assert MANIFEST["version"] == "0.8.3"
+    assert "MODULOMARKET-RUNTIME-AUDIT-0.8.3.md" in MANIFEST["files"]
     assert "tests/test_modulomarket_0_8_1_visual_foundation.py" in MANIFEST["files"]
     assert MANIFEST["file_count"] == len(MANIFEST["files"])
