@@ -718,6 +718,92 @@ local function RaiseMarketTooltip(owner, title, body)
     GameTooltip:Show()
 end
 
+local function AddBevelBorder(parent, x, top, width, height, style, layer)
+    x, top = tonumber(x) or 0, tonumber(top) or 0
+    width, height = math.max(4, tonumber(width) or 4), math.max(4, tonumber(height) or 4)
+    style = style or "panel"
+    layer = layer or "BORDER"
+    local palettes = {
+        outer = { dark = {0.012, 0.009, 0.006, 0.98}, gold = {0.70, 0.52, 0.22, 0.95}, shade = {0.16, 0.105, 0.035, 0.98}, bright = {0.90, 0.72, 0.36, 0.90}, thick = 3 },
+        plaque = { dark = {0.012, 0.009, 0.006, 1}, gold = {0.82, 0.64, 0.27, 1}, shade = {0.20, 0.13, 0.045, 1}, bright = {0.98, 0.80, 0.40, 1}, thick = 2 },
+        panel = { dark = {0.012, 0.010, 0.008, 0.96}, gold = {0.55, 0.40, 0.17, 0.88}, shade = {0.20, 0.14, 0.065, 0.95}, bright = {0.78, 0.60, 0.29, 0.72}, thick = 2 },
+        card = { dark = {0.008, 0.007, 0.006, 0.98}, gold = {0.65, 0.48, 0.20, 0.95}, shade = {0.22, 0.15, 0.06, 0.96}, bright = {0.86, 0.68, 0.33, 0.88}, thick = 2 },
+        tab = { dark = {0.008, 0.007, 0.005, 0.95}, gold = {0.50, 0.36, 0.14, 0.90}, shade = {0.15, 0.105, 0.045, 0.95}, bright = {0.72, 0.55, 0.24, 0.82}, thick = 1 },
+        control = { dark = {0.008, 0.006, 0.004, 0.98}, gold = {0.58, 0.42, 0.17, 0.95}, shade = {0.18, 0.12, 0.045, 0.98}, bright = {0.78, 0.60, 0.28, 0.82}, thick = 1 },
+        button = { dark = {0.008, 0.006, 0.004, 1}, gold = {0.72, 0.52, 0.19, 1}, shade = {0.24, 0.12, 0.035, 1}, bright = {0.92, 0.70, 0.28, 0.95}, thick = 2 },
+    }
+    local c = palettes[style] or palettes.panel
+    local t = c.thick
+    local function edge(name, color, px, py, w, h)
+        local texture = parent:CreateTexture(nil, layer)
+        texture:SetColorTexture(color[1], color[2], color[3], color[4])
+        texture:SetPoint("TOPLEFT", parent, "TOPLEFT", px, py)
+        texture:SetSize(math.max(1, w), math.max(1, h))
+        return texture
+    end
+    local result = {}
+    result.topShadow = edge("topShadow", c.dark, x, top, width, t)
+    result.bottomShadow = edge("bottomShadow", c.dark, x, top - height + t, width, t)
+    result.leftShadow = edge("leftShadow", c.dark, x, top, t, height)
+    result.rightShadow = edge("rightShadow", c.dark, x + width - t, top, t, height)
+    result.topGold = edge("topGold", c.gold, x + t, top - t, width - (t * 2), 1)
+    result.leftGold = edge("leftGold", c.bright, x + t, top - t, 1, height - (t * 2))
+    result.bottomShade = edge("bottomShade", c.shade, x + t, top - height + t, width - (t * 2), 1)
+    result.rightShade = edge("rightShade", c.shade, x + width - t - 1, top - t, 1, height - (t * 2))
+    if style == "plaque" or style == "outer" then
+        result.cornerTL = edge("cornerTL", c.bright, x + t, top - t, 3, 3)
+        result.cornerTR = edge("cornerTR", c.bright, x + width - t - 3, top - t, 3, 3)
+        result.cornerBL = edge("cornerBL", c.shade, x + t, top - height + t, 3, 3)
+        result.cornerBR = edge("cornerBR", c.shade, x + width - t - 3, top - height + t, 3, 3)
+    end
+    return result
+end
+
+local function ApplyMarketButtonSkin(button, style)
+    if not button or button.marketSkinApplied then return end
+    button.marketSkinApplied = true
+    local w = type(button.GetWidth) == "function" and button:GetWidth() or 100
+    local h = type(button.GetHeight) == "function" and button:GetHeight() or 24
+    button.marketFill = button:CreateTexture(nil, "BACKGROUND")
+    button.marketFill:SetAllPoints(button)
+    if style == "control" then
+        button.marketFill:SetColorTexture(0.025, 0.022, 0.017, 0.98)
+    elseif style == "option" then
+        button.marketFill:SetColorTexture(0.055, 0.043, 0.026, 0.98)
+    else
+        button.marketFill:SetColorTexture(0.16, 0.025, 0.014, 0.98)
+    end
+    local normal = type(button.GetNormalTexture) == "function" and button:GetNormalTexture() or nil
+    local pushed = type(button.GetPushedTexture) == "function" and button:GetPushedTexture() or nil
+    local highlight = type(button.GetHighlightTexture) == "function" and button:GetHighlightTexture() or nil
+    local disabled = type(button.GetDisabledTexture) == "function" and button:GetDisabledTexture() or nil
+    if normal and normal.SetAlpha then normal:SetAlpha(0.18) end
+    if pushed and pushed.SetAlpha then pushed:SetAlpha(0.28) end
+    if highlight and highlight.SetAlpha then highlight:SetAlpha(0.16) end
+    if disabled and disabled.SetAlpha then disabled:SetAlpha(0.10) end
+    button.marketHighlight = button:CreateTexture(nil, "HIGHLIGHT")
+    button.marketHighlight:SetAllPoints(button)
+    button.marketHighlight:SetColorTexture(0.90, 0.67, 0.25, 0.14)
+    button.marketBorder = AddBevelBorder(button, 0, 0, w, h,
+        style == "control" and "control" or "button", "OVERLAY")
+    local text = type(button.GetFontString) == "function" and button:GetFontString() or nil
+    if text and type(text.GetFont) == "function" and type(text.SetFont) == "function" then
+        local ok, fontPath, fontSize, flags = pcall(text.GetFont, text)
+        if ok and fontPath and tonumber(fontSize) then
+            pcall(text.SetFont, text, fontPath, tonumber(fontSize) + 1, flags)
+        end
+        if text.SetTextColor then text:SetTextColor(1, 0.88, 0.62) end
+    end
+end
+
+local function AddInsetSurface(parent, x, top, width, height, color)
+    local surface = parent:CreateTexture(nil, "BACKGROUND")
+    surface:SetColorTexture(color[1], color[2], color[3], color[4])
+    surface:SetPoint("TOPLEFT", parent, "TOPLEFT", x, top)
+    surface:SetSize(width, height)
+    return surface
+end
+
 local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChanged)
     -- Use an explicit button + popup rather than UIDropDownMenuTemplate.
     -- The stock dropdown menu has been visible but inert on the target Forever
@@ -726,16 +812,19 @@ local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChang
     dropdown:SetSize(width, 24)
     dropdown:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
     dropdown:EnableMouse(true)
+    ApplyMarketButtonSkin(dropdown, "control")
 
     dropdown.label = dropdown:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     dropdown.label:SetPoint("LEFT", dropdown, "LEFT", 8, 0)
     dropdown.label:SetPoint("RIGHT", dropdown, "RIGHT", -24, 0)
     dropdown.label:SetJustifyH("LEFT")
     dropdown.label:SetWordWrap(false)
+    dropdown.label:SetTextColor(0.96, 0.91, 0.78)
 
     dropdown.arrow = dropdown:CreateTexture(nil, "OVERLAY")
     dropdown.arrow:SetTexture("Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up")
     dropdown.arrow:SetTexCoord(0.2, 0.8, 0.2, 0.8)
+    dropdown.arrow:SetVertexColor(0.95, 0.72, 0.28)
     dropdown.arrow:SetSize(14, 14)
     dropdown.arrow:SetPoint("RIGHT", dropdown, "RIGHT", -5, 0)
 
@@ -804,6 +893,7 @@ local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChang
             end
             optionButton:ClearAllPoints()
             optionButton:SetSize(width - 8, 20)
+            ApplyMarketButtonSkin(optionButton, "option")
             optionButton:SetPoint("TOPLEFT", popup, "TOPLEFT", 4, -4 - ((i - 1) * rowHeight))
             optionButton:SetText(option.text or tostring(option.value))
             optionButton:Enable()
@@ -903,6 +993,7 @@ local function AddButton(parent, text, width, x, y, callback)
     button:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
     button:SetText(text)
     button:SetScript("OnClick", callback)
+    ApplyMarketButtonSkin(button, "button")
     return button
 end
 
@@ -1558,9 +1649,9 @@ function UI.RenderRows()
             end
             if button.rowShade then
                 if index % 2 == 0 then
-                    button.rowShade:SetColorTexture(0.19, 0.16, 0.12, 0.22)
+                    button.rowShade:SetColorTexture(0.22, 0.17, 0.095, 0.27)
                 else
-                    button.rowShade:SetColorTexture(0.035, 0.032, 0.028, 0.12)
+                    button.rowShade:SetColorTexture(0.025, 0.023, 0.020, 0.18)
                 end
                 button.rowShade:Show()
             end
@@ -1631,12 +1722,28 @@ function UI.RenderRows()
             local same = selected and (isCrafting
                 and selected.recipeKey == item.recipeKey
                 or (not isCrafting and selected.itemID == item.itemID))
-            if same then button:LockHighlight() else button:UnlockHighlight() end
+            if same then
+                button:LockHighlight()
+                if button.selectedWash then button.selectedWash:Show() end
+                if button.selectedAccent then button.selectedAccent:Show() end
+                if button.selectedTop then button.selectedTop:Show() end
+                if button.selectedBottom then button.selectedBottom:Show() end
+            else
+                button:UnlockHighlight()
+                if button.selectedWash then button.selectedWash:Hide() end
+                if button.selectedAccent then button.selectedAccent:Hide() end
+                if button.selectedTop then button.selectedTop:Hide() end
+                if button.selectedBottom then button.selectedBottom:Hide() end
+            end
             button:Show()
         else
             button:Hide()
             if button.icon then button.icon:Hide() end
             if button.rowShade then button.rowShade:Hide() end
+            if button.selectedWash then button.selectedWash:Hide() end
+            if button.selectedAccent then button.selectedAccent:Hide() end
+            if button.selectedTop then button.selectedTop:Hide() end
+            if button.selectedBottom then button.selectedBottom:Hide() end
             UI.visibleRows[i] = nil
         end
         end
@@ -2520,11 +2627,19 @@ local function SetTab(tab)
         if name == tab then
             button:Disable()
             if button.selectedMark then button.selectedMark:Show() end
-            if button.background then button.background:SetColorTexture(0.22, 0.15, 0.055, 1) end
+            if button.background then button.background:SetColorTexture(0.20, 0.135, 0.045, 1) end
+            if button.marketTop then button.marketTop:SetColorTexture(0.98, 0.76, 0.30, 1) end
+            if button.marketBottom then button.marketBottom:SetColorTexture(0.34, 0.22, 0.065, 1) end
+            if button.marketLeft then button.marketLeft:SetColorTexture(0.86, 0.64, 0.25, 1) end
+            if button.marketRight then button.marketRight:SetColorTexture(0.34, 0.22, 0.065, 1) end
         else
             button:Enable()
             if button.selectedMark then button.selectedMark:Hide() end
-            if button.background then button.background:SetColorTexture(0.12, 0.085, 0.045, 0.95) end
+            if button.background then button.background:SetColorTexture(0.035, 0.029, 0.020, 0.98) end
+            if button.marketTop then button.marketTop:SetColorTexture(0.62, 0.46, 0.20, 0.82) end
+            if button.marketBottom then button.marketBottom:SetColorTexture(0.12, 0.085, 0.035, 0.98) end
+            if button.marketLeft then button.marketLeft:SetColorTexture(0.44, 0.32, 0.13, 0.82) end
+            if button.marketRight then button.marketRight:SetColorTexture(0.08, 0.06, 0.025, 0.98) end
         end
     end
 
@@ -2762,20 +2877,27 @@ local function CreateUI()
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
     local titlePlate = frame:CreateTexture(nil, "BACKGROUND")
-    titlePlate:SetColorTexture(0.055, 0.038, 0.014, 0.98)
-    titlePlate:SetPoint("TOP", frame, "TOP", 0, -1)
-    titlePlate:SetSize(270, 30)
-    local titlePlateTop = frame:CreateTexture(nil, "BORDER")
-    titlePlateTop:SetColorTexture(0.78, 0.59, 0.24, 0.95)
-    titlePlateTop:SetPoint("TOPLEFT", titlePlate, "TOPLEFT", 0, 0)
-    titlePlateTop:SetSize(270, 1)
-    local titlePlateBottom = frame:CreateTexture(nil, "BORDER")
-    titlePlateBottom:SetColorTexture(0.78, 0.59, 0.24, 0.95)
-    titlePlateBottom:SetPoint("BOTTOMLEFT", titlePlate, "BOTTOMLEFT", 0, 0)
-    titlePlateBottom:SetSize(270, 1)
+    titlePlate:SetColorTexture(0.028, 0.020, 0.009, 1)
+    titlePlate:SetPoint("TOP", frame, "TOP", 0, -2)
+    titlePlate:SetSize(340, 36)
+    AddBevelBorder(frame, 560, -2, 340, 36, "plaque", "BORDER")
+    local titleInner = frame:CreateTexture(nil, "ARTWORK")
+    titleInner:SetColorTexture(0.16, 0.105, 0.035, 0.28)
+    titleInner:SetPoint("TOPLEFT", titlePlate, "TOPLEFT", 5, -5)
+    titleInner:SetPoint("BOTTOMRIGHT", titlePlate, "BOTTOMRIGHT", -5, 5)
+    local titleAccentLeft = frame:CreateTexture(nil, "ARTWORK")
+    titleAccentLeft:SetColorTexture(0.86, 0.67, 0.29, 0.95)
+    titleAccentLeft:SetSize(5, 5)
+    titleAccentLeft:SetPoint("LEFT", titlePlate, "LEFT", 8, 0)
+    local titleAccentRight = frame:CreateTexture(nil, "ARTWORK")
+    titleAccentRight:SetColorTexture(0.86, 0.67, 0.29, 0.95)
+    titleAccentRight:SetSize(5, 5)
+    titleAccentRight:SetPoint("RIGHT", titlePlate, "RIGHT", -8, 0)
+    AddInsetSurface(frame, 18, -30, 1424, 78, {0.018, 0.016, 0.012, 0.86})
+    AddBevelBorder(frame, 18, -30, 1424, 78, "panel", "BORDER")
     frame.TitleText:ClearAllPoints()
     frame.TitleText:SetPoint("CENTER", titlePlate, "CENTER", 0, 0)
-    frame.TitleText:SetSize(250, 24)
+    frame.TitleText:SetSize(310, 28)
     frame.TitleText:SetText("Modulo Market")
     if frame.TitleText.SetFontObject then frame.TitleText:SetFontObject("GameFontNormalLarge") end
     if frame.TitleText.SetTextColor then frame.TitleText:SetTextColor(1, 0.82, 0.12) end
@@ -2789,9 +2911,15 @@ local function CreateUI()
         _G.UISpecialFrames[#_G.UISpecialFrames + 1] = "ModuloMarketMainFrame"
     end
 
-    UI.metadata = AddLabel(frame, "Loading market data…", 24, -36, 390, 18, "GameFontNormal")
-    UI.scanStateLabel = AddLabel(frame, "Scan: Idle", 438, -36, 250, 18, "GameFontNormal")
-    UI.status = AddLabel(frame, "Ready", 24, -92, 1400, 18, "GameFontDisableSmall")
+    AddInsetSurface(frame, 22, -34, 398, 22, {0.012, 0.011, 0.009, 0.96})
+    AddBevelBorder(frame, 22, -34, 398, 22, "control", "BORDER")
+    AddInsetSurface(frame, 430, -34, 278, 22, {0.012, 0.011, 0.009, 0.96})
+    AddBevelBorder(frame, 430, -34, 278, 22, "control", "BORDER")
+    UI.metadata = AddLabel(frame, "Loading market data…", 30, -38, 382, 18, "GameFontNormal")
+    IncreaseFontSize(UI.metadata, 1)
+    UI.scanStateLabel = AddLabel(frame, "Scan: Idle", 442, -38, 254, 18, "GameFontNormal")
+    IncreaseFontSize(UI.scanStateLabel, 1)
+    UI.status = AddLabel(frame, "Ready", 28, -92, 1390, 18, "GameFontDisableSmall")
     UI.status:SetWordWrap(false)
     UI.statusTooltip = CreateFrame("Button", nil, frame)
     UI.statusTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 24, -92)
@@ -2842,11 +2970,12 @@ local function CreateUI()
     end)
     AddButton(frame, "Close", 80, 645, -62, function() frame:Hide() end)
 
-    UI.opacityLabel = AddLabel(frame, "Window opacity", 1260, -30, 112, 18, "GameFontNormalSmall")
+    UI.opacityLabel = AddLabel(frame, "Window opacity", 1250, -36, 126, 18, "GameFontNormalSmall")
     UI.opacityLabel:SetJustifyH("CENTER")
+    IncreaseFontSize(UI.opacityLabel, 1)
     UI.opacitySlider = CreateFrame("Slider", nil, frame)
     UI.opacitySlider:SetSize(108, 14)
-    UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1262, -54)
+    UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1258, -60)
     UI.opacitySlider:SetOrientation("HORIZONTAL")
     UI.opacitySlider:SetMinMaxValues(0.35, 1.0)
     UI.opacitySlider:SetValueStep(0.05)
@@ -2857,7 +2986,7 @@ local function CreateUI()
     opacityTrack:SetPoint("LEFT", UI.opacitySlider, "LEFT", 0, 0)
     opacityTrack:SetPoint("RIGHT", UI.opacitySlider, "RIGHT", 0, 0)
     opacityTrack:SetHeight(6)
-    UI.opacityValue = AddLabel(frame, "", 1376, -30, 48, 18, "GameFontHighlightSmall")
+    UI.opacityValue = AddLabel(frame, "", 1380, -36, 42, 18, "GameFontHighlightSmall")
     ApplyBackgroundOpacity(frame, initialOpacity)
     UI.opacitySlider:SetValue(initialOpacity)
     UI.opacitySlider:SetScript("OnValueChanged", function(_, value)
@@ -2868,6 +2997,7 @@ local function CreateUI()
     tabStrip:SetColorTexture(0.045, 0.035, 0.025, 0.95)
     tabStrip:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -112)
     tabStrip:SetSize(1424, 34)
+    AddBevelBorder(frame, 18, -112, 1424, 34, "panel", "BORDER")
     UI.tabs = {}
     local tabSpecs = {
         { "market", "All Items", 194 },
@@ -2885,7 +3015,27 @@ local function CreateUI()
         button:SetPoint("TOPLEFT", frame, "TOPLEFT", tabX, -114)
         button.background = button:CreateTexture(nil, "BACKGROUND")
         button.background:SetAllPoints(button)
-        button.background:SetColorTexture(0.12, 0.085, 0.045, 0.95)
+        button.background:SetColorTexture(0.035, 0.029, 0.020, 0.98)
+        button.marketTop = button:CreateTexture(nil, "BORDER")
+        button.marketTop:SetColorTexture(0.62, 0.46, 0.20, 0.82)
+        button.marketTop:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
+        button.marketTop:SetPoint("TOPRIGHT", button, "TOPRIGHT", -1, -1)
+        button.marketTop:SetHeight(1)
+        button.marketBottom = button:CreateTexture(nil, "BORDER")
+        button.marketBottom:SetColorTexture(0.12, 0.085, 0.035, 0.98)
+        button.marketBottom:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 1, 1)
+        button.marketBottom:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+        button.marketBottom:SetHeight(1)
+        button.marketLeft = button:CreateTexture(nil, "BORDER")
+        button.marketLeft:SetColorTexture(0.44, 0.32, 0.13, 0.82)
+        button.marketLeft:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
+        button.marketLeft:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 1, 1)
+        button.marketLeft:SetWidth(1)
+        button.marketRight = button:CreateTexture(nil, "BORDER")
+        button.marketRight:SetColorTexture(0.08, 0.06, 0.025, 0.98)
+        button.marketRight:SetPoint("TOPRIGHT", button, "TOPRIGHT", -1, -1)
+        button.marketRight:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+        button.marketRight:SetWidth(1)
         button.highlight = button:CreateTexture(nil, "HIGHLIGHT")
         button.highlight:SetAllPoints(button)
         button.highlight:SetColorTexture(0.65, 0.48, 0.18, 0.22)
@@ -2897,6 +3047,8 @@ local function CreateUI()
         button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         button.label:SetPoint("CENTER")
         button.label:SetText(label)
+        IncreaseFontSize(button.label, 1)
+        button.label:SetTextColor(0.96, 0.89, 0.72)
         button.tabKey = key
         button:SetScript("OnClick", function() SetTab(key) end)
         if key == "market" then
@@ -2942,32 +3094,34 @@ local function CreateUI()
     rightPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 1126, -158)
     rightPanel:SetSize(300, 650)
     local function AddPanelBorder(x, y, width, height)
-        local color = { 0.43, 0.32, 0.17, 0.72 }
-        local top = frame:CreateTexture(nil, "BORDER")
-        top:SetColorTexture(unpack(color)); top:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y); top:SetSize(width, 1)
-        local bottom = frame:CreateTexture(nil, "BORDER")
-        bottom:SetColorTexture(unpack(color)); bottom:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y - height); bottom:SetSize(width, 1)
-        local left = frame:CreateTexture(nil, "BORDER")
-        left:SetColorTexture(unpack(color)); left:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y); left:SetSize(1, height)
-        local right = frame:CreateTexture(nil, "BORDER")
-        right:SetColorTexture(unpack(color)); right:SetPoint("TOPLEFT", frame, "TOPLEFT", x + width, y); right:SetSize(1, height)
+        AddBevelBorder(frame, x, y, width, height, "panel", "BORDER")
     end
     AddPanelBorder(18, -158, 260, 650)
     AddPanelBorder(286, -158, 834, 650)
     AddPanelBorder(1126, -158, 300, 650)
     local function AddPanelHeader(x, y, width)
         local plate = frame:CreateTexture(nil, "ARTWORK")
-        plate:SetColorTexture(0.19, 0.145, 0.075, 0.48)
-        plate:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 1, y)
-        plate:SetSize(width - 2, 28)
+        plate:SetColorTexture(0.15, 0.105, 0.045, 0.78)
+        plate:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 2, y - 1)
+        plate:SetSize(width - 4, 27)
+        local upper = frame:CreateTexture(nil, "ARTWORK")
+        upper:SetColorTexture(0.52, 0.38, 0.15, 0.20)
+        upper:SetPoint("TOPLEFT", plate, "TOPLEFT", 0, 0)
+        upper:SetPoint("TOPRIGHT", plate, "TOPRIGHT", 0, 0)
+        upper:SetHeight(9)
         local rule = frame:CreateTexture(nil, "ARTWORK")
-        rule:SetColorTexture(0.62, 0.46, 0.22, 0.55)
+        rule:SetColorTexture(0.78, 0.58, 0.25, 0.82)
         rule:SetPoint("TOPLEFT", plate, "BOTTOMLEFT", 0, 0)
-        rule:SetSize(width - 2, 1)
+        rule:SetSize(width - 4, 1)
+        local lowerRule = frame:CreateTexture(nil, "ARTWORK")
+        lowerRule:SetColorTexture(0.06, 0.045, 0.02, 0.95)
+        lowerRule:SetPoint("TOPLEFT", plate, "BOTTOMLEFT", 0, -1)
+        lowerRule:SetSize(width - 4, 1)
     end
     AddPanelHeader(18, -158, 260)
     AddPanelHeader(286, -158, 834)
     AddPanelHeader(1126, -158, 300)
+    AddInsetSurface(frame, 26, -620, 244, 176, {0.020, 0.018, 0.014, 0.96})
     AddPanelBorder(26, -620, 244, 176)
     AddPanelHeader(26, -620, 244)
     UI.dataHeading = AddLabel(frame, "Data", 36, -628, 220, 22, "GameFontNormal")
@@ -2996,13 +3150,28 @@ local function CreateUI()
             UI.StartViewBuild()
         end)
     UI.filterHeading = AddLabel(frame, "Filters — All Items", 30, -166, 230, 24, "GameFontNormalLarge")
-    IncreaseFontSize(UI.filterHeading, 1)
+    IncreaseFontSize(UI.filterHeading, 2)
     UI.centerHeading = AddLabel(frame, "All Items", 302, -166, 500, 24, "GameFontNormalLarge")
-    IncreaseFontSize(UI.centerHeading, 1)
+    IncreaseFontSize(UI.centerHeading, 2)
+    local tableHeaderBand = frame:CreateTexture(nil, "ARTWORK")
+    tableHeaderBand:SetColorTexture(0.075, 0.060, 0.035, 0.62)
+    tableHeaderBand:SetPoint("TOPLEFT", frame, "TOPLEFT", 298, -210)
+    tableHeaderBand:SetSize(812, 28)
+    local tableHeaderTop = frame:CreateTexture(nil, "ARTWORK")
+    tableHeaderTop:SetColorTexture(0.38, 0.28, 0.12, 0.72)
+    tableHeaderTop:SetPoint("TOPLEFT", tableHeaderBand, "TOPLEFT", 0, 0)
+    tableHeaderTop:SetPoint("TOPRIGHT", tableHeaderBand, "TOPRIGHT", 0, 0)
+    tableHeaderTop:SetHeight(1)
+    local tableHeaderBottom = frame:CreateTexture(nil, "ARTWORK")
+    tableHeaderBottom:SetColorTexture(0.72, 0.52, 0.20, 0.78)
+    tableHeaderBottom:SetPoint("BOTTOMLEFT", tableHeaderBand, "BOTTOMLEFT", 0, 0)
+    tableHeaderBottom:SetPoint("BOTTOMRIGHT", tableHeaderBand, "BOTTOMRIGHT", 0, 0)
+    tableHeaderBottom:SetHeight(1)
     AddLabel(frame, "Search", 30, -198, 230, 18, "GameFontNormal")
     UI.search = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
     UI.search:SetSize(230, 24)
     UI.search:SetPoint("TOPLEFT", frame, "TOPLEFT", 32, -220)
+    UI.search:SetTextInsets(8, 8, 0, 0)
     UI.search:SetAutoFocus(false)
     UI.search:SetMaxLetters(80)
     UI.search:SetScript("OnTextChanged", function(self, userInput)
@@ -3029,6 +3198,7 @@ local function CreateUI()
             UI.StartViewBuild()
         end)
     UI.professionLabel = AddLabel(frame, "Profession", 30, -252, 230, 18, "GameFontNormal")
+    IncreaseFontSize(UI.professionLabel, 1)
     AttachFilterTooltip(UI.professionDropdown, "Profession", "Limit the active view to one profession. All professions keeps every supported profession in the results.")
     local function GetRoleOptions()
         local futureProvider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
@@ -3089,6 +3259,7 @@ local function CreateUI()
             UI.StartViewBuild()
         end)
     UI.roleLabel = AddLabel(frame, "Item role", 30, -334, 230, 18, "GameFontNormal")
+    IncreaseFontSize(UI.roleLabel, 1)
     AttachFilterTooltip(UI.roleDropdown, "Item role", "Filter by learned or unlearned recipe outputs, or by gathering and material roles where supported.")
 
     local function GetItemTypeOptions()
@@ -3118,6 +3289,7 @@ local function CreateUI()
             UI.StartViewBuild()
         end)
     UI.itemTypeLabel = AddLabel(frame, "Item Types", 30, -416, 230, 18, "GameFontNormal")
+    IncreaseFontSize(UI.itemTypeLabel, 1)
     AttachFilterTooltip(UI.itemTypeDropdown, "Item Types",
         "Filter by the item's class as reported by the game client. Missing item metadata is not guessed.")
 
@@ -3133,6 +3305,7 @@ local function CreateUI()
         check:SetSize(22, 22)
         check:SetPoint("TOPLEFT", frame, "TOPLEFT", 28, -414 - ((i - 1) * 31))
         local label = AddLabel(frame, spec[2], 54, -414 - ((i - 1) * 31), 210, 20, "GameFontHighlightSmall")
+        IncreaseFontSize(label, 1)
         check.label = label
         check.filterKey = spec[1]
         check:SetScript("OnEnter", function(self) RaiseMarketTooltip(self, spec[2], spec[3]) end)
@@ -3177,7 +3350,12 @@ local function CreateUI()
     UI.economicsFilterHeading = AddLabel(frame, "ECONOMICS FILTERS", 30, -394, 230, 18, "GameFontNormal")
 
     UI.marketQuickFilterControls = {}
+    local optionsDivider = frame:CreateTexture(nil, "ARTWORK")
+    optionsDivider:SetColorTexture(0.55, 0.40, 0.16, 0.76)
+    optionsDivider:SetPoint("TOPLEFT", frame, "TOPLEFT", 30, -480)
+    optionsDivider:SetSize(230, 1)
     UI.marketQuickFilterHeading = AddLabel(frame, "OPTIONS", 30, -490, 230, 18, "GameFontNormalLarge")
+    IncreaseFontSize(UI.marketQuickFilterHeading, 1)
     local marketQuickFilterSpecs = {
         { "craftingMaterialsOnly", "Crafting materials only",
             "Items used as reagents by supported recipes; uses the existing profession material catalogue." },
@@ -3293,8 +3471,31 @@ local function CreateUI()
         row.rowShade = row:CreateTexture(nil, "BACKGROUND")
         row.rowShade:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
         row.rowShade:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
+        row.selectedWash = row:CreateTexture(nil, "BACKGROUND")
+        row.selectedWash:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+        row.selectedWash:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
+        row.selectedWash:SetColorTexture(0.30, 0.21, 0.045, 0.28)
+        row.selectedWash:Hide()
+        row.selectedAccent = row:CreateTexture(nil, "ARTWORK")
+        row.selectedAccent:SetColorTexture(0.96, 0.70, 0.22, 1)
+        row.selectedAccent:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+        row.selectedAccent:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
+        row.selectedAccent:SetWidth(2)
+        row.selectedAccent:Hide()
+        row.selectedTop = row:CreateTexture(nil, "ARTWORK")
+        row.selectedTop:SetColorTexture(0.86, 0.62, 0.20, 0.82)
+        row.selectedTop:SetPoint("TOPLEFT", row, "TOPLEFT", 2, 0)
+        row.selectedTop:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+        row.selectedTop:SetHeight(1)
+        row.selectedTop:Hide()
+        row.selectedBottom = row:CreateTexture(nil, "ARTWORK")
+        row.selectedBottom:SetColorTexture(0.50, 0.34, 0.10, 0.80)
+        row.selectedBottom:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 2, 0)
+        row.selectedBottom:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
+        row.selectedBottom:SetHeight(1)
+        row.selectedBottom:Hide()
         row.icon = row:CreateTexture(nil, "ARTWORK")
-        row.icon:SetSize(18, 18)
+        row.icon:SetSize(20, 20)
         row.icon:SetPoint("LEFT", row, "LEFT", 4, 0)
         local function RowText(anchor, x, width, justify)
             local fs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -3369,42 +3570,31 @@ local function CreateUI()
     -- Inspector cards mirror the approved proof of concept while reusing the
     -- existing market, relationship and history data sources.
     local function AddInspectorCard(x, top, width, height)
-        local background = frame:CreateTexture(nil, "ARTWORK")
-        background:SetColorTexture(0.012, 0.013, 0.016, 0.94)
-        background:SetPoint("TOPLEFT", frame, "TOPLEFT", x, top)
-        background:SetSize(width, height)
+        AddInsetSurface(frame, x, top, width, height, {0.010, 0.011, 0.013, 0.98})
         local header = frame:CreateTexture(nil, "ARTWORK")
-        header:SetColorTexture(0.18, 0.135, 0.065, 0.55)
-        header:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 1, top - 1)
-        header:SetSize(width - 2, 25)
+        header:SetColorTexture(0.16, 0.115, 0.050, 0.78)
+        header:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 2, top - 2)
+        header:SetSize(width - 4, 24)
+        local headerGlow = frame:CreateTexture(nil, "ARTWORK")
+        headerGlow:SetColorTexture(0.55, 0.40, 0.16, 0.18)
+        headerGlow:SetPoint("TOPLEFT", header, "TOPLEFT", 0, 0)
+        headerGlow:SetPoint("TOPRIGHT", header, "TOPRIGHT", 0, 0)
+        headerGlow:SetHeight(8)
         local rule = frame:CreateTexture(nil, "ARTWORK")
-        rule:SetColorTexture(0.62, 0.46, 0.22, 0.72)
+        rule:SetColorTexture(0.78, 0.58, 0.25, 0.84)
         rule:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, 0)
-        rule:SetSize(width - 2, 1)
-        local borderColor = { 0.58, 0.43, 0.20, 0.88 }
-        local topLine = frame:CreateTexture(nil, "OVERLAY")
-        topLine:SetColorTexture(unpack(borderColor))
-        topLine:SetPoint("TOPLEFT", frame, "TOPLEFT", x, top)
-        topLine:SetSize(width, 1)
-        local bottomLine = frame:CreateTexture(nil, "OVERLAY")
-        bottomLine:SetColorTexture(unpack(borderColor))
-        bottomLine:SetPoint("TOPLEFT", frame, "TOPLEFT", x, top - height)
-        bottomLine:SetSize(width, 1)
-        local leftLine = frame:CreateTexture(nil, "OVERLAY")
-        leftLine:SetColorTexture(unpack(borderColor))
-        leftLine:SetPoint("TOPLEFT", frame, "TOPLEFT", x, top)
-        leftLine:SetSize(1, height)
-        local rightLine = frame:CreateTexture(nil, "OVERLAY")
-        rightLine:SetColorTexture(unpack(borderColor))
-        rightLine:SetPoint("TOPLEFT", frame, "TOPLEFT", x + width, top)
-        rightLine:SetSize(1, height)
+        rule:SetSize(width - 4, 1)
+        AddBevelBorder(frame, x, top, width, height, "card", "OVERLAY")
     end
     AddInspectorCard(1136, -270, 280, 144)
     AddInspectorCard(1136, -422, 280, 120)
     AddInspectorCard(1136, -552, 280, 256)
 
     UI.detailHeading = AddLabel(frame, "Selected item", 1142, -166, 268, 24, "GameFontNormalLarge")
+    IncreaseFontSize(UI.detailHeading, 2)
     UI.detailHeading:SetWordWrap(false)
+    AddInsetSurface(frame, 1139, -201, 54, 54, {0.005, 0.005, 0.005, 1})
+    AddBevelBorder(frame, 1139, -201, 54, 54, "control", "OVERLAY")
     UI.detailIcon = frame:CreateTexture(nil, "ARTWORK")
     UI.detailIcon:SetSize(48, 48)
     UI.detailIcon:SetPoint("TOPLEFT", frame, "TOPLEFT", 1142, -204)
@@ -3439,6 +3629,7 @@ local function CreateUI()
     UI.detailProfit = AddDetailRowValue("—", 1274, -376, 132)
 
     UI.relationshipHeading = AddLabel(frame, "Relationships", 1142, -430, 268, 22, "GameFontNormalLarge")
+    IncreaseFontSize(UI.relationshipHeading, 1)
     UI.detailScroll = CreateFrame("ScrollFrame", "ModuloMarketDetailScrollFrame", frame, "UIPanelScrollFrameTemplate")
     UI.detailScroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 1140, -456)
     UI.detailScroll:SetSize(270, 74)
@@ -3489,6 +3680,7 @@ local function CreateUI()
     UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -552)
     UI.detailFooter:SetSize(280, 256)
     UI.historyHeading = AddLabel(frame, "Market History", 1142, -560, 268, 22, "GameFontNormalLarge")
+    IncreaseFontSize(UI.historyHeading, 1)
     UI.historyText = AddLabel(UI.detailFooter, "", 6, -36, 268, 58, "GameFontHighlight")
     IncreaseFontSize(UI.historyText, 1)
     UI.historyText:SetWordWrap(true)
@@ -3559,6 +3751,7 @@ local function CreateUI()
         end
     end)
     UI.frame = frame
+    AddBevelBorder(frame, 5, -5, 1450, 840, "outer", "OVERLAY")
     local tooltipSearchEvents = CreateFrame("Frame")
     tooltipSearchEvents:RegisterEvent("ITEM_DATA_LOAD_RESULT")
     tooltipSearchEvents:RegisterEvent("GET_ITEM_INFO_RECEIVED")

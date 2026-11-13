@@ -1,7 +1,22 @@
-# Modulo Market 0.8.3
-**Current player milestone:** All Items visual refinement. The All Items filter panel now separates profession-related Item role filtering from client item-class Item Types filtering. The new type filter uses class metadata from the game client, with an asynchronous warmup capped at ten item-data requests per frame and unknown metadata excluded from selected class filters. The main title receives a framed plaque, filter/data spacing is refined, table and inspector typography are more readable, and the selected-item icon and market values are enlarged. The existing six tabs, market calculations, recipe data and SavedVariables schema remain unchanged. Forever runtime acceptance for 0.8.3 is NOT RUN.
+# Modulo Market 0.8.4
+**Current player milestone:** Consolidated Dark Foundry visual redesign across the header/window frame, six-tab navigation, left filters, centre market table and selected-item inspector. The redesign adds layered bronze/gold bevels, inset surfaces, clearer active-tab treatment, a table heading band and selected-row accents while preserving the existing six tabs, control behavior, market calculations, recipe data and SavedVariables schema. Forever runtime acceptance for 0.8.4 is NOT RUN.
 
-## Current 0.8.3 milestone — All Items visual refinement
+## Current 0.8.4 milestone — consolidated Dark Foundry visual redesign
+
+- Replaced the minimal title rectangle with a wider, layered dark/gold title plaque and a structured header rail. Existing market metadata, truthful scan states, action buttons, status text and whole-window opacity behavior remain the sources of truth; no fabricated progress percentage was added.
+- Added a layered outer window edge, stronger inset panel bevels, warmer panel heading plates and a dedicated inset Data card surface. The existing three-column geometry and panel positions remain unchanged.
+- Restyled the six existing navigation tabs with state-aware bronze/gold bevel edges and clearer selected-state contrast. No tab was added or removed; My Crafts remains absent.
+- Applied a shared dark/gold button skin to market action buttons and the existing custom dropdown controls while preserving the dropdown's local popup/click implementation. Profession, Item role, Item Types, Options and Data semantics remain unchanged.
+- Added a distinct centre-table column-heading band, more legible alternating row surfaces, and a gold selected-row wash/accent. The 24px row height and 25-row virtual pool remain unchanged.
+- Reframed the selected-item inspector cards and added a dark/gold mount around the existing selected-item icon. Existing inspector data, scrolling and history rendering remain unchanged.
+- Preserved market calculations, snapshot provenance, recipe data, SavedVariables, scan behavior, filters, tab state, sorting, tooltips and all market data sources. Parent MODULO 1.0.48 is unchanged.
+- Offline verification: focused regressions 72 PASS; Lua syntax 9/9 PASS; profession capture harness PASS. Full historical suite: 231 PASS / 61 unchanged legacy or superseded failures; comparison with the 0.8.3 baseline found no new failing test IDs. ZIP CRC PASS; manifest 157/157; fresh extraction and fresh-extraction focused checks PASS; TOC/Core/manifest/README all 0.8.4. Forever runtime NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.8.4.md`.
+
+## Subsequent 0.8.3 Forever visual observation
+
+After the 0.8.3 package was built, the user supplied an in-game screenshot showing the All Items screen running on Forever 1.60.1 build 70888. This confirms that the 0.8.3 All Items window rendered in that environment. It does not establish acceptance of every control, tab, filter/API path, or the 0.8.4 redesign. The original 0.8.3 audit's NOT RUN status records the state at its package handoff and is retained as historical provenance.
+
+## Previous 0.8.3 milestone — All Items visual refinement
 
 - Restored a distinct **Item Types** dropdown beneath **Item role** on All Items. Item role continues to filter profession/gathering/material relationships; Item Types filters the client's item class.
 - Added grounded item-class groups: All item types, Consumables (class 0), Equipment (Weapons class 2 and Armor class 4), Trade Goods (class 7), and Other item classes. These class IDs are consistent with the existing class-aware Low Supply threshold logic.
