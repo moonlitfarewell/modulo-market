@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.9.4"' in CORE
-    assert "## Version: 0.9.4" in TOC
-    assert MANIFEST["version"] == "0.9.4"
+    assert 'MM.version = "0.9.5"' in CORE
+    assert "## Version: 0.9.5" in TOC
+    assert MANIFEST["version"] == "0.9.5"
 
 
 def test_native_blizzard_frame_template_is_preserved():
@@ -25,7 +25,7 @@ def test_custom_title_plaque_is_removed_and_title_uses_native_title_strip():
     assert "titleInner" not in UI
     assert "titleAccentLeft" not in UI
     assert "titleAccentRight" not in UI
-    assert 'frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -19)' in UI
+    assert 'frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -27)' in UI
     assert 'frame.TitleText:SetText("Modulo Market")' in UI
 
 

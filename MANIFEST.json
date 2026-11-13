@@ -62,7 +62,7 @@
     "Modulo"
   ],
   "developer_tools_version": "Embedded repository importer 0.2.0 used to compile the 70938 runtime; standalone ForeverDB importer 0.2.3 used to inspect, normalize and validate the raw 70938 capture (separate release lifecycle).",
-  "file_count": 188,
+  "file_count": 191,
   "files": [
     ".gitignore",
     "AddOns/ModuloMarket/Core.lua",
@@ -140,6 +140,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.9.2.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.9.3.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.9.4.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.9.5.md",
     "README.md",
     "data/ForeverDB-Canonical-1.60.1.70862.json",
     "data/ForeverDB-Canonical-1.60.1.70888.json",
@@ -164,6 +165,7 @@
     "docs/MODULOMARKET-UI-REDESIGN-0.5.7.md",
     "docs/MODULOMARKET-UI-RUNTIME-AND-LAYOUT-0.6.2.md",
     "docs/MODULOMARKET-UI-TITLE-TABS-0.9.4.md",
+    "docs/MODULOMARKET-UI-TITLE-TABS-0.9.5.md",
     "docs/MODULOMARKET-UI-VISUAL-REDESIGN-0.8.4.md",
     "docs/MODULOMARKET-UI-VISUAL-REDESIGN-0.8.7.md",
     "docs/MODULOMARKET-UI-VISUAL-REDESIGN-0.8.9.md",
@@ -208,6 +210,7 @@
     "tests/test_modulomarket_0_9_2_outer_chrome.py",
     "tests/test_modulomarket_0_9_3_native_window_chrome.py",
     "tests/test_modulomarket_0_9_4_title_tabs.py",
+    "tests/test_modulomarket_0_9_5_title_tabs.py",
     "tests/test_modulomarket_acquisition_compact_0_6_6.py",
     "tests/test_modulomarket_acquisition_sources_0_6_5.py",
     "tests/test_modulomarket_addon_grouping_0_0_5.py",
@@ -268,6 +271,11 @@
   "parentUploader": "developer",
   "parent_addon": "Modulo",
   "previousChildBundles": [
+    {
+      "bundle": "ModuloMarket-GitHub-Update-0.9.4.zip",
+      "bytes": 2345559,
+      "sha256": "af12ad645e915f65db934969ab827a7319ad03ecb9fb34633d34201e0bdc9443"
+    },
     {
       "bundle": "ModuloMarket-GitHub-Update-0.9.1.zip",
       "bytes": 2333673,
@@ -414,12 +422,12 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.9.4_SOURCE_IMPLEMENTED; TITLEBG_38PX; TITLE_TEXT_CENTERED_280X24; TAB_VERTICAL_SIDE_STROKES_REMOVED; TAB_TOP_BOTTOM_ACCENTS_AND_INNER_BORDERS_PRESERVED; FOCUSED_TESTS_4_PASS; FULL_SUITE_263_PASS_61_UNCHANGED_BASELINE_FAILURES; ZERO_NEW_FAILING_TEST_IDS_VS_0.9.3; LUA_SYNTAX_9_OF_9_PASS; FRESH_EXTRACTION_PASS; MANIFEST_INVENTORY_PASS; ZIP_CRC_PASS; FRESH_SUITE_263_PASS_61_UNCHANGED_BASELINE_FAILURES; LUA_SYNTAX_9_OF_9_PASS; FOREVER_RUNTIME_NOT_RUN",
+  "runtime_status": "0.9.5_SOURCE_IMPLEMENTED; TITLEBG_EXPLICITLY_REANCHORED_44PX; TITLE_TEXT_CENTERED_320X28_AT_MINUS_27; FRAME_HEIGHT_882; CONTENT_SHIFT_16_EXCLUDING_NATIVE_CLOSE_AND_FRAME_CHROME; TAB_GAP_ZERO; FOCUSED_TESTS_8_PASS; FULL_SUITE_267_PASS_61_UNCHANGED_BASELINE_FAILURES; ZERO_NEW_FAILING_TEST_IDS_VS_0.9.4; LUA_SYNTAX_9_OF_9_PASS; FRESH_EXTRACTION_AND_ARCHIVE_CHECKS_PENDING; FOREVER_RUNTIME_NOT_RUN",
   "saved_variables": [
     "ModuloMarketDB"
   ],
-  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.9.1.zip",
-  "supersedesChildBytes": 2333673,
-  "supersedesChildSha256": "75ac5ec6a4a47efe8938f9f0bc764210f0d2f9b50f149d108f194d1c84ff2eef",
-  "version": "0.9.4"
+  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.9.4.zip",
+  "supersedesChildBytes": 2345559,
+  "supersedesChildSha256": "af12ad645e915f65db934969ab827a7319ad03ecb9fb34633d34201e0bdc9443",
+  "version": "0.9.5"
 }

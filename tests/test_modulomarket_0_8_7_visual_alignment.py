@@ -35,5 +35,5 @@ def test_existing_six_tabs_and_market_filter_semantics_remain():
 def test_release_metadata_is_aligned():
     assert f'MM.version = "{MANIFEST["version"]}"' in CORE
     assert f'## Version: {MANIFEST["version"]}' in TOC
-    assert MANIFEST["version"] == "0.9.4"
+    assert MANIFEST["version"] == "0.9.5"
     assert MANIFEST["file_count"] == len(MANIFEST["files"])

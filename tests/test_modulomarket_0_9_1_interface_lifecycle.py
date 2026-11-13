@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.9.4"' in CORE
-    assert "## Version: 0.9.4" in TOC
-    assert MANIFEST["version"] == "0.9.4"
+    assert 'MM.version = "0.9.5"' in CORE
+    assert "## Version: 0.9.5" in TOC
+    assert MANIFEST["version"] == "0.9.5"
 
 
 def test_every_dropdown_registers_a_close_callback():

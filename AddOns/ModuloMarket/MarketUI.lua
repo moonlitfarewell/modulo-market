@@ -2892,11 +2892,13 @@ local function CreateUI()
     if type(MM.db) == "table" then MM.db.craftingScope = UI.craftingScope end
     local initialOpacity = ApplyBackgroundOpacity(frame,
         MM.db and MM.db.backgroundOpacity or 0.85)
-    frame:SetSize(1460, 850)
+    -- Extra vertical room accommodates the taller native title strip while
+    -- keeping the existing content/footer clear of the title and frame edges.
+    frame:SetSize(1460, 882)
     if type(_G.GetScreenWidth) == "function" and type(_G.GetScreenHeight) == "function" then
         local screenWidth, screenHeight = _G.GetScreenWidth(), _G.GetScreenHeight()
         if tonumber(screenWidth) and tonumber(screenHeight) then
-            local fitScale = math.min(1, (screenWidth - 40) / 1460, (screenHeight - 40) / 850)
+            local fitScale = math.min(1, (screenWidth - 40) / 1460, (screenHeight - 40) / 882)
             frame:SetScale(math.max(0.70, fitScale))
         end
     end
@@ -2908,11 +2910,17 @@ local function CreateUI()
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
     AddInsetSurface(frame, 18, -30, 1424, 78, {0.018, 0.016, 0.012, 0.86})
     AddBevelBorder(frame, 18, -30, 1424, 78, "panel", "BORDER")
-    -- Match the taller native title strips used by Blizzard's large panels.
-    if frame.TitleBg and frame.TitleBg.SetHeight then frame.TitleBg:SetHeight(38) end
+    -- Re-anchor the template region itself: SetHeight alone is ineffective
+    -- when the template still constrains both its top and bottom anchors.
+    if frame.TitleBg and frame.TitleBg.ClearAllPoints then
+        frame.TitleBg:ClearAllPoints()
+        frame.TitleBg:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -5)
+        frame.TitleBg:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -5)
+        frame.TitleBg:SetHeight(44)
+    end
     frame.TitleText:ClearAllPoints()
-    frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -19)
-    frame.TitleText:SetSize(280, 24)
+    frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -27)
+    frame.TitleText:SetSize(320, 28)
     frame.TitleText:SetText("Modulo Market")
     if frame.TitleText.SetFontObject then frame.TitleText:SetFontObject("GameFontNormalLarge") end
     if frame.TitleText.SetTextColor then frame.TitleText:SetTextColor(1, 0.82, 0.12) end
@@ -3084,7 +3092,9 @@ local function CreateUI()
         else
             button.selectedMark:Hide()
         end
-        tabX = tabX + width + 4
+        -- Tabs touch edge-to-edge; a gap exposes the strip underneath as
+        -- an unintended vertical divider between adjacent buttons.
+        tabX = tabX + width
     end
 
     local leftPanel = frame:CreateTexture(nil, "BACKGROUND")
@@ -3829,6 +3839,56 @@ local function CreateUI()
     -- Newly created controls default to visible. Apply the active tab once all
     -- tab-specific controls exist so inactive filter groups never overlap on first open.
     SetTab(UI.activeTab or "market")
+
+    -- Shift only addon-owned direct children/regions anchored to the main frame.
+    -- The native close button, title text/background and Blizzard frame chrome
+    -- stay in place; nested control internals move with their owning widgets.
+    local contentShift = 16
+    local frameChildren = { frame:GetChildren() }
+    for _, child in ipairs(frameChildren) do
+        local childName = child.GetName and child:GetName()
+        local isCloseButton = child == frame.CloseButton
+            or (type(childName) == "string" and childName:match("CloseButton$") ~= nil)
+        if not isCloseButton and child ~= frame.Inset and child ~= frame.NineSlice then
+            local points = {}
+            for pointIndex = 1, child:GetNumPoints() do
+                local point, relativeTo, relativePoint, xOfs, yOfs = child:GetPoint(pointIndex)
+                points[#points + 1] = {
+                    point = point, relativeTo = relativeTo, relativePoint = relativePoint,
+                    xOfs = xOfs, yOfs = yOfs,
+                }
+            end
+            child:ClearAllPoints()
+            for _, anchor in ipairs(points) do
+                local yOfs = anchor.yOfs or 0
+                if anchor.relativeTo == frame then yOfs = yOfs - contentShift end
+                child:SetPoint(anchor.point, anchor.relativeTo, anchor.relativePoint,
+                    anchor.xOfs or 0, yOfs)
+            end
+        end
+    end
+
+    local frameRegions = { frame:GetRegions() }
+    for _, region in ipairs(frameRegions) do
+        if region ~= frame.TitleBg and region ~= frame.TitleText
+            and region ~= frame.TopTileStreaks and region ~= frame.Bg then
+            local points = {}
+            for pointIndex = 1, region:GetNumPoints() do
+                local point, relativeTo, relativePoint, xOfs, yOfs = region:GetPoint(pointIndex)
+                points[#points + 1] = {
+                    point = point, relativeTo = relativeTo, relativePoint = relativePoint,
+                    xOfs = xOfs, yOfs = yOfs,
+                }
+            end
+            region:ClearAllPoints()
+            for _, anchor in ipairs(points) do
+                local yOfs = anchor.yOfs or 0
+                if anchor.relativeTo == frame then yOfs = yOfs - contentShift end
+                region:SetPoint(anchor.point, anchor.relativeTo, anchor.relativePoint,
+                    anchor.xOfs or 0, yOfs)
+            end
+        end
+    end
     return frame
 end
 

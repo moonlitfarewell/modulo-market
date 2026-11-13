@@ -1,8 +1,22 @@
+# Modulo Market 0.9.5
+
+**Current player milestone:** Corrected the ineffective 0.9.4 title/tab treatment. The native TitleBg is explicitly re-anchored and resized to 44px; the title is centred in a 320x28 region; the main content is shifted down 16px within a taller 882px frame; adjacent tabs now have zero spacing. Internal borders, native close control and dropdown lifecycle behavior remain. No market/data behavior changed. Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.5.md` and `docs/MODULOMARKET-UI-TITLE-TABS-0.9.5.md`.
+
+## Current 0.9.5 milestone — native title strip and continuous tabs
+
+- Explicitly re-anchor `TitleBg` before setting 44px height; centre title at -27px with 320x28 text region.
+- Add 16px of content clearance and increase frame height to 882px.
+- Remove 4px inter-tab gap; tab buttons now touch edge-to-edge.
+- Preserve tab top/bottom accents, backgrounds, selected marker, six tabs, internal panel borders and native close control.
+- Preserve 0.9.1 dropdown lifecycle correction.
+- No changes to market calculations, scans, recipes, gathering, data, SavedVariables, dependencies or parent MODULO.
+- Forever runtime acceptance NOT RUN for 0.9.5.
+
 # Modulo Market 0.9.4
 
-**Current player milestone:** Increased the native Blizzard title strip to 38 px, recentered and resized the title text to fit, and removed only the vertical one-pixel strokes between adjacent tabs. Tab top/bottom accents, backgrounds, selected markers, all inner panel borders, native frame chrome and dropdown lifecycle behavior are retained. No market/data behavior changed. 0.9.4 Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.4.md` and `docs/MODULOMARKET-UI-TITLE-TABS-0.9.4.md`.
+**Historical 0.9.4 milestone:** Increased the native Blizzard title strip to 38 px, recentered and resized the title text to fit, and removed only the vertical one-pixel strokes between adjacent tabs. Tab top/bottom accents, backgrounds, selected markers, all inner panel borders, native frame chrome and dropdown lifecycle behavior are retained. No market/data behavior changed. 0.9.4 Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.4.md` and `docs/MODULOMARKET-UI-TITLE-TABS-0.9.4.md`.
 
-## Current 0.9.4 milestone — title strip and tab separation
+## Historical 0.9.4 milestone — title strip and tab separation
 
 - Native TitleBg height set to 38 px; title centred at -19 px with a 280x24 text region.
 - Remove tab left/right one-pixel strokes; keep top/bottom strokes, backgrounds, hover and selected marker.
