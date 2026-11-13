@@ -1513,14 +1513,15 @@ function UI.FinishView(rows)
                 local baselineNote = provider.dataBuildMatchesClient and "" or string.format(
                     " · ForeverDB baseline %s remains loaded; %d hotfix-linked records flagged for review",
                     tostring(provider.datasetBuild or "UNKNOWN"), provider.reviewWatchCount or 0)
+                local refreshInstruction = " Refresh: open Auction House > Update Full Market > Confirm, then wait for the full scan to finish."
                 if not UI.catalogSnapshot then
-                    SetStatus("Craft profitability disabled: no market snapshot for current client build "
-                        .. tostring(provider.currentBuild or "UNKNOWN") .. baselineNote)
+                    SetStatus("Craft profitability paused: no completed market snapshot for client build "
+                        .. tostring(provider.currentBuild or "UNKNOWN") .. "." .. refreshInstruction .. baselineNote)
                 else
                     SetStatus(string.format(
-                        "Craft profitability disabled: market snapshot build %s does not match current client build %s",
+                        "Craft profitability paused: auction snapshot %s does not match client %s.%s",
                         tostring(UI.recipeMarketSnapshotBuild or "UNKNOWN"),
-                        tostring(provider.currentBuild or "UNKNOWN")) .. baselineNote)
+                        tostring(provider.currentBuild or "UNKNOWN"), refreshInstruction) .. baselineNote)
                 end
             else
                 local freshness = provider.dataBuildMatchesClient and "build matched"

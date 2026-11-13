@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.8.4"' in CORE
-    assert '## Version: 0.8.4' in TOC
-    assert MANIFEST["version"] == "0.8.4"
+    assert 'MM.version = "0.8.5"' in CORE
+    assert '## Version: 0.8.5' in TOC
+    assert MANIFEST["version"] == "0.8.5"
 
 
 def test_render_rows_returns_before_early_item_data_callback_can_dereference_empty_pool():

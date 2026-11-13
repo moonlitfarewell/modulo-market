@@ -23,8 +23,8 @@ def test_active_profession_skill_is_authoritative_and_merged():
 
 
 def test_version_is_aligned():
-    assert '## Version: 0.8.4' in TOC
-    assert 'MM.version = "0.8.4"' in CORE
+    assert '## Version: 0.8.5' in TOC
+    assert 'MM.version = "0.8.5"' in CORE
 
 
 def test_runtime_harness():

@@ -42,7 +42,9 @@ local function AddAPIStatus(lines, name)
 end
 
 local function GetClientInfo()
-    local version, build, date, interface = GetBuildInfo()
+    if type(_G.GetBuildInfo) ~= "function" then return nil, nil, nil, nil end
+    local ok, version, build, date, interface = pcall(_G.GetBuildInfo)
+    if not ok then return nil, nil, nil, nil end
     return version, build, date, interface
 end
 
@@ -188,6 +190,97 @@ local function GetCurrentProfession(lines)
     end
 end
 
+local function AddCompatibilityReport(lines)
+    lines[#lines + 1] = "CLIENT / MARKET BUILD COMPATIBILITY"
+    local version, build, buildDate, interface
+    if type(_G.GetBuildInfo) == "function" then
+        local ok, v, b, d, i = pcall(_G.GetBuildInfo)
+        if ok then version, build, buildDate, interface = v, b, d, i end
+    end
+    Add(lines, "Client version", version)
+    Add(lines, "Client build", build)
+    Add(lines, "Client build date", buildDate)
+    Add(lines, "Client interface", interface)
+
+    local snapshot = type(MM.db) == "table" and MM.db.lastMarketSnapshot or nil
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "SAVED AUCTION SNAPSHOT"
+    if type(snapshot) == "table" then
+        Add(lines, "Complete", snapshot.complete)
+        Add(lines, "Source", snapshot.source)
+        Add(lines, "Schema version", snapshot.schemaVersion)
+        Add(lines, "Snapshot client version", snapshot.clientVersion)
+        Add(lines, "Snapshot client build", snapshot.clientBuild)
+        Add(lines, "Snapshot timestamp", snapshot.timestampText or snapshot.timestamp)
+        Add(lines, "Snapshot item variants", snapshot.resultCount or (type(snapshot.rows) == "table" and #snapshot.rows or nil))
+        Add(lines, "Auctions scanned", snapshot.auctionCount)
+        Add(lines, "Processed auctions", snapshot.processedAuctionCount)
+        Add(lines, "Snapshot complete", snapshot.dataComplete)
+        local compatible, normalizedBuild
+        if MM.ProfessionData and type(MM.ProfessionData.IsMarketSnapshotCompatible) == "function" then
+            local ok, a, b = pcall(MM.ProfessionData.IsMarketSnapshotCompatible, snapshot)
+            if ok then compatible, normalizedBuild = a, b end
+        end
+        Add(lines, "Snapshot compatible with current client", compatible)
+        Add(lines, "Normalized snapshot build", normalizedBuild)
+    else
+        lines[#lines + 1] = "Saved snapshot: none"
+        Add(lines, "Snapshot compatible with current client", false)
+    end
+
+    local provider
+    if MM.ProfessionData and type(MM.ProfessionData.GetFutureProviderStatus) == "function" then
+        local ok, value = pcall(MM.ProfessionData.GetFutureProviderStatus)
+        if ok and type(value) == "table" then provider = value end
+    end
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "BUNDLED RECIPE CATALOGUE"
+    if provider then
+        Add(lines, "Provider", provider.dataSource)
+        Add(lines, "Catalogue build", provider.datasetBuild)
+        Add(lines, "Current client build", provider.currentBuild)
+        Add(lines, "Catalogue matches current client", provider.dataBuildMatchesClient)
+        Add(lines, "Catalogue available", provider.available)
+        Add(lines, "Review-linked records", provider.reviewWatchCount)
+        Add(lines, "Provider status", provider.status)
+    else
+        lines[#lines + 1] = "Provider status: unavailable"
+    end
+
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "AUCTION HOUSE API AVAILABILITY (NO REQUESTS SENT)"
+    local auctionHouse = _G.C_AuctionHouse
+    local auctionNames = {
+        "SendBrowseQuery", "RequestMoreBrowseResults", "GetBrowseResults",
+        "HasFullBrowseResults", "IsThrottledMessageSystemReady",
+        "ReplicateItems", "GetNumReplicateItems", "GetReplicateItemInfo",
+        "GetReplicateItemLink", "GetReplicateItemTimeLeft",
+    }
+    for i = 1, #auctionNames do
+        lines[#lines + 1] = "  C_AuctionHouse." .. auctionNames[i] .. " = "
+            .. type(auctionHouse and auctionHouse[auctionNames[i]])
+    end
+    local itemAPI = _G.C_Item
+    local itemNames = {
+        "GetItemNameByID", "GetItemInfoInstant", "IsItemDataCachedByID",
+        "RequestLoadItemDataByID",
+    }
+    for i = 1, #itemNames do
+        lines[#lines + 1] = "  C_Item." .. itemNames[i] .. " = "
+            .. type(itemAPI and itemAPI[itemNames[i]])
+    end
+    local tooltipAPI = _G.C_TooltipInfo
+    lines[#lines + 1] = "  C_TooltipInfo.GetItemByID = "
+        .. type(tooltipAPI and tooltipAPI.GetItemByID)
+
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "INTERPRETATION"
+    lines[#lines + 1] = "API presence is an availability check, not proof of runtime behavior."
+    lines[#lines + 1] = "A stale or mismatched auction snapshot must not be used for craft profitability."
+    lines[#lines + 1] = "To refresh: open the Auction House, choose Update Full Market, confirm the full scan, and wait for completion."
+    lines[#lines + 1] = "The previous complete snapshot is retained until a replacement scan completes."
+end
+
 local function BuildReport(mode)
     local lines = {}
     lines[#lines + 1] = "MODULO MARKET DIAGNOSTICS"
@@ -203,6 +296,13 @@ local function BuildReport(mode)
     else
         lines[#lines + 1] = "Timestamp: unavailable (date API missing)"
     end
+    if mode == "COMPAT" then
+        AddCompatibilityReport(lines)
+        lines[#lines + 1] = ""
+        lines[#lines + 1] = "END OF REPORT"
+        return table.concat(lines, "\n")
+    end
+
     lines[#lines + 1] = ""
     lines[#lines + 1] = "TRADE SKILL API AVAILABILITY"
     local apiNames = {
@@ -377,6 +477,19 @@ end
 
 MM.Diagnostics = MM.Diagnostics or {}
 MM.Diagnostics.BuildReport = BuildReport
+MM.Diagnostics.ShowCompatibility = function()
+    local frame = CreateUI()
+    frame:Show()
+    local ok, report = pcall(BuildReport, "COMPAT")
+    if ok then
+        MM.Diagnostics.output:SetText(report)
+        MM.Diagnostics.output:SetCursorPosition(0)
+        MM.Diagnostics.output:HighlightText()
+        MM.Diagnostics.status:SetText("Read-only build compatibility report. Press Ctrl+C to copy.")
+    else
+        MM.Diagnostics.output:SetText("Compatibility report error: " .. tostring(report))
+    end
+end
 MM.Diagnostics.Toggle = function()
     local frame = CreateUI()
     if frame:IsShown() then frame:Hide() else

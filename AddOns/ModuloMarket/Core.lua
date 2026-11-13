@@ -3,7 +3,7 @@ local MM = _G.ModuloMarket or {}
 _G.ModuloMarket = MM
 
 MM.name = ADDON_NAME or "ModuloMarket"
-MM.version = "0.8.4"
+MM.version = "0.8.5"
 MM.debugPrefix = "|cff66ccffModuloMarket:|r "
 
 local function Print(message)
@@ -75,6 +75,14 @@ loader:SetScript("OnEvent", function(_, event, loadedName)
                 Print("Browse scanner UI is not ready.")
             end
         end
+        SLASH_MODULOMARKETCOMPAT1 = "/mmcompat"
+        SlashCmdList.MODULOMARKETCOMPAT = function()
+            if MM.Diagnostics and MM.Diagnostics.ShowCompatibility then
+                MM.Diagnostics.ShowCompatibility()
+            else
+                Print("Compatibility diagnostics are not ready.")
+            end
+        end
         SLASH_MODULOMARKETDEBUG1 = "/mmdebug"
         SlashCmdList.MODULOMARKETDEBUG = function()
             if MM.Diagnostics and MM.Diagnostics.Toggle then
@@ -111,6 +119,6 @@ loader:SetScript("OnEvent", function(_, event, loadedName)
         end
         SLASH_MODULOMARKETVERSION1 = "/mmversion"
         SlashCmdList.MODULOMARKETVERSION = PrintVersion
-        Print("Loaded v" .. MM.version .. " (" .. GetClientBuildLabel() .. "). Type /mm for Market, /mmscan for Browse snapshots, /mmdebug for diagnostics, or /mmsearchdebug for tooltip-search diagnostics, /mmtooltipdebug itemID to inspect extracted tooltip text, /mmversion for version details.")
+        Print("Loaded v" .. MM.version .. " (" .. GetClientBuildLabel() .. "). Type /mm for Market, /mmscan for Browse snapshots, /mmdebug for diagnostics, or /mmsearchdebug for tooltip-search diagnostics, /mmtooltipdebug itemID to inspect extracted tooltip text, /mmcompat for read-only build/API/snapshot compatibility, /mmversion for version details.")
     end
 end)
