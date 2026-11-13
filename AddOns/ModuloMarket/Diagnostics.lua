@@ -248,6 +248,28 @@ local function BuildReport(mode)
         Add(lines, "Character", summary.character)
         Add(lines, "Captured professions", #summary.professions)
         Add(lines, "Known recipes", summary.recipeCount)
+        local schemaVersion = MM.Recipes.GetRecipeSnapshotSchemaVersion
+            and MM.Recipes.GetRecipeSnapshotSchemaVersion() or "unknown"
+        Add(lines, "Required recipe snapshot schema", schemaVersion)
+        local characterStore = MM.db and MM.db.professionRecipesByCharacter
+            and MM.db.professionRecipesByCharacter[summary.character]
+        if type(characterStore) == "table" then
+            lines[#lines + 1] = "Current-character profession snapshot records:"
+            for professionID, profession in pairs(characterStore) do
+                if tonumber(professionID) and type(profession) == "table" then
+                    local storedSchema = tonumber(profession.snapshotSchemaVersion)
+                    local current = storedSchema == tonumber(schemaVersion)
+                    lines[#lines + 1] = string.format(
+                        "  %s (%s): schema=%s [%s], generation=%s, addonBuild=%s, recipes=%s, capturedAt=%s",
+                        tostring(profession.professionName or "Profession"), tostring(professionID),
+                        tostring(storedSchema or "legacy/missing"), current and "CURRENT" or "STALE — recapture required",
+                        tostring(profession.snapshotGeneration or "unknown"), tostring(profession.snapshotBuild or "unknown"),
+                        tostring(profession.recipeCount or 0), tostring(profession.capturedAt or "unknown"))
+                end
+            end
+        else
+            lines[#lines + 1] = "Current-character profession snapshot records: none"
+        end
         local capture = MM.Recipes.GetCaptureStatus and MM.Recipes.GetCaptureStatus() or {}
         for event, enabled in pairs(capture.events or {}) do
             lines[#lines + 1] = "  capture event " .. tostring(event) .. "=" .. tostring(enabled)

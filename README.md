@@ -1,5 +1,17 @@
-# Modulo Market 0.7.8
-**Current player milestone:** Profession snapshots are refreshed whenever a profession window opens, transiently unavailable recipe metadata is retried across bounded frames, and incomplete captures never replace the prior saved snapshot. Active `C_TradeSkillUI` skill evidence (e.g. Cooking 300/300) is merged into the per-character profession snapshot and cannot be downgraded by the legacy profession list. A successful save now confirms character profession, known recipe count and skill in chat. Forever runtime acceptance is NOT RUN.
+# Modulo Market 0.7.9
+**Current player milestone:** Character and account recipe recognition are isolated. Future recipe candidates are copied before scope-derived status is assigned, and only an actual learned snapshot record can assert `KNOWN`. Each profession snapshot carries a schema version, generation and addon-build provenance. Snapshots from older schemas are retained but are not treated as positive learned evidence until that character's profession is automatically recaptured. Forever runtime acceptance is NOT RUN.
+
+## Current 0.7.9 milestone — snapshot schema and scope isolation
+
+- Account and Character Crafting cannot share cached `KNOWN` markers through the future-recipe catalogue.
+- Future candidate status is derived from current profession evidence; UI status is never written back into ProfessionData's shared candidate objects.
+- A future candidate is only `KNOWN` when `learned == true` in an actual learned-recipe record.
+- Each completed profession capture records `snapshotSchemaVersion`, `snapshotGeneration` and `snapshotBuild`.
+- Recipe records from older schemas remain stored for recovery/history but are excluded from `GetAllRecipes` until recaptured.
+- Incomplete recaptures preserve an older snapshot only when it already uses the current schema; stale-schema records are not merged into the new snapshot.
+- UI-only addon releases do not bump the snapshot schema or force a recapture.
+
+See `MODULOMARKET-RUNTIME-AUDIT-0.7.9.md`.
 
 ## Current 0.7.8 milestone — reliable character profession snapshots
 

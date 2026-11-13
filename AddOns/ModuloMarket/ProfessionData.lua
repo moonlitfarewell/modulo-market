@@ -836,7 +836,9 @@ end
 
 function Data.GetRecipeLearningStatus(recipe)
     if type(recipe) ~= "table" then return "unknown" end
-    if recipe.craftSourceStatus == "known" or recipe.learned == true then return "known" end
+    -- Only a learned recipe record is positive knowledge. UI presentation markers
+    -- are derived values and must never promote a future candidate to KNOWN.
+    if recipe.learned == true then return "known" end
     local pid = tonumber(recipe.professionID)
     if not pid then return "unknown" end
     if characterProfessions[pid] then return "learnable" end

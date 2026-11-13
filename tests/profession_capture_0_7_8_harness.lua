@@ -54,6 +54,9 @@ end
 local store = ModuloMarket.db.professionRecipesByCharacter["Forever Realm:CAMWOW"]
 assert(store[185].recipeCount == 26, "opening profession must replace stale partial recipe snapshot")
 assert(store[185].captureComplete == true and store[185].unresolvedCount == 0, "only complete captures may be committed")
+assert(store[185].snapshotSchemaVersion == 2 and store[185].snapshotGeneration == 1, "fresh capture must stamp schema and generation")
+local currentRecipes = ModuloMarket.Recipes.GetAllRecipes("character")
+assert(#currentRecipes == 26, "current character scope must expose only its schema-current learned recipes")
 assert(infoCalls[6] == 2, "transiently missing recipe metadata must be retried")
 assert(store._professionSnapshot.professions[185].skillLevel == 300, "active TradeSkillUI skill must override legacy 5/75")
 assert(store._professionSnapshot.professions[185].maxSkillLevel == 300, "active max skill must be persisted")

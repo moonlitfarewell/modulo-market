@@ -428,12 +428,17 @@ local function GetAllCraftSources()
     end
     local future = MM.ProfessionData and MM.ProfessionData.GetAllFutureRecipes
         and MM.ProfessionData.GetAllFutureRecipes() or {}
-    for _, recipe in ipairs(future or {}) do
-        local key = tostring(recipe.professionID or "") .. ":" .. tostring(recipe.recipeID or "")
+    for _, sourceRecipe in ipairs(future or {}) do
+        local key = tostring(sourceRecipe.professionID or "") .. ":" .. tostring(sourceRecipe.recipeID or "")
         if not seen[key] then
             seen[key] = true
+            -- ProfessionData owns these cached candidates. Never write scope-derived
+            -- status back onto them: account and character catalogues are rebuilt
+            -- repeatedly and must not inherit each other's KNOWN marker.
+            local recipe = {}
+            for field, value in pairs(sourceRecipe) do recipe[field] = value end
             recipe.craftSourceStatus = MM.ProfessionData and MM.ProfessionData.GetRecipeLearningStatus
-                and MM.ProfessionData.GetRecipeLearningStatus(recipe) or "learnable"
+                and MM.ProfessionData.GetRecipeLearningStatus(recipe) or "unknown"
             result[#result + 1] = recipe
         end
     end

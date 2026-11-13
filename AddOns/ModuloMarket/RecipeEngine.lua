@@ -4,6 +4,10 @@ if not MM then return end
 local Recipes = {}
 MM.Recipes = Recipes
 
+-- Increment only when the meaning/shape of saved learned-recipe evidence changes.
+-- Each profession must be recaptured before an older snapshot can assert KNOWN.
+local RECIPE_SNAPSHOT_SCHEMA_VERSION = 2
+
 local function SafeCall(fn, ...)
     if type(fn) ~= "function" then return nil end
     local ok, a, b, c = pcall(fn, ...)
@@ -186,7 +190,9 @@ local function CaptureBatch()
     if store then
         local previous = store[state.profession.professionID]
         local recipes = state.recipes
-        if not state.listComplete and type(previous) == "table" and type(previous.recipes) == "table" then
+        if not state.listComplete and type(previous) == "table"
+            and tonumber(previous.snapshotSchemaVersion) == RECIPE_SNAPSHOT_SCHEMA_VERSION
+            and type(previous.recipes) == "table" then
             for id, oldRecipe in pairs(previous.recipes) do
                 if recipes[id] == nil then recipes[id] = oldRecipe end
             end
@@ -209,6 +215,9 @@ local function CaptureBatch()
             sourceListCount = state.sourceListCount,
             unresolvedCount = 0,
             captureComplete = true,
+            snapshotSchemaVersion = RECIPE_SNAPSHOT_SCHEMA_VERSION,
+            snapshotGeneration = (tonumber(previous and previous.snapshotGeneration) or 0) + 1,
+            snapshotBuild = MM.version,
         }
         Recipes.SaveActiveProfessionSnapshot(state.profession)
     end
@@ -373,6 +382,10 @@ function Recipes.SaveActiveProfessionSnapshot(profession)
     return true
 end
 
+function Recipes.GetRecipeSnapshotSchemaVersion()
+    return RECIPE_SNAPSHOT_SCHEMA_VERSION
+end
+
 function Recipes.GetAllRecipes(scope)
     local result, seen = {}, {}
     local stores = {}
@@ -393,7 +406,9 @@ function Recipes.GetAllRecipes(scope)
                 for _, recipeID in ipairs(SortedNumericKeys(profession.recipes)) do
                     local recipe = profession.recipes[recipeID]
                     local key = tostring(profession.professionID or professionID) .. ":" .. tostring(recipeID)
-                    if type(recipe) == "table" and recipe.learned == true and not seen[key] then
+                    if type(profession) == "table"
+                        and tonumber(profession.snapshotSchemaVersion) == RECIPE_SNAPSHOT_SCHEMA_VERSION
+                        and type(recipe) == "table" and recipe.learned == true and not seen[key] then
                         seen[key] = true
                         local copy = {}
                         for field, value in pairs(recipe) do copy[field] = value end
