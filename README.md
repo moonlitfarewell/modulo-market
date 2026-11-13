@@ -1,4 +1,16 @@
-# Modulo Market 0.9.1
+# Modulo Market 0.9.2
+
+**Current player milestone:** Outer-window chrome reduction. The BasicFrameTemplateWithInset perimeter/inset/title decorations and custom full-window bevel are hidden/removed; the title and close control remain. All inner panel, tab, filter, table, dropdown, inspector and history borders are preserved. The 0.9.1 dropdown lifecycle fix is unchanged and player-confirmed working. 0.9.2 visual runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.2.md` and `docs/MODULOMARKET-UI-OUTER-CHROME-0.9.2.md`.
+
+## Current 0.9.2 milestone — outer window chrome reduction
+
+- Hide template `NineSlice`, `Inset`, `TitleBg` and `TopTileStreaks` regions when present; retain the title text and functional close control.
+- Remove the custom full-window outer bevel.
+- Preserve all borders inside the content layout, including the title plaque, six navigation tabs, left/center/right panels, filter controls, table header, inspector cards and history chart.
+- No market calculations, scan behavior, data, SavedVariables, dependencies or parent MODULO changes.
+- 0.9.1 dropdown lifecycle fix remains unchanged and is player-confirmed working on Forever 1.60.1 build 70938. 0.9.2 visual runtime acceptance is NOT RUN.
+
+## Historical 0.9.1 milestone — dropdown lifecycle and UI refinement
 
 **Current player milestone:** Combined UI refinement and dropdown lifecycle correction. Dropdown popups are tracked independently and explicitly dismissed when the main window hides/shows, a dropdown anchor hides, or tabs change. The table receives a stronger header rail, restrained column guides and clearer selected-row treatment. Market-history bars and labels scale to the actual graph height and include a baseline. Six tabs remain; My Crafts remains absent. No market calculations, scanning, recipe/gathering data, SavedVariables or parent MODULO code changed. 0.9.1 Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.1.md` and `docs/MODULOMARKET-UI-VISUAL-REDESIGN-0.9.1.md`.
 

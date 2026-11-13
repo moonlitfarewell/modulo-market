@@ -2882,6 +2882,12 @@ end
 local function CreateUI()
     if UI.frame then return UI.frame end
     local frame = CreateFrame("Frame", "ModuloMarketMainFrame", UIParent, "BasicFrameTemplateWithInset")
+    -- Keep the template's functional close control and title text, but remove its
+    -- decorative perimeter/inset chrome. ModuloMarket draws its own inner panels.
+    for _, chromeKey in ipairs({ "NineSlice", "Inset", "TitleBg", "TopTileStreaks" }) do
+        local chrome = frame[chromeKey]
+        if chrome and chrome.Hide then chrome:Hide() end
+    end
     frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
     frame:SetClampedToScreen(true)
@@ -3823,7 +3829,6 @@ local function CreateUI()
         end
     end)
     UI.frame = frame
-    AddBevelBorder(frame, 5, -5, 1450, 840, "outer", "OVERLAY")
     local tooltipSearchEvents = CreateFrame("Frame")
     tooltipSearchEvents:RegisterEvent("ITEM_DATA_LOAD_RESULT")
     tooltipSearchEvents:RegisterEvent("GET_ITEM_INFO_RECEIVED")

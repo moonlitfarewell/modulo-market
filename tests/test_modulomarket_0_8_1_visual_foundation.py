@@ -83,9 +83,9 @@ def test_existing_opacity_scope_and_whole_window_fade_are_preserved():
 
 
 def test_release_versions_and_manifest_inventory_align():
-    assert 'MM.version = "0.9.1"' in CORE
-    assert '## Version: 0.9.1' in TOC
-    assert MANIFEST["version"] == "0.9.1"
+    assert 'MM.version = "0.9.2"' in CORE
+    assert '## Version: 0.9.2' in TOC
+    assert MANIFEST["version"] == "0.9.2"
     assert "MODULOMARKET-RUNTIME-AUDIT-0.8.3.md" in MANIFEST["files"]
     assert "tests/test_modulomarket_0_8_1_visual_foundation.py" in MANIFEST["files"]
     assert MANIFEST["file_count"] == len(MANIFEST["files"])
