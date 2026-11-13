@@ -1448,9 +1448,10 @@ local function StepView()
             or (sort.key == "completion" and "completion cost"
             or (sort.key == "net" and "net cost per Favor"
             or (sort.key == "favor" and "Favor return"
+            or (sort.key == "reward" and "Favor / reputation return"
             or (sort.key == "reputation" and "reputation return"
             or (sort.key == "depth" and "at-price quantity"
-            or (sort.key == "change" and "price change" or "profit")))))))
+            or (sort.key == "change" and "price change" or "profit"))))))))
         SetStatus(string.format("Sorting all %d %s by %s…", #build.rows,
             (build.tab == "crafts" and "profession crafts") or "items", sortLabel))
         return
@@ -1626,6 +1627,11 @@ local function ComesBefore(a, b, key, ascending)
     elseif key == "favor" then
         av = tonumber(a.rewardFavor) or (ascending and math.huge or -math.huge)
         bv = tonumber(b.rewardFavor) or (ascending and math.huge or -math.huge)
+    elseif key == "reward" then
+        av = tonumber(a.rewardFavor ~= nil and a.rewardFavor or a.reputation)
+            or (ascending and math.huge or -math.huge)
+        bv = tonumber(b.rewardFavor ~= nil and b.rewardFavor or b.reputation)
+            or (ascending and math.huge or -math.huge)
     elseif key == "net" then
         av = tonumber(a.netCostPerFavorCopper) or math.huge
         bv = tonumber(b.netCostPerFavorCopper) or math.huge
@@ -1749,7 +1755,7 @@ local function UpdateAllItemsColumnLayout()
 end
 
 local function UpdateTurnInColumnLayout()
-    if UI.activeTab ~= "turnins" or not UI.headerButtons or not UI.headerButtons[6] then return end
+    if UI.activeTab ~= "turnins" or not UI.headerButtons or not UI.headerButtons[5] then return end
     local function measured(fs, fallback)
         local width = fs and type(fs.GetStringWidth) == "function" and fs:GetStringWidth() or 0
         return math.max(fallback, tonumber(width) or 0)
@@ -1757,38 +1763,33 @@ local function UpdateTurnInColumnLayout()
     local widths = {
         completion = measured(UI.headerButtons[2] and UI.headerButtons[2].label, 116),
         cash = measured(UI.headerButtons[3] and UI.headerButtons[3].label, 86),
-        favor = measured(UI.headerButtons[4] and UI.headerButtons[4].label, 58),
-        reputation = measured(UI.headerButtons[5] and UI.headerButtons[5].label, 80),
-        net = measured(UI.headerButtons[6] and UI.headerButtons[6].label, 118),
+        reward = measured(UI.headerButtons[4] and UI.headerButtons[4].label, 82),
+        net = measured(UI.headerButtons[5] and UI.headerButtons[5].label, 118),
     }
     for i = 1, math.min(UI.visibleCount or #(UI.rows or {}), #(UI.rows or {})) do
         local row = UI.rows[i]
         if row and UI.visibleRows and UI.visibleRows[i] then
             widths.completion = math.max(widths.completion, measured(row.price, 116))
             widths.cash = math.max(widths.cash, measured(row.depth, 86))
-            widths.favor = math.max(widths.favor, measured(row.atPrice, 58))
-            widths.reputation = math.max(widths.reputation, measured(row.total, 80))
+            widths.reward = math.max(widths.reward, measured(row.atPrice, 82))
             widths.net = math.max(widths.net, measured(row.profit, 118))
         end
     end
     widths.completion = math.min(142, widths.completion + 12)
     widths.cash = math.min(106, widths.cash + 10)
-    widths.favor = math.min(72, widths.favor + 10)
-    widths.reputation = math.min(100, widths.reputation + 10)
+    widths.reward = math.min(104, widths.reward + 10)
     widths.net = math.min(150, widths.net + 12)
     local right, gap, pad = 796, 6, 8
     local xNet = right - pad - widths.net
-    local xRep = xNet - gap - widths.reputation
-    local xFavor = xRep - gap - widths.favor
-    local xCash = xFavor - gap - widths.cash
+    local xReward = xNet - gap - widths.reward
+    local xCash = xReward - gap - widths.cash
     local xCompletion = xCash - gap - widths.completion
     local nameWidth = math.max(78, xCompletion - gap - 27)
     local columns = {
         {x=302,w=nameWidth+12,justify="LEFT"},
         {x=298+xCompletion,w=widths.completion,justify="RIGHT"},
         {x=298+xCash,w=widths.cash,justify="RIGHT"},
-        {x=298+xFavor,w=widths.favor,justify="RIGHT"},
-        {x=298+xRep,w=widths.reputation,justify="RIGHT"},
+        {x=298+xReward,w=widths.reward,justify="RIGHT"},
         {x=298+xNet,w=widths.net,justify="RIGHT"},
     }
     for i, column in ipairs(columns) do
@@ -1801,10 +1802,11 @@ local function UpdateTurnInColumnLayout()
         row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(nameWidth)
         row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", xCompletion, 0); row.price:SetWidth(widths.completion)
         row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", xCash, 0); row.depth:SetWidth(widths.cash)
-        row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", xFavor, 0); row.atPrice:SetWidth(widths.favor)
-        row.total:ClearAllPoints(); row.total:SetPoint("LEFT", row, "LEFT", xRep, 0); row.total:SetWidth(widths.reputation)
+        row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", xReward, 0); row.atPrice:SetWidth(widths.reward)
+        row.total:Hide()
         row.profit:ClearAllPoints(); row.profit:SetPoint("LEFT", row, "LEFT", xNet, 0); row.profit:SetWidth(widths.net)
-        row.total:Show(); row.profit:Show()
+        row.profit:Show()
+        if row.completionHit then row.completionHit:SetAllPoints(row.price) end
     end
 end
 
@@ -1851,8 +1853,9 @@ function UI.RenderRows()
                 button.name:SetText(GetItemDisplayName(item))
                 button.price:SetText(item.completionCostCopper and FormatMoney(item.completionCostCopper) or "Incomplete")
                 button.depth:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper) or "Unknown")
-                button.atPrice:SetText(item.rewardFavor ~= nil and tostring(item.rewardFavor) or "Unknown")
-                button.total:SetText(item.reputation ~= nil and tostring(item.reputation) or "Unknown")
+                button.atPrice:SetText((item.rewardFavor ~= nil and tostring(item.rewardFavor) or "?")
+                    .. " F · " .. (item.reputation ~= nil and tostring(item.reputation) or "?") .. " Rep")
+                button.total:SetText("")
                 profitText = item.netCostPerFavorCopper ~= nil
                     and FormatMoney(item.netCostPerFavorCopper) or "—"
                 if button.statusMarker then button.statusMarker:Hide() end
@@ -2466,38 +2469,71 @@ SelectItem = function(item)
         UI.detailName:SetText(GetItemDisplayName(item))
         UI.detailIcon:SetTexture(GetItemIcon(item.itemID)); UI.detailIcon:Show()
         UI.detailBadges:SetText(string.upper(tostring(item.tier)) .. "  ·  " .. string.upper(tostring(item.category)))
-        UI.detailVariants:SetText(tostring(#(item.bundleAlternatives or {})) .. " accepted bundles · Reputation " .. tostring(item.reputation or "UNKNOWN"))
+        UI.detailVariants:SetText(tostring(#(item.bundleAlternatives or {})) .. " accepted bundles")
         UI.marketInfoHeading:SetText("Turn-In Economics")
         UI.detailProfitLabel:SetText("NET COST / FAVOR")
         UI.detailPrice:SetText(item.completionCostCopper and FormatMoney(item.completionCostCopper) or "Incomplete")
         UI.detailSupply:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper) or "Unknown")
-        UI.detailAtPrice:SetText(item.rewardFavor ~= nil and tostring(item.rewardFavor) or "Unknown")
+        UI.detailAtPrice:SetText((item.rewardFavor ~= nil and tostring(item.rewardFavor) or "?")
+            .. " Favor · " .. (item.reputation ~= nil and tostring(item.reputation) or "?") .. " Rep")
         UI.detailProfit:SetText(item.netCostPerFavorCopper ~= nil and FormatMoney(item.netCostPerFavorCopper) or "—")
+        if UI.detailPrice.SetFontObject then UI.detailPrice:SetFontObject(GameFontHighlight) end
+        if UI.detailSupply.SetFontObject then UI.detailSupply:SetFontObject(GameFontHighlight) end
+        if UI.detailAtPrice.SetFontObject then UI.detailAtPrice:SetFontObject(GameFontHighlight) end
+        if UI.detailProfit.SetFontObject then UI.detailProfit:SetFontObject(GameFontHighlight) end
         UI.relationshipHeading:SetText("Required Bundles")
         local lines = {}
         lines[#lines+1] = "CRATE PURCHASE"
         lines[#lines+1] = item.cratePriceCopper and ("1 × " .. FormatMoney(item.cratePriceCopper)) or ("Unavailable: " .. tostring(item.cratePriceReason or "no current listing"))
         lines[#lines+1] = ""
-        lines[#lines+1] = "MATERIAL OPTIONS (choose one)"
-        for i, alternative in ipairs(item.bundleAlternatives or {}) do
-            local cost = alternative.complete and FormatMoney(alternative.costCopper) or "Incomplete / unknown"
-            lines[#lines+1] = string.format("Option %d · %s", i, cost)
-            for _, reagent in ipairs(alternative.lines or {}) do
-                local detail = reagent.lineCostCopper and FormatMoney(reagent.lineCostCopper)
-                    or (reagent.reason or "Price unavailable")
-                lines[#lines+1] = string.format("  %s × %d · %s", reagent.itemName, reagent.quantity, detail)
+        if item.bestBundle then
+            lines[#lines+1] = string.format("BEST VALUE · OPTION %d · MATERIALS %s", item.bestBundle.index, FormatMoney(item.bestBundle.costCopper))
+            for _, reagent in ipairs(item.bestBundle.lines or {}) do
+                lines[#lines+1] = string.format("  %s × %d · %s", reagent.itemName, reagent.quantity,
+                    reagent.lineCostCopper and FormatMoney(reagent.lineCostCopper) or "Price unknown")
             end
+        else
+            lines[#lines+1] = "BEST VALUE · UNKNOWN (no fully priceable bundle)"
         end
         lines[#lines+1] = ""
-        lines[#lines+1] = "REWARDS"
-        lines[#lines+1] = item.rewardFavor ~= nil and (tostring(item.rewardFavor) .. " Merchant's Favor") or "Merchant's Favor: UNKNOWN"
-        lines[#lines+1] = item.cashReturnCopper ~= nil and (FormatMoney(item.cashReturnCopper) .. " cash") or "Cash return: UNKNOWN"
-        lines[#lines+1] = "Reputation per crate: " .. tostring(item.reputation or "UNKNOWN") .. " (reported)"
-        lines[#lines+1] = "The first Shipping Label quest is a separate one-time reward: 50 Favor + 2,000 reputation. Not included above."
-        lines[#lines+1] = "Performance Bonus is not assumed."
+        lines[#lines+1] = "OTHER MATERIAL OPTIONS"
+        for i, alternative in ipairs(item.bundleAlternatives or {}) do
+            if not item.bestBundle or alternative.index ~= item.bestBundle.index then
+                local cost = alternative.complete and FormatMoney(alternative.costCopper) or "Incomplete / unknown"
+                lines[#lines+1] = string.format("Option %d · %s", i, cost)
+                for _, reagent in ipairs(alternative.lines or {}) do
+                    local detail = reagent.lineCostCopper and FormatMoney(reagent.lineCostCopper)
+                        or (reagent.reason or "Price unavailable")
+                    lines[#lines+1] = string.format("  %s × %d · %s", reagent.itemName, reagent.quantity, detail)
+                end
+            end
+        end
         SetDetailEconomics(table.concat(lines, "\n"))
+        if UI.historyText then
+            local outcome
+            if item.cashReturnCopper ~= nil and item.rewardFavor ~= nil then
+                outcome = "Hand in for " .. FormatMoney(item.cashReturnCopper) .. " cash + " .. tostring(item.rewardFavor) .. " Merchant's Favor."
+            elseif item.cashReturnCopper ~= nil then
+                outcome = "Hand in for " .. FormatMoney(item.cashReturnCopper) .. " cash. Favor reward: UNKNOWN."
+            elseif item.rewardFavor ~= nil then
+                outcome = "Hand in for " .. tostring(item.rewardFavor) .. " Merchant's Favor. Cash reward: UNKNOWN."
+            else
+                outcome = "Hand-in cash and Favor rewards are UNKNOWN."
+            end
+            if tonumber(item.reputation) and item.reputation > 0 then
+                outcome = outcome .. " Also " .. tostring(item.reputation) .. " reputation."
+            elseif item.reputation == 0 then
+                outcome = outcome .. " No repeatable reputation."
+            end
+            UI.historyText:SetHeight(72)
+            UI.historyText:SetText(outcome)
+        end
         return
     end
+    if UI.detailPrice.SetFontObject then UI.detailPrice:SetFontObject(GameFontHighlightLarge); IncreaseFontSize(UI.detailPrice, 1) end
+    if UI.detailSupply.SetFontObject then UI.detailSupply:SetFontObject(GameFontHighlightLarge); IncreaseFontSize(UI.detailSupply, 1) end
+    if UI.detailAtPrice.SetFontObject then UI.detailAtPrice:SetFontObject(GameFontHighlightLarge); IncreaseFontSize(UI.detailAtPrice, 1) end
+    if UI.detailProfit.SetFontObject then UI.detailProfit:SetFontObject(GameFontHighlightLarge); IncreaseFontSize(UI.detailProfit, 1) end
     UI.selectedItem = item
     UI.selectedByTab[UI.activeTab] = { itemID = tonumber(item.itemID), recipeKey = item.recipeKey }
     UI.detailName:SetText(item.recipeData and GetItemName(item) or GetItemDisplayName(item))
@@ -2844,6 +2880,13 @@ local function SetTab(tab)
     end
     UI.CloseDropdownMenus()
     UI.activeTab = tab
+    local economicsFont = tab == "turnins" and GameFontHighlight or GameFontHighlightLarge
+    for _, value in ipairs({ UI.detailPrice, UI.detailSupply, UI.detailAtPrice, UI.detailProfit }) do
+        if value and value.SetFontObject then
+            value:SetFontObject(economicsFont)
+            if tab ~= "turnins" then IncreaseFontSize(value, 1) end
+        end
+    end
     if tab ~= "economics" then UI.economicsIndexBuild = nil end
     local saved = UI.tabFilterState[tab] or {}
     UI.professionFilter = tonumber(saved.profession) or 0
@@ -2907,8 +2950,8 @@ local function SetTab(tab)
         labels = { "Item", "Cheapest", "At Price", "Total Units", "Listings", "Best Craft Profit" }
         keys = { "name", "price", "depth", "total", "total", "profit" }
     elseif tab == "turnins" then
-        labels = { "Waylaid Crate", "Completion Cost", "Cash Return", "Favor", "Reputation", "Net Cost / Favor" }
-        keys = { "name", "completion", "price", "favor", "reputation", "net" }
+        labels = { "Waylaid Crate", "Completion Cost", "Cash Return", "Favor / Rep", "Net Cost / Favor" }
+        keys = { "name", "completion", "price", "reward", "net" }
     elseif tab == "history" then
         labels = { "Item", "Cheapest", "Price Change", "Latest Units", "Total", "Best Craft Profit" }
         keys = { "name", "price", "change", "total", "total", "profit" }
@@ -3109,7 +3152,7 @@ local function SetTab(tab)
     end
     if UI.detailPriceLabel then UI.detailPriceLabel:SetText(tab == "turnins" and "COMPLETION COST" or "SALE PRICE / UNIT") end
     if UI.detailSupplyLabel then UI.detailSupplyLabel:SetText(tab == "turnins" and "CASH RETURN" or "TOTAL LISTED") end
-    if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(tab == "turnins" and "MERCHANT'S FAVOR" or "AT PRICE") end
+    if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(tab == "turnins" and "FAVOR / REP" or "AT PRICE") end
     if UI.detailProfitLabel then
         UI.detailProfitLabel:SetText(tab == "turnins" and "NET COST / FAVOR" or (craftTab and "PROFIT / CRAFT" or "BEST CRAFT PROFIT"))
     end
@@ -3127,8 +3170,8 @@ local function SetTab(tab)
     end
     if UI.historyText then
         if tab == "turnins" then
-            UI.historyText:SetHeight(158)
-            UI.historyText:SetText("Crates pay Merchant's Favor and cash, but no reputation. The first Shipping Label quest is separate: +50 Favor and +2,000 reputation once. Artisan rewards remain unknown. Performance Bonus is not included.")
+            UI.historyText:SetHeight(72)
+            UI.historyText:SetText("Select a crate to see its cash and Favor / reputation hand-in outcome.")
         else
             UI.historyText:SetHeight(54)
             UI.historyText:SetText("Select an item to compare saved prices.")
@@ -3842,6 +3885,32 @@ local function CreateUI()
             if selected then SelectItem(selected) end
         end)
         row.price = RowText("LEFT", 212, 105, "RIGHT")
+        row.completionHit = CreateFrame("Button", nil, row)
+        row.completionHit:SetAllPoints(row.price)
+        row.completionHit:SetFrameLevel(row:GetFrameLevel() + 2)
+        row.completionHit:SetScript("OnEnter", function(self)
+            local selected = UI.visibleRows[slot]
+            if not selected or not selected.turnIn or not _G.GameTooltip then return end
+            GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT")
+            GameTooltip:SetText("Completion Cost", 1, 0.82, 0.15)
+            GameTooltip:AddLine("Crate: " .. (selected.cratePriceCopper and FormatMoney(selected.cratePriceCopper) or "Unavailable"), 0.9, 0.9, 0.9, true)
+            if selected.bestBundle then
+                GameTooltip:AddLine(string.format("BEST VALUE · Option %d · Materials %s", selected.bestBundle.index, FormatMoney(selected.bestBundle.costCopper)), 0.3, 1, 0.3, true)
+                for _, reagent in ipairs(selected.bestBundle.lines or {}) do
+                    GameTooltip:AddLine(string.format("%s × %d · %s", reagent.itemName, reagent.quantity,
+                        reagent.lineCostCopper and FormatMoney(reagent.lineCostCopper) or "Unknown"), 1, 1, 1, true)
+                end
+                GameTooltip:AddLine("Total completion: " .. (selected.completionCostCopper and FormatMoney(selected.completionCostCopper) or "Incomplete (crate price unavailable)"), 1, 0.82, 0.35, true)
+            else
+                GameTooltip:AddLine("No fully priceable material option; completion cost is incomplete.", 1, 0.55, 0.35, true)
+            end
+            GameTooltip:Show()
+        end)
+        row.completionHit:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
+        row.completionHit:SetScript("OnClick", function()
+            local selected = UI.visibleRows[slot]
+            if selected then SelectItem(selected) end
+        end)
         row.depth = RowText("LEFT", 322, 105, "RIGHT")
         row.atPrice = RowText("LEFT", 432, 82, "RIGHT")
         row.total = RowText("LEFT", 519, 82, "RIGHT")

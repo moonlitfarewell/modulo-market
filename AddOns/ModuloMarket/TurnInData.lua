@@ -5,7 +5,7 @@ if not MM then return end
 -- generic unlabelled Waylaid Crate is only used to reveal a label and is not
 -- added as a second purchase requirement for a known crate type.
 MM.TurnInData = {
-    version = "0.10.0",
+    version = "0.10.1",
     provider = "User-supplied Polestar Codex item index; Wowhead Forever, WowSeer and Forever Hub item/reward references",
     categories = { "Herbs", "Ore", "Textiles", "Curiosities", "Fabrics", "Ingots", "Parts" },
     tiers = { "Apprentice", "Journeyman", "Expert", "Artisan" },
