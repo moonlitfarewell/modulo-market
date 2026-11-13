@@ -18,18 +18,17 @@ def test_item_names_have_no_internal_bracket_prefixes():
         assert marker not in craft_rows
 
 
-def test_filter_categories_map_to_consistent_text_colours():
-    block = UI.split("local function GetItemDisplayName(item)", 1)[1].split("local function", 1)[0]
-    assert 'if has.known then' in block
-    assert 'nameColor = "|cff8ee6a2"' in block
-    assert 'elseif has.future then' in block
-    assert 'nameColor = "|cffffd77a"' in block
-    assert 'elseif has.unlearnable then' in block
-    assert 'nameColor = "|cffff6666"' in block
-    assert 'elseif has.gather then' in block
-    assert 'nameColor = "|cff82d9ff"' in block
-    assert 'elseif has.material then' in block
-    assert 'nameColor = "|cffb6e2ff"' in block
+def test_item_quality_colours_are_separate_from_craft_status_markers():
+    assert "GetItemQualityHex" in UI
+    assert "_G.GetItemQualityColor" in UI
+    assert 'return "|c" .. GetItemQualityHex(item and item.itemID) .. GetItemName(item) .. "|r"' in UI
+    assert "local function GetItemCraftMarker(itemID)" in UI
+    assert "row.statusMarker:SetWidth(3)" in UI
+    assert "button.statusMarker:SetColorTexture(GetItemCraftMarker(item.itemID))" in UI
+    assert "hasLearnable then return 1, 0.82, 0.24, 1" in UI
+    assert "hasUnlearnableOrUnknown then return 0.95, 0.27, 0.24, 1" in UI
+    assert "return 0.25, 0.88, 0.42, 1" in UI
+    assert "return 1, 1, 1, 1" in UI
 
 
 def test_unlearned_source_classes_share_one_player_facing_colour():

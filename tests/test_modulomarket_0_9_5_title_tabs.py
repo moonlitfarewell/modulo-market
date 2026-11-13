@@ -9,25 +9,22 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.9.6"' in CORE
-    assert "## Version: 0.9.6" in TOC
-    assert MANIFEST["version"] == "0.9.6"
+    assert 'MM.version = "0.9.8"' in CORE
+    assert "## Version: 0.9.8" in TOC
+    assert MANIFEST["version"] == "0.9.8"
 
 
-def test_native_title_background_is_explicitly_reanchored_and_resized():
-    assert "frame.TitleBg:ClearAllPoints()" in UI
-    assert 'frame.TitleBg:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -5)' in UI
-    assert 'frame.TitleBg:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -5)' in UI
-    assert "frame.TitleBg:SetHeight(56)" in UI
-    assert 'frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -33)' in UI
-    assert 'frame.TitleText:SetSize(320, 28)' in UI
+def test_native_title_background_remains_template_owned():
+    assert "frame.TitleBg:ClearAllPoints()" not in UI
+    assert "frame.TitleBg:SetHeight(" not in UI
+    assert 'frame.TitleText:SetText("Modulo Market")' in UI
 
 
-def test_content_gets_room_below_title_without_moving_native_close_button():
-    assert "frame:SetSize(1460, 894)" in UI
-    assert "local contentShift = 28" in UI
-    assert "local isCloseButton = child == frame.CloseButton" in UI
-    assert "region ~= frame.TitleBg and region ~= frame.TitleText" in UI
+def test_native_template_title_and_original_content_coordinates_are_preserved():
+    assert "frame:SetSize(1460, 866)" in UI
+    assert "local contentShift" not in UI
+    assert 'UI.metadata = AddLabel(frame, "Loading market data…", 30, -38' in UI
+    assert "frame.CloseButton" not in UI.split("local contentShift", 1)[-1]
 
 
 def test_tabs_are_edge_to_edge_without_vertical_separator_gap():

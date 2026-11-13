@@ -10,9 +10,13 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 def test_main_panels_have_inset_finish_without_geometry_changes():
     assert "local function AddPanelInnerEdge(x, y, width, height)" in UI
     assert "AddPanelInnerEdge(18, -158, 260, 650)" in UI
-    assert "AddPanelInnerEdge(286, -158, 834, 650)" in UI
+    assert "AddPanelInnerEdge(286, -158, 834, 650)" not in UI
+    assert "local centerPanel = frame:CreateTexture" not in UI
     assert "AddPanelInnerEdge(1126, -158, 300, 650)" in UI
-    assert "cap:SetSize(2, 23)" in UI
+    header = UI.split("local function AddPanelHeader", 1)[1].split("AddPanelHeader(18", 1)[0]
+    assert "local rule" in header
+    assert "cap:SetSize(2, 23)" not in header
+    assert "local lowerRule" not in header
 
 def test_tabs_have_clear_active_and_inactive_visual_states():
     assert 'button.background:SetColorTexture(0.28, 0.185, 0.060, 1)' in UI
@@ -29,6 +33,6 @@ def test_table_finish_changes_are_visual_only():
     assert 'row:SetSize(796, UI.rowHeight)' in UI
 
 def test_release_metadata_is_aligned():
-    assert 'MM.version = "0.9.6"' in CORE
-    assert '## Version: 0.9.6' in TOC
-    assert MANIFEST["version"] == "0.9.6"
+    assert 'MM.version = "0.9.8"' in CORE
+    assert '## Version: 0.9.8' in TOC
+    assert MANIFEST["version"] == "0.9.8"

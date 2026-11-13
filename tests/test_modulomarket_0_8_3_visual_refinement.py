@@ -62,7 +62,9 @@ def test_all_items_left_column_spacing_keeps_filters_and_data_card_separate():
 
 def test_title_and_typography_refinement_preserve_existing_layout_density():
     assert 'local titlePlate =' not in UI
-    assert 'frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -33)' in UI
+    assert 'CreateFrame("Frame", "ModuloMarketMainFrame", UIParent, "BasicFrameTemplateWithInset")' in UI
+    assert 'frame.TitleText:SetText("Modulo Market")' in UI
+    assert 'frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -33)' not in UI
     assert "local function IncreaseFontSize(fontString, delta)" in UI
     assert "IncreaseFontSize(fs, 1)" in UI
     assert "IncreaseFontSize(header.label, 1)" in UI
@@ -90,9 +92,9 @@ def test_existing_six_tabs_and_market_engine_boundaries_remain_unchanged():
 
 
 def test_release_versions_and_manifest_inventory_align():
-    assert 'MM.version = "0.9.6"' in CORE
-    assert '## Version: 0.9.6' in TOC
-    assert MANIFEST["version"] == "0.9.6"
+    assert 'MM.version = "0.9.8"' in CORE
+    assert '## Version: 0.9.8' in TOC
+    assert MANIFEST["version"] == "0.9.8"
     assert "MODULOMARKET-RUNTIME-AUDIT-0.8.3.md" in MANIFEST["files"]
     assert "tests/test_modulomarket_0_8_3_visual_refinement.py" in MANIFEST["files"]
     assert MANIFEST["file_count"] == len(MANIFEST["files"])

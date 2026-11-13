@@ -1,3 +1,20 @@
+# Modulo Market 0.9.8
+
+**Current player milestone:** All Items is now a four-column auction-house browser (Item, Cheapest, At Price, Total Units). Existing incremental sorting and 10-row scroll movement are preserved. Item names use native item-quality colours; a narrow row marker communicates known craft (green), unlearned craft (yellow), unknown/unlearnable craft (red), or non-craft item (white). The redundant centre panel box and table column guides are removed. The duplicate All Items “Low supply only” shortcut is retired; the dedicated Low Supply tab remains unchanged for the planned future conversion. Other tabs retain their own columns and calculations. Forever runtime acceptance for 0.9.8 is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.8.md` and `docs/MODULOMARKET-ALL-ITEMS-BROWSER-0.9.8.md`.
+
+**Previous milestone (0.9.7):** Coordinated UI restoration around Blizzard's native `BasicFrameTemplateWithInset`. The template again owns its title, NineSlice and native frame geometry; custom title surfaces and the global content-anchor shift are removed. The main frame returns to 1460x866. Six zero-gap tabs are preserved. Panel headers use a muted fill and one separator; shared borders are subdued single-pixel outlines; buttons use neutral dark fills with native pressed/highlight feedback. Dropdown popup lifecycle, market data and calculations are unchanged. 0.9.7 Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.7.md` and `docs/MODULOMARKET-UI-NATIVE-FOUNDATION-0.9.7.md`.
+
+## Previous 0.9.7 milestone — native frame and coherent visual system
+
+- Restore unmodified Blizzard title/NineSlice geometry; set only the title text.
+- Remove the added title background surface, title outline and post-construction 28px anchor shifting.
+- Restore the 1460x866 main frame and original authored content anchors.
+- Keep the six flush tabs and selected state.
+- Simplify panel headers to a muted plate and one separator; remove duplicate rule and bright end caps.
+- Subdue shared one-pixel borders; neutralise red custom button fills while preserving native pressed/highlight feedback.
+- Preserve dropdown lifecycle, market calculations, scans, recipe/gathering data, SavedVariables, dependencies and parent MODULO.
+- Forever runtime acceptance NOT RUN for 0.9.7.
+
 # Modulo Market 0.9.6
 
 **Current player milestone:** A genuinely taller, outlined title strip with the title centred inside it, plus a flatter visual system. The shared border helper now draws simple one-pixel outlines instead of multi-layer embossed bevels; extra panel/header highlight layers are removed. The 0.9.5 zero-gap tabs remain. Internal borders, dropdown lifecycle behavior and all market/data behavior are preserved. 0.9.6 Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.6.md` and `docs/MODULOMARKET-UI-FLAT-TITLE-FRAME-0.9.6.md`.

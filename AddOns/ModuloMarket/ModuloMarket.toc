@@ -2,7 +2,7 @@
 ## Title: Modulo Market
 ## Notes: Profession-aware market economics with automatic reagent costs, recipe profit, market valuation and price history.
 ## Author: MODULO Project
-## Version: 0.9.6
+## Version: 0.9.8
 ## Category: Modulo By Wells
 ## Group: Modulo
 ## Dependencies: Modulo

@@ -305,30 +305,61 @@ local function GetItemName(item)
     return name
 end
 
-local function GetItemDisplayName(item)
-    local name = GetItemName(item)
-    local data = MM.ProfessionData
-    local tags = data and data.GetItemTags and data.GetItemTags(item and item.itemID)
-    if not tags or #tags == 0 then return name end
-
-    -- Colour is the only row-level status cue. It mirrors the player-facing
-    -- filters: learned craft, unlearned craft, gathering resource, reagent.
-    -- Keep the internal evidence tags out of item names entirely.
-    local has = {}
-    for _, tag in ipairs(tags) do has[tag] = true end
-    local nameColor = "|cffffffff"
-    if has.known then
-        nameColor = "|cff8ee6a2"       -- Known by you / known craft output
-    elseif has.future then
-        nameColor = "|cffffd77a"       -- A profession you have; skill may still be required
-    elseif has.unlearnable then
-        nameColor = "|cffff6666"       -- Required profession not currently learned
-    elseif has.gather then
-        nameColor = "|cff82d9ff"       -- Gathering resource
-    elseif has.material then
-        nameColor = "|cffb6e2ff"       -- Crafting reagent
+local itemQualityCache = {}
+local function GetItemQualityHex(itemID)
+    itemID = tonumber(itemID)
+    if not itemID then return "ffffffff" end
+    local cached = itemQualityCache[itemID]
+    if cached then return cached end
+    local quality
+    if type(_G.GetItemInfo) == "function" then
+        local ok, _, _, itemQuality = pcall(_G.GetItemInfo, itemID)
+        if ok then quality = tonumber(itemQuality) end
     end
-    return nameColor .. name .. "|r"
+    if quality ~= nil and type(_G.GetItemQualityColor) == "function" then
+        local ok, r, g, b = pcall(_G.GetItemQualityColor, quality)
+        if ok and tonumber(r) and tonumber(g) and tonumber(b) then
+            local function channel(value)
+                return math.max(0, math.min(255, math.floor((tonumber(value) or 0) * 255 + 0.5)))
+            end
+            local hex = string.format("%02x%02x%02x", channel(r), channel(g), channel(b))
+            itemQualityCache[itemID] = hex
+            return hex
+        end
+    end
+    -- Uncached item quality is not guessed. White is the safe neutral fallback.
+    return "ffffffff"
+end
+
+local function GetItemDisplayName(item)
+    return "|c" .. GetItemQualityHex(item and item.itemID) .. GetItemName(item) .. "|r"
+end
+
+local function GetItemCraftMarker(itemID)
+    local data = MM.ProfessionData
+    local entry = data and data.GetItem and data.GetItem(itemID)
+    if not entry then return 1, 1, 1, 1 end -- ordinary, non-craft item: white
+    if type(entry.knownCrafts) == "table" and #entry.knownCrafts > 0 then
+        return 0.25, 0.88, 0.42, 1 -- known craft: green
+    end
+    local hasKnown, hasLearnable, hasUnlearnableOrUnknown = false, false, false
+    local getStatus = data.GetRecipeLearningStatus
+    for _, listName in ipairs({ "futureCrafts", "unknownFutureCrafts" }) do
+        for _, recipe in ipairs(entry[listName] or {}) do
+            local status = type(getStatus) == "function" and getStatus(recipe) or "unknown"
+            if status == "known" then
+                hasKnown = true
+            elseif status == "learnable" then
+                hasLearnable = true
+            elseif status == "unlearnable" or status == "unknown" then
+                hasUnlearnableOrUnknown = true
+            end
+        end
+    end
+    if hasKnown then return 0.25, 0.88, 0.42, 1 end -- known craft: green
+    if hasLearnable then return 1, 0.82, 0.24, 1 end -- unlearned craft: yellow
+    if hasUnlearnableOrUnknown then return 0.95, 0.27, 0.24, 1 end -- unavailable/unknown: red
+    return 1, 1, 1, 1
 end
 
 -- Resolve real client item artwork; never substitute decorative icons for data identities.
@@ -727,13 +758,13 @@ local function AddBevelBorder(parent, x, top, width, height, style, layer)
     style = style or "panel"
     layer = layer or "BORDER"
     local palette = {
-        outer = {0.40, 0.30, 0.16, 0.88},
-        plaque = {0.48, 0.36, 0.19, 0.90},
-        panel = {0.34, 0.26, 0.14, 0.78},
-        card = {0.38, 0.29, 0.16, 0.84},
-        tab = {0.32, 0.24, 0.13, 0.76},
-        control = {0.42, 0.32, 0.17, 0.86},
-        button = {0.46, 0.32, 0.15, 0.90},
+        outer = {0.24, 0.22, 0.18, 0.82},
+        plaque = {0.30, 0.25, 0.17, 0.78},
+        panel = {0.27, 0.23, 0.16, 0.72},
+        card = {0.29, 0.25, 0.18, 0.76},
+        tab = {0.25, 0.22, 0.16, 0.68},
+        control = {0.31, 0.27, 0.19, 0.80},
+        button = {0.32, 0.27, 0.18, 0.82},
     }
     local color = palette[style] or palette.panel
     local function edge(px, py, w, h)
@@ -759,27 +790,25 @@ local function ApplyMarketButtonSkin(button, style)
     button.marketFill = button:CreateTexture(nil, "BACKGROUND")
     button.marketFill:SetAllPoints(button)
     if style == "control" then
-        button.marketFill:SetColorTexture(0.025, 0.022, 0.017, 0.98)
+        button.marketFill:SetColorTexture(0.035, 0.032, 0.026, 0.96)
     elseif style == "option" then
-        button.marketFill:SetColorTexture(0.055, 0.043, 0.026, 0.98)
+        button.marketFill:SetColorTexture(0.050, 0.043, 0.031, 0.96)
     else
-        button.marketFill:SetColorTexture(0.16, 0.025, 0.014, 0.98)
+        button.marketFill:SetColorTexture(0.075, 0.060, 0.040, 0.96)
     end
     local normal = type(button.GetNormalTexture) == "function" and button:GetNormalTexture() or nil
     local pushed = type(button.GetPushedTexture) == "function" and button:GetPushedTexture() or nil
     local highlight = type(button.GetHighlightTexture) == "function" and button:GetHighlightTexture() or nil
     local disabled = type(button.GetDisabledTexture) == "function" and button:GetDisabledTexture() or nil
-    -- The legacy UIPanelButtonTemplate artwork is red on the Forever client.
-    -- For custom dark controls it must not bleed through the hand-drawn market
-    -- fill/border; retain the template only for click/disabled behavior.
-    local templateAlpha = style == "control" and 0 or 0.12
-    if normal and normal.SetAlpha then normal:SetAlpha(templateAlpha) end
-    if pushed and pushed.SetAlpha then pushed:SetAlpha(style == "control" and 0 or 0.16) end
-    if highlight and highlight.SetAlpha then highlight:SetAlpha(style == "control" and 0 or 0.10) end
+    -- Keep the template's pressed/highlight feedback visible, but let the
+    -- restrained addon fill provide the resting surface.
+    if normal and normal.SetAlpha then normal:SetAlpha(0.30) end
+    if pushed and pushed.SetAlpha then pushed:SetAlpha(0.62) end
+    if highlight and highlight.SetAlpha then highlight:SetAlpha(0.34) end
     if disabled and disabled.SetAlpha then disabled:SetAlpha(0) end
     button.marketHighlight = button:CreateTexture(nil, "HIGHLIGHT")
     button.marketHighlight:SetAllPoints(button)
-    button.marketHighlight:SetColorTexture(0.90, 0.67, 0.25, 0.14)
+    button.marketHighlight:SetColorTexture(0.72, 0.60, 0.38, 0.10)
     button.marketBorder = AddBevelBorder(button, 0, 0, w, h,
         style == "control" and "control" or "button", "OVERLAY")
     local text = type(button.GetFontString) == "function" and button:GetFontString() or nil
@@ -843,22 +872,22 @@ local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChang
     popup.background:SetAllPoints(popup)
     popup.background:SetColorTexture(0.025, 0.022, 0.018, 0.98)
     popup.borderTop = popup:CreateTexture(nil, "BORDER")
-    popup.borderTop:SetColorTexture(0.62, 0.46, 0.18, 0.95)
+    popup.borderTop:SetColorTexture(0.34, 0.29, 0.20, 0.88)
     popup.borderTop:SetPoint("TOPLEFT", popup, "TOPLEFT", 0, 0)
     popup.borderTop:SetPoint("TOPRIGHT", popup, "TOPRIGHT", 0, 0)
     popup.borderTop:SetHeight(1)
     popup.borderBottom = popup:CreateTexture(nil, "BORDER")
-    popup.borderBottom:SetColorTexture(0.62, 0.46, 0.18, 0.95)
+    popup.borderBottom:SetColorTexture(0.34, 0.29, 0.20, 0.88)
     popup.borderBottom:SetPoint("BOTTOMLEFT", popup, "BOTTOMLEFT", 0, 0)
     popup.borderBottom:SetPoint("BOTTOMRIGHT", popup, "BOTTOMRIGHT", 0, 0)
     popup.borderBottom:SetHeight(1)
     popup.borderLeft = popup:CreateTexture(nil, "BORDER")
-    popup.borderLeft:SetColorTexture(0.62, 0.46, 0.18, 0.95)
+    popup.borderLeft:SetColorTexture(0.34, 0.29, 0.20, 0.88)
     popup.borderLeft:SetPoint("TOPLEFT", popup, "TOPLEFT", 0, 0)
     popup.borderLeft:SetPoint("BOTTOMLEFT", popup, "BOTTOMLEFT", 0, 0)
     popup.borderLeft:SetWidth(1)
     popup.borderRight = popup:CreateTexture(nil, "BORDER")
-    popup.borderRight:SetColorTexture(0.62, 0.46, 0.18, 0.95)
+    popup.borderRight:SetColorTexture(0.34, 0.29, 0.20, 0.88)
     popup.borderRight:SetPoint("TOPRIGHT", popup, "TOPRIGHT", 0, 0)
     popup.borderRight:SetPoint("BOTTOMRIGHT", popup, "BOTTOMRIGHT", 0, 0)
     popup.borderRight:SetWidth(1)
@@ -1188,7 +1217,7 @@ function UI.StartViewBuild()
         },
         marketQuickFilters = {
             craftingMaterialsOnly = UI.marketQuickFilters.craftingMaterialsOnly,
-            lowSupplyOnly = UI.marketQuickFilters.lowSupplyOnly,
+            lowSupplyOnly = false,
             highProfitOnly = UI.marketQuickFilters.highProfitOnly,
             reviewOnly = UI.marketQuickFilters.reviewOnly,
         },
@@ -1662,6 +1691,14 @@ function UI.RenderRows()
                 button.icon:SetTexture(GetItemIcon(item.itemID))
                 button.icon:Show()
             end
+            if button.statusMarker then
+                if not isCrafting then
+                    button.statusMarker:SetColorTexture(GetItemCraftMarker(item.itemID))
+                    button.statusMarker:Show()
+                else
+                    button.statusMarker:Hide()
+                end
+            end
             if button.rowShade then
                 if index % 2 == 0 then
                     button.rowShade:SetColorTexture(0.105, 0.086, 0.052, 0.30)
@@ -1754,6 +1791,7 @@ function UI.RenderRows()
         else
             button:Hide()
             if button.icon then button.icon:Hide() end
+            if button.statusMarker then button.statusMarker:Hide() end
             if button.rowShade then button.rowShade:Hide() end
             if button.selectedWash then button.selectedWash:Hide() end
             if button.selectedAccent then button.selectedAccent:Hide() end
@@ -2606,7 +2644,7 @@ local function SetTab(tab)
     }
     UI.tabFilterState[previousTab].marketQuickFilters = {
         craftingMaterialsOnly = UI.marketQuickFilters.craftingMaterialsOnly,
-        lowSupplyOnly = UI.marketQuickFilters.lowSupplyOnly,
+        lowSupplyOnly = false,
         highProfitOnly = UI.marketQuickFilters.highProfitOnly,
         reviewOnly = UI.marketQuickFilters.reviewOnly,
     }
@@ -2632,7 +2670,7 @@ local function SetTab(tab)
     UI.craftFilters.hideLowProfit = savedCraft.hideLowProfit == true
     local savedMarket = saved.marketQuickFilters or {}
     UI.marketQuickFilters.craftingMaterialsOnly = savedMarket.craftingMaterialsOnly == true
-    UI.marketQuickFilters.lowSupplyOnly = savedMarket.lowSupplyOnly == true
+    UI.marketQuickFilters.lowSupplyOnly = false -- retired: Low Supply has its own dedicated tab
     UI.marketQuickFilters.highProfitOnly = savedMarket.highProfitOnly == true
     UI.marketQuickFilters.reviewOnly = savedMarket.reviewOnly == true
     if UI.search then UI.search:SetText(saved.search or "") end
@@ -2680,6 +2718,9 @@ local function SetTab(tab)
     elseif tab == "history" then
         labels = { "Item", "Cheapest", "Price Change", "Latest Units", "Total", "Best Craft Profit" }
         keys = { "name", "price", "change", "total", "total", "profit" }
+    elseif tab == "market" then
+        labels = { "Item", "Cheapest", "At Price", "Total Units" }
+        keys = { "name", "price", "depth", "total" }
     else
         labels = { "Item", "Cheapest", "At Price", "Total Units", "Listings", "Best Craft Profit" }
         keys = { "name", "price", "depth", "total", "total", "profit" }
@@ -2706,6 +2747,8 @@ local function SetTab(tab)
             header.label:SetWidth(column.w - 14); header.label:SetJustifyH(column.justify)
         end
         for _, row in ipairs(UI.rows or {}) do
+            row.total:Show()
+            row.profit:Show()
             row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(180)
             row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 212, 0); row.depth:SetWidth(160)
             row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", 382, 0); row.price:SetWidth(96)
@@ -2729,6 +2772,7 @@ local function SetTab(tab)
         end
         for _, row in ipairs(UI.rows or {}) do
             row.total:Show()
+            row.profit:Show()
             row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(182)
             row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", 212, 0); row.price:SetWidth(105)
             row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 322, 0); row.depth:SetWidth(150)
@@ -2751,12 +2795,33 @@ local function SetTab(tab)
         end
         UI.headerButtons[6]:Hide()
         for _, row in ipairs(UI.rows or {}) do
+            row.profit:Show()
             row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(182)
             row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", 212, 0); row.price:SetWidth(105)
             row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 322, 0); row.depth:SetWidth(150)
             row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", 478, 0); row.atPrice:SetWidth(72)
             row.total:Hide()
             row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(254)
+        end
+    elseif tab == "market" then
+        local allItemsColumns = {
+            { x = 302, w = 252, justify = "LEFT" },
+            { x = 556, w = 160, justify = "RIGHT" },
+            { x = 718, w = 150, justify = "RIGHT" },
+            { x = 870, w = 220, justify = "RIGHT" },
+        }
+        for i, column in ipairs(allItemsColumns) do
+            local header = UI.headerButtons[i]
+            header:ClearAllPoints(); header:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", column.x, -218); header:SetWidth(column.w)
+            header.label:SetWidth(column.w - 14); header.label:SetJustifyH(column.justify)
+        end
+        for _, row in ipairs(UI.rows or {}) do
+            row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(238)
+            row.price:ClearAllPoints(); row.price:SetPoint("RIGHT", row, "LEFT", 416, 0); row.price:SetWidth(150)
+            row.depth:ClearAllPoints(); row.depth:SetPoint("RIGHT", row, "LEFT", 568, 0); row.depth:SetWidth(100)
+            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("RIGHT", row, "LEFT", 778, 0); row.atPrice:SetWidth(150)
+            row.total:Hide()
+            row.profit:Hide()
         end
     else
         local marketColumns = {
@@ -2774,6 +2839,7 @@ local function SetTab(tab)
         end
         for _, row in ipairs(UI.rows or {}) do
             row.total:Show()
+            row.profit:Show()
             row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(182)
             row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", 212, 0); row.price:SetWidth(105)
             row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", 322, 0); row.depth:SetWidth(150)
@@ -2884,13 +2950,13 @@ local function CreateUI()
     if type(MM.db) == "table" then MM.db.craftingScope = UI.craftingScope end
     local initialOpacity = ApplyBackgroundOpacity(frame,
         MM.db and MM.db.backgroundOpacity or 0.85)
-    -- Extra vertical room accommodates the taller native title strip while
-    -- keeping the existing content/footer clear of the title and frame edges.
-    frame:SetSize(1460, 894)
+    -- Let BasicFrameTemplateWithInset own its complete frame/title geometry.
+    -- All addon-owned content is anchored directly to the frame below.
+    frame:SetSize(1460, 866)
     if type(_G.GetScreenWidth) == "function" and type(_G.GetScreenHeight) == "function" then
         local screenWidth, screenHeight = _G.GetScreenWidth(), _G.GetScreenHeight()
         if tonumber(screenWidth) and tonumber(screenHeight) then
-            local fitScale = math.min(1, (screenWidth - 40) / 1460, (screenHeight - 40) / 894)
+            local fitScale = math.min(1, (screenWidth - 40) / 1460, (screenHeight - 40) / 866)
             frame:SetScale(math.max(0.70, fitScale))
         end
     end
@@ -2900,23 +2966,11 @@ local function CreateUI()
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-    AddInsetSurface(frame, 18, -30, 1424, 78, {0.018, 0.016, 0.012, 0.86})
-    AddBevelBorder(frame, 18, -30, 1424, 78, "panel", "BORDER")
-    -- Re-anchor the template region itself: SetHeight alone is ineffective
-    -- when the template still constrains both its top and bottom anchors.
-    if frame.TitleBg and frame.TitleBg.ClearAllPoints then
-        frame.TitleBg:ClearAllPoints()
-        frame.TitleBg:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -5)
-        frame.TitleBg:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -5)
-        frame.TitleBg:SetHeight(56)
+    -- Preserve the title background, anchors, NineSlice and title text styling
+    -- supplied by Blizzard's template. Only set the title string.
+    if frame.TitleText and frame.TitleText.SetText then
+        frame.TitleText:SetText("Modulo Market")
     end
-    frame.TitleText:ClearAllPoints()
-    frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -33)
-    frame.TitleText:SetSize(320, 28)
-    frame.TitleText:SetText("Modulo Market")
-    UI.titleStripBorder = AddBevelBorder(frame, 8, -5, 1444, 56, "panel", "BORDER")
-    if frame.TitleText.SetFontObject then frame.TitleText:SetFontObject("GameFontNormalLarge") end
-    if frame.TitleText.SetTextColor then frame.TitleText:SetTextColor(1, 0.82, 0.12) end
     frame:Hide()
     _G.UISpecialFrames = _G.UISpecialFrames or {}
     local specialFrameRegistered = false
@@ -3094,10 +3148,6 @@ local function CreateUI()
     leftPanel:SetColorTexture(0.035, 0.032, 0.028, 0.92)
     leftPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -158)
     leftPanel:SetSize(260, 650)
-    local centerPanel = frame:CreateTexture(nil, "BACKGROUND")
-    centerPanel:SetColorTexture(0.025, 0.026, 0.028, 0.90)
-    centerPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 286, -158)
-    centerPanel:SetSize(834, 650)
     local rightPanel = frame:CreateTexture(nil, "BACKGROUND")
     rightPanel:SetColorTexture(0.035, 0.032, 0.028, 0.92)
     rightPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 1126, -158)
@@ -3110,33 +3160,16 @@ local function CreateUI()
         AddPanelBorder(x, y, width, height)
     end
     AddPanelInnerEdge(18, -158, 260, 650)
-    AddPanelInnerEdge(286, -158, 834, 650)
     AddPanelInnerEdge(1126, -158, 300, 650)
     local function AddPanelHeader(x, y, width)
         local plate = frame:CreateTexture(nil, "ARTWORK")
-        plate:SetColorTexture(0.15, 0.105, 0.045, 0.78)
-        plate:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 2, y - 1)
-        plate:SetSize(width - 4, 27)
+        plate:SetColorTexture(0.085, 0.073, 0.052, 0.78)
+        plate:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 1, y - 1)
+        plate:SetSize(width - 2, 26)
         local rule = frame:CreateTexture(nil, "ARTWORK")
-        rule:SetColorTexture(0.78, 0.58, 0.25, 0.82)
+        rule:SetColorTexture(0.32, 0.27, 0.18, 0.72)
         rule:SetPoint("TOPLEFT", plate, "BOTTOMLEFT", 0, 0)
-        rule:SetSize(width - 4, 1)
-        local lowerRule = frame:CreateTexture(nil, "ARTWORK")
-        lowerRule:SetColorTexture(0.025, 0.018, 0.009, 1)
-        lowerRule:SetPoint("TOPLEFT", plate, "BOTTOMLEFT", 0, -1)
-        lowerRule:SetSize(width - 4, 1)
-        -- Short bright end caps make the header plate read as a fitted metal
-        -- rail rather than a flat strip, without changing panel geometry.
-        for _, side in ipairs({"LEFT", "RIGHT"}) do
-            local cap = frame:CreateTexture(nil, "ARTWORK")
-            cap:SetColorTexture(0.88, 0.66, 0.29, 0.82)
-            if side == "LEFT" then
-                cap:SetPoint("TOPLEFT", plate, "TOPLEFT", 0, -1)
-            else
-                cap:SetPoint("TOPRIGHT", plate, "TOPRIGHT", 0, -1)
-            end
-            cap:SetSize(2, 23)
-        end
+        rule:SetSize(width - 2, 1)
     end
     AddPanelHeader(18, -158, 260)
     AddPanelHeader(286, -158, 834)
@@ -3379,8 +3412,6 @@ local function CreateUI()
     local marketQuickFilterSpecs = {
         { "craftingMaterialsOnly", "Crafting materials only",
             "Items used as reagents by supported recipes; uses the existing profession material catalogue." },
-        { "lowSupplyOnly", "Low supply only",
-            "Uses the same item-aware supply threshold as the Low Supply tab." },
         { "highProfitOnly", "High profit only",
             "Shows market items with a source-confirmed best craft route and positive calculated auction profit after the configured cut." },
         { "reviewOnly", "Show review items only",
@@ -3414,18 +3445,6 @@ local function CreateUI()
     UI.resultCount:SetJustifyH("RIGHT")
 
     UI.headerButtons = {}
-    UI.tableHeaderSurface = AddInsetSurface(frame, 302, -218, 802, 34,
-        {0.035, 0.029, 0.018, 0.98})
-    UI.tableHeaderBorder = AddBevelBorder(frame, 302, -218, 802, 34, "control", "BORDER")
-    UI.tableColumnGuides = {}
-    for _, guideX in ipairs({ 520, 650, 760, 850, 935 }) do
-        local guide = frame:CreateTexture(nil, "BORDER")
-        guide:SetColorTexture(0.48, 0.36, 0.16, 0.22)
-        guide:SetPoint("TOPLEFT", frame, "TOPLEFT", guideX, -220)
-        guide:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", guideX, -252)
-        guide:SetWidth(1)
-        UI.tableColumnGuides[#UI.tableColumnGuides + 1] = guide
-    end
     local headers = {
         { "Recipe / Item", 302, 205, "LEFT", "name" },
         { "Sale / Unit", 680, 96, "RIGHT", "price" },
@@ -3526,6 +3545,11 @@ local function CreateUI()
         row.selectedBottom:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
         row.selectedBottom:SetHeight(1)
         row.selectedBottom:Hide()
+        row.statusMarker = row:CreateTexture(nil, "ARTWORK")
+        row.statusMarker:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+        row.statusMarker:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
+        row.statusMarker:SetWidth(3)
+        row.statusMarker:Hide()
         row.icon = row:CreateTexture(nil, "ARTWORK")
         row.icon:SetSize(20, 20)
         row.icon:SetPoint("LEFT", row, "LEFT", 4, 0)
@@ -3816,55 +3840,8 @@ local function CreateUI()
     -- tab-specific controls exist so inactive filter groups never overlap on first open.
     SetTab(UI.activeTab or "market")
 
-    -- Shift only addon-owned direct children/regions anchored to the main frame.
-    -- The native close button, title text/background and Blizzard frame chrome
-    -- stay in place; nested control internals move with their owning widgets.
-    local contentShift = 28
-    local frameChildren = { frame:GetChildren() }
-    for _, child in ipairs(frameChildren) do
-        local childName = child.GetName and child:GetName()
-        local isCloseButton = child == frame.CloseButton
-            or (type(childName) == "string" and childName:match("CloseButton$") ~= nil)
-        if not isCloseButton and child ~= frame.Inset and child ~= frame.NineSlice then
-            local points = {}
-            for pointIndex = 1, child:GetNumPoints() do
-                local point, relativeTo, relativePoint, xOfs, yOfs = child:GetPoint(pointIndex)
-                points[#points + 1] = {
-                    point = point, relativeTo = relativeTo, relativePoint = relativePoint,
-                    xOfs = xOfs, yOfs = yOfs,
-                }
-            end
-            child:ClearAllPoints()
-            for _, anchor in ipairs(points) do
-                local yOfs = anchor.yOfs or 0
-                if anchor.relativeTo == frame then yOfs = yOfs - contentShift end
-                child:SetPoint(anchor.point, anchor.relativeTo, anchor.relativePoint,
-                    anchor.xOfs or 0, yOfs)
-            end
-        end
-    end
-
-    local frameRegions = { frame:GetRegions() }
-    for _, region in ipairs(frameRegions) do
-        if region ~= frame.TitleBg and region ~= frame.TitleText
-            and region ~= frame.TopTileStreaks and region ~= frame.Bg then
-            local points = {}
-            for pointIndex = 1, region:GetNumPoints() do
-                local point, relativeTo, relativePoint, xOfs, yOfs = region:GetPoint(pointIndex)
-                points[#points + 1] = {
-                    point = point, relativeTo = relativeTo, relativePoint = relativePoint,
-                    xOfs = xOfs, yOfs = yOfs,
-                }
-            end
-            region:ClearAllPoints()
-            for _, anchor in ipairs(points) do
-                local yOfs = anchor.yOfs or 0
-                if anchor.relativeTo == frame then yOfs = yOfs - contentShift end
-                region:SetPoint(anchor.point, anchor.relativeTo, anchor.relativePoint,
-                    anchor.xOfs or 0, yOfs)
-            end
-        end
-    end
+    -- Do not post-process template or addon anchors. Native title/frame geometry
+    -- remains untouched and every content region keeps its authored coordinates.
     return frame
 end
 

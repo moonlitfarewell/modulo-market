@@ -9,18 +9,19 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.9.6"' in CORE
-    assert "## Version: 0.9.6" in TOC
-    assert MANIFEST["version"] == "0.9.6"
+    assert 'MM.version = "0.9.8"' in CORE
+    assert "## Version: 0.9.8" in TOC
+    assert MANIFEST["version"] == "0.9.8"
 
 
-def test_title_region_has_a_real_taller_frame_and_matching_content_clearance():
-    assert "frame.TitleBg:SetHeight(56)" in UI
-    assert 'frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -33)' in UI
-    assert "UI.titleStripBorder = AddBevelBorder(frame, 8, -5, 1444, 56, \"panel\", \"BORDER\")" in UI
-    assert "frame:SetSize(1460, 894)" in UI
-    assert "local contentShift = 28" in UI
-    assert "(screenHeight - 40) / 894" in UI
+def test_title_region_uses_native_template_geometry_without_extra_surfaces():
+    assert 'CreateFrame("Frame", "ModuloMarketMainFrame", UIParent, "BasicFrameTemplateWithInset")' in UI
+    assert 'frame.TitleText:SetText("Modulo Market")' in UI
+    assert "frame.TitleBg:SetHeight(" not in UI
+    assert "UI.titleStripBorder" not in UI
+    assert "frame:SetSize(1460, 866)" in UI
+    assert "local contentShift" not in UI
+    assert "(screenHeight - 40) / 866" in UI
 
 
 def test_all_shared_borders_are_flat_single_pixel_outlines_not_embossed_bevels():

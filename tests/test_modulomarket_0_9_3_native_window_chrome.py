@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.9.6"' in CORE
-    assert "## Version: 0.9.6" in TOC
-    assert MANIFEST["version"] == "0.9.6"
+    assert 'MM.version = "0.9.8"' in CORE
+    assert "## Version: 0.9.8" in TOC
+    assert MANIFEST["version"] == "0.9.8"
 
 
 def test_native_blizzard_frame_template_is_preserved():
@@ -25,11 +25,13 @@ def test_custom_title_plaque_is_removed_and_title_uses_native_title_strip():
     assert "titleInner" not in UI
     assert "titleAccentLeft" not in UI
     assert "titleAccentRight" not in UI
-    assert 'frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -33)' in UI
+    assert 'frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -33)' not in UI
+    assert 'frame.TitleText:SetText("Modulo Market")' in UI
     assert 'frame.TitleText:SetText("Modulo Market")' in UI
 
 
 def test_only_the_decorative_outer_bevel_is_omitted():
     assert 'AddBevelBorder(frame, 5, -5, 1450, 840, "outer", "OVERLAY")' not in UI
-    assert 'AddBevelBorder(frame, 18, -30, 1424, 78, "panel", "BORDER")' in UI
+    assert 'AddBevelBorder(frame, 18, -30, 1424, 78, "panel", "BORDER")' not in UI
+    assert 'frame:SetSize(1460, 866)' in UI
     assert 'AddBevelBorder(frame, 560, -2, 340, 36, "plaque", "BORDER")' not in UI

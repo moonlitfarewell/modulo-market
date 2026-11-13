@@ -9,19 +9,16 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.9.6"' in CORE
-    assert "## Version: 0.9.6" in TOC
-    assert MANIFEST["version"] == "0.9.6"
+    assert 'MM.version = "0.9.8"' in CORE
+    assert "## Version: 0.9.8" in TOC
+    assert MANIFEST["version"] == "0.9.8"
 
 
-def test_native_title_strip_height_and_title_fit():
-    assert "frame.TitleBg:ClearAllPoints()" in UI
-    assert 'frame.TitleBg:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -5)' in UI
-    assert 'frame.TitleBg:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -5)' in UI
-    assert "frame.TitleBg:SetHeight(56)" in UI
-    assert 'frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -33)' in UI
-    assert 'frame.TitleText:SetSize(320, 28)' in UI
+def test_native_title_strip_is_owned_by_blizzard_template():
+    assert 'BasicFrameTemplateWithInset' in UI
     assert 'frame.TitleText:SetText("Modulo Market")' in UI
+    assert "frame.TitleBg:ClearAllPoints()" not in UI
+    assert "frame.TitleBg:SetHeight(" not in UI
 
 
 def test_tab_vertical_side_strokes_are_removed():
@@ -34,7 +31,8 @@ def test_tab_vertical_side_strokes_are_removed():
 
 def test_internal_panel_borders_and_outer_window_design_are_preserved():
     assert 'AddPanelInnerEdge(18, -158, 260, 650)' in UI
-    assert 'AddPanelInnerEdge(286, -158, 834, 650)' in UI
+    assert 'AddPanelInnerEdge(286, -158, 834, 650)' not in UI
+    assert 'local centerPanel = frame:CreateTexture' not in UI
     assert 'AddPanelInnerEdge(1126, -158, 300, 650)' in UI
     assert 'AddBevelBorder(frame, 18, -112, 1424, 34, "panel", "BORDER")' in UI
     assert 'AddBevelBorder(frame, 5, -5, 1450, 840, "outer", "OVERLAY")' not in UI

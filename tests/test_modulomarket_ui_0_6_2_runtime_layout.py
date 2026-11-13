@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.9.6"' in CORE
-    assert '## Version: 0.9.6' in TOC
-    assert MANIFEST["version"] == "0.9.6"
+    assert 'MM.version = "0.9.8"' in CORE
+    assert '## Version: 0.9.8' in TOC
+    assert MANIFEST["version"] == "0.9.8"
 
 
 def test_render_rows_returns_before_early_item_data_callback_can_dereference_empty_pool():
@@ -31,7 +31,8 @@ def test_async_item_data_callback_remains_safe_before_row_pool_creation():
 
 
 def test_centre_panel_reclaims_space_from_inspector_and_expands_scroll_rows():
-    assert "centerPanel:SetSize(834, 650)" in UI
+    assert "centerPanel:SetSize(834, 650)" not in UI
+    assert "local centerPanel = frame:CreateTexture" not in UI
     assert 'rightPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 1126, -158)' in UI
     assert "rightPanel:SetSize(300, 650)" in UI
     assert "UI.scroll:SetSize(812, 555)" in UI

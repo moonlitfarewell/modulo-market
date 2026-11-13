@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.9.6"' in CORE
-    assert "## Version: 0.9.6" in TOC
-    assert MANIFEST["version"] == "0.9.6"
+    assert 'MM.version = "0.9.8"' in CORE
+    assert "## Version: 0.9.8" in TOC
+    assert MANIFEST["version"] == "0.9.8"
 
 
 def test_every_dropdown_registers_a_close_callback():
@@ -34,8 +34,9 @@ def test_dropdowns_close_when_their_control_is_hidden_or_tab_changes():
 
 
 def test_table_has_a_clear_header_rail_and_selected_row_accent():
-    assert 'UI.tableHeaderSurface = AddInsetSurface(frame, 302, -218, 802, 34' in UI
-    assert 'UI.tableColumnGuides = {}' in UI
+    assert 'tableHeaderBand:SetColorTexture(0.105, 0.078, 0.038, 0.88)' in UI
+    assert 'UI.tableColumnGuides' not in UI
+    assert 'UI.tableHeaderSurface' not in UI
     assert 'row.selectedWash:SetColorTexture(0.48, 0.32, 0.055, 0.43)' in UI
     assert 'row.selectedAccent:SetWidth(3)' in UI
 
