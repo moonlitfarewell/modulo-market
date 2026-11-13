@@ -29,6 +29,6 @@ def test_table_finish_changes_are_visual_only():
     assert 'row:SetSize(796, UI.rowHeight)' in UI
 
 def test_release_metadata_is_aligned():
-    assert 'MM.version = "0.8.8"' in CORE
-    assert '## Version: 0.8.8' in TOC
-    assert MANIFEST["version"] == "0.8.8"
+    assert 'MM.version = "0.9.0"' in CORE
+    assert '## Version: 0.9.0' in TOC
+    assert MANIFEST["version"] == "0.9.0"

@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.8.8"' in CORE
-    assert '## Version: 0.8.8' in TOC
-    assert MANIFEST["version"] == "0.8.8"
+    assert 'MM.version = "0.9.0"' in CORE
+    assert '## Version: 0.9.0' in TOC
+    assert MANIFEST["version"] == "0.9.0"
 
 
 def test_render_rows_returns_before_early_item_data_callback_can_dereference_empty_pool():
@@ -54,7 +54,7 @@ def test_panel_titles_and_result_count_live_in_their_header_strips():
 
 
 def test_inspector_text_is_constrained_to_narrower_panel():
-    assert 'UI.detailScroll:SetSize(270, 106)' in UI
+    assert 'UI.detailScroll:SetSize(270, 124)' in UI
     assert 'UI.detailEconomics:SetWidth(244)' in UI
     assert 'UI.detailEconomics:SetWordWrap(true)' in UI
     assert 'UI.detailVariants:SetWordWrap(true)' in UI

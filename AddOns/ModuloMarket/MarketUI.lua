@@ -777,10 +777,14 @@ local function ApplyMarketButtonSkin(button, style)
     local pushed = type(button.GetPushedTexture) == "function" and button:GetPushedTexture() or nil
     local highlight = type(button.GetHighlightTexture) == "function" and button:GetHighlightTexture() or nil
     local disabled = type(button.GetDisabledTexture) == "function" and button:GetDisabledTexture() or nil
-    if normal and normal.SetAlpha then normal:SetAlpha(0.18) end
-    if pushed and pushed.SetAlpha then pushed:SetAlpha(0.28) end
-    if highlight and highlight.SetAlpha then highlight:SetAlpha(0.16) end
-    if disabled and disabled.SetAlpha then disabled:SetAlpha(0.10) end
+    -- The legacy UIPanelButtonTemplate artwork is red on the Forever client.
+    -- For custom dark controls it must not bleed through the hand-drawn market
+    -- fill/border; retain the template only for click/disabled behavior.
+    local templateAlpha = style == "control" and 0 or 0.12
+    if normal and normal.SetAlpha then normal:SetAlpha(templateAlpha) end
+    if pushed and pushed.SetAlpha then pushed:SetAlpha(style == "control" and 0 or 0.16) end
+    if highlight and highlight.SetAlpha then highlight:SetAlpha(style == "control" and 0 or 0.10) end
+    if disabled and disabled.SetAlpha then disabled:SetAlpha(0) end
     button.marketHighlight = button:CreateTexture(nil, "HIGHLIGHT")
     button.marketHighlight:SetAllPoints(button)
     button.marketHighlight:SetColorTexture(0.90, 0.67, 0.25, 0.14)
@@ -874,11 +878,15 @@ local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChang
 
     local function closeMenu()
         popup:Hide()
+        if _G.GameTooltip then GameTooltip:Hide() end
     end
 
     local function openMenu()
+        -- The dropdown's own help tooltip must not remain floating over its
+        -- option list after the click transfers interaction to the popup.
+        if _G.GameTooltip then GameTooltip:Hide() end
         local options = getOptions() or {}
-        local rowHeight = 22
+        local rowHeight = 21
         local popupHeight = math.max(rowHeight + 8, (#options * rowHeight) + 8)
         popup:ClearAllPoints()
         popup:SetPoint("TOPLEFT", dropdown, "BOTTOMLEFT", 0, -2)
@@ -892,7 +900,7 @@ local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChang
                 dropdown.optionButtons[i] = optionButton
             end
             optionButton:ClearAllPoints()
-            optionButton:SetSize(width - 8, 20)
+            optionButton:SetSize(width - 8, 19)
             ApplyMarketButtonSkin(optionButton, "option")
             optionButton:SetPoint("TOPLEFT", popup, "TOPLEFT", 4, -4 - ((i - 1) * rowHeight))
             optionButton:SetText(option.text or tostring(option.value))
@@ -1530,10 +1538,12 @@ function UI.FinishView(rows)
                 local review = (provider.reviewWatchCount or 0) > 0
                     and string.format(" · %d hotfix-linked records flagged for review", provider.reviewWatchCount) or ""
                 SetStatus(string.format(
-                    "ForeverDB %s · %d observed/automatic-source unlearned crafts · %d Classic-borrowed · %d unverified · %d speculative and %d non-item/unknown-output excluded%s",
+                    "ForeverDB %s · %d observed · %d Classic-borrowed · %d unverified · %d speculative + %d non-item outputs excluded%s",
                     freshness, provider.count or 0, provider.borrowedSourceCount or 0,
                     provider.unknownSourceCount or 0, provider.speculativeCount or 0,
-                    provider.nonItemCount or 0, review))
+                    provider.nonItemCount or 0,
+                    (provider.reviewWatchCount or 0) > 0
+                        and string.format(" · %d review flags", provider.reviewWatchCount) or ""))
             end
         elseif provider.available then
             SetStatus(string.format("%d unlearned craft candidates · %d borrowed-source · %d unknown-source",
@@ -3611,8 +3621,8 @@ local function CreateUI()
         AddBevelBorder(frame, x, top, width, height, "card", "OVERLAY")
     end
     AddInspectorCard(1136, -270, 280, 144)
-    AddInspectorCard(1136, -422, 280, 152)
-    AddInspectorCard(1136, -584, 280, 224)
+    AddInspectorCard(1136, -422, 280, 170)
+    AddInspectorCard(1136, -602, 280, 206)
 
     UI.detailHeading = AddLabel(frame, "Selected item", 1142, -166, 268, 24, "GameFontNormalLarge")
     IncreaseFontSize(UI.detailHeading, 2)
@@ -3656,7 +3666,7 @@ local function CreateUI()
     IncreaseFontSize(UI.relationshipHeading, 1)
     UI.detailScroll = CreateFrame("ScrollFrame", "ModuloMarketDetailScrollFrame", frame, "UIPanelScrollFrameTemplate")
     UI.detailScroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 1140, -456)
-    UI.detailScroll:SetSize(270, 106)
+    UI.detailScroll:SetSize(270, 124)
     local detailScrollBar = _G.ModuloMarketDetailScrollFrameScrollBar
     if detailScrollBar then
         detailScrollBar:ClearAllPoints()
@@ -3665,13 +3675,13 @@ local function CreateUI()
         detailScrollBar:SetWidth(12)
     end
     UI.detailScrollChild = CreateFrame("Frame", nil, UI.detailScroll)
-    UI.detailScrollChild:SetSize(250, 106)
+    UI.detailScrollChild:SetSize(250, 124)
     UI.detailScroll:SetScrollChild(UI.detailScrollChild)
     UI.detailEconomics = UI.detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     IncreaseFontSize(UI.detailEconomics, 1)
     UI.detailEconomics:SetPoint("TOPLEFT", UI.detailScrollChild, "TOPLEFT", 0, 0)
     UI.detailEconomics:SetWidth(244)
-    UI.detailEconomics:SetHeight(106)
+    UI.detailEconomics:SetHeight(124)
     UI.detailEconomics:SetWordWrap(true)
     if UI.detailEconomics.SetNonSpaceWrap then UI.detailEconomics:SetNonSpaceWrap(true) end
     UI.detailEconomics:SetJustifyH("LEFT")
@@ -3701,17 +3711,17 @@ local function CreateUI()
     UI.detailRecipeTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
 
     UI.detailFooter = CreateFrame("Frame", nil, frame)
-    UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -584)
-    UI.detailFooter:SetSize(280, 224)
-    UI.historyHeading = AddLabel(frame, "Market History", 1142, -592, 268, 22, "GameFontNormalLarge")
+    UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -602)
+    UI.detailFooter:SetSize(280, 206)
+    UI.historyHeading = AddLabel(frame, "Market History", 1142, -610, 268, 22, "GameFontNormalLarge")
     IncreaseFontSize(UI.historyHeading, 1)
-    UI.historyText = AddLabel(UI.detailFooter, "", 6, -32, 268, 58, "GameFontHighlight")
+    UI.historyText = AddLabel(UI.detailFooter, "", 6, -32, 268, 54, "GameFontHighlight")
     IncreaseFontSize(UI.historyText, 1)
     UI.historyText:SetWordWrap(true)
     if UI.historyText.SetNonSpaceWrap then UI.historyText:SetNonSpaceWrap(true) end
     UI.historyGraph = CreateFrame("Frame", nil, UI.detailFooter)
-    UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -96)
-    UI.historyGraph:SetSize(236, 126)
+    UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -90)
+    UI.historyGraph:SetSize(236, 104)
     UI.historyBarLabels = {}
     for i = 1, 4 do
         local label = UI.historyGraph:CreateFontString(nil, "OVERLAY", "GameFontNormal")

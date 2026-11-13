@@ -14,15 +14,15 @@ def test_release_versions_agree():
 
 def test_profit_and_history_footer_is_a_child_container_inside_inspector():
     body = UI.split('UI.detailFooter = CreateFrame("Frame", nil, frame)', 1)[1].split('for i = 1, 4 do', 1)[0]
-    assert 'UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -584)' in body
-    assert 'UI.detailFooter:SetSize(280, 224)' in body
+    assert 'UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -602)' in body
+    assert 'UI.detailFooter:SetSize(280, 206)' in body
     assert 'UI.historyHeading = AddLabel(frame, "Market History"' in UI
-    assert 'AddLabel(UI.detailFooter, "", 6, -32, 268, 58' in body
+    assert 'AddLabel(UI.detailFooter, "", 6, -32, 268, 54' in body
 
 def test_history_graph_baseline_is_bottom_anchored_and_bars_grow_upward():
     body = UI.split('UI.historyGraph = CreateFrame("Frame", nil, UI.detailFooter)', 1)[1].split('for i = 1, 4 do', 1)[0]
-    assert 'UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -96)' in body
-    assert 'UI.historyGraph:SetSize(236, 126)' in body
+    assert 'UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -90)' in body
+    assert 'UI.historyGraph:SetSize(236, 104)' in body
     render = UI.split('function UI.RenderHistory()', 1)[1].split('SelectItem = function(item)', 1)[0]
     assert 'bar:SetPoint("BOTTOMLEFT", UI.historyGraph, "BOTTOMLEFT"' in render
     assert 'bar:SetSize(38, height)' in render

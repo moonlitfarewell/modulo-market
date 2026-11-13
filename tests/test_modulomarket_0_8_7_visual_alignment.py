@@ -16,11 +16,11 @@ def test_market_table_headers_align_to_the_existing_row_cells():
     assert 'row.atPrice:SetPoint("LEFT", row, "LEFT", 478, 0)' in UI or 'row.atPrice:SetPoint("LEFT", row, "LEFT", 432, 0)' in UI
 
 def test_relationships_get_more_viewport_without_changing_sources_or_behavior():
-    assert 'AddInspectorCard(1136, -422, 280, 152)' in UI
-    assert 'UI.detailScroll:SetSize(270, 106)' in UI
-    assert 'UI.detailScrollChild:SetSize(250, 106)' in UI
-    assert 'AddInspectorCard(1136, -584, 280, 224)' in UI
-    assert 'UI.historyGraph:SetSize(236, 126)' in UI
+    assert 'AddInspectorCard(1136, -422, 280, 170)' in UI
+    assert 'UI.detailScroll:SetSize(270, 124)' in UI
+    assert 'UI.detailScrollChild:SetSize(250, 124)' in UI
+    assert 'AddInspectorCard(1136, -602, 280, 206)' in UI
+    assert 'UI.historyGraph:SetSize(236, 104)' in UI
     assert 'RenderMarketRecipeContext(item)' in UI
     assert 'RenderCraftDetail(item)' in UI
 
@@ -35,5 +35,5 @@ def test_existing_six_tabs_and_market_filter_semantics_remain():
 def test_release_metadata_is_aligned():
     assert f'MM.version = "{MANIFEST["version"]}"' in CORE
     assert f'## Version: {MANIFEST["version"]}' in TOC
-    assert MANIFEST["version"] == "0.8.8"
+    assert MANIFEST["version"] == "0.9.0"
     assert MANIFEST["file_count"] == len(MANIFEST["files"])

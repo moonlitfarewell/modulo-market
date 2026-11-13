@@ -18,8 +18,8 @@ def test_all_items_retains_existing_six_tabs_without_my_crafts():
 
 def test_inspector_uses_three_structured_cards_inside_existing_right_panel():
     assert "AddInspectorCard(1136, -270, 280, 144)" in UI
-    assert "AddInspectorCard(1136, -422, 280, 152)" in UI
-    assert "AddInspectorCard(1136, -584, 280, 224)" in UI
+    assert "AddInspectorCard(1136, -422, 280, 170)" in UI
+    assert "AddInspectorCard(1136, -602, 280, 206)" in UI
     assert 'UI.marketInfoHeading = AddLabel(frame, "Market Information"' in UI
     assert 'UI.relationshipHeading = AddLabel(frame, "Relationships"' in UI
     assert 'UI.historyHeading = AddLabel(frame, "Market History"' in UI
@@ -28,7 +28,7 @@ def test_inspector_uses_three_structured_cards_inside_existing_right_panel():
 
 def test_relationship_content_is_scrollable_and_not_truncated_to_fixed_panel_height():
     assert 'CreateFrame("ScrollFrame", "ModuloMarketDetailScrollFrame", frame, "UIPanelScrollFrameTemplate")' in UI
-    assert "UI.detailScroll:SetSize(270, 106)" in UI
+    assert "UI.detailScroll:SetSize(270, 124)" in UI
     assert "UI.detailScroll:SetScrollChild(UI.detailScrollChild)" in UI
     assert "UI.detailEconomics:SetWidth(244)" in UI
     assert "UI.detailEconomics.GetStringHeight" in UI
@@ -52,7 +52,7 @@ def test_history_panel_preserves_real_saved_points_and_bottom_anchored_bars():
     assert "MM.db and MM.db.marketHistory" in history
     assert "snapshot.items and snapshot.items[tonumber(item.itemID)]" in history
     assert "Each completed full scan adds a comparison point." in history
-    assert 'UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -96)' in UI
+    assert 'UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -90)' in UI
     assert 'bar:SetPoint("BOTTOMLEFT", UI.historyGraph, "BOTTOMLEFT"' in history
     assert "bar:SetSize(38, height)" in history
 
@@ -83,9 +83,9 @@ def test_existing_opacity_scope_and_whole_window_fade_are_preserved():
 
 
 def test_release_versions_and_manifest_inventory_align():
-    assert 'MM.version = "0.8.8"' in CORE
-    assert '## Version: 0.8.8' in TOC
-    assert MANIFEST["version"] == "0.8.8"
+    assert 'MM.version = "0.9.0"' in CORE
+    assert '## Version: 0.9.0' in TOC
+    assert MANIFEST["version"] == "0.9.0"
     assert "MODULOMARKET-RUNTIME-AUDIT-0.8.3.md" in MANIFEST["files"]
     assert "tests/test_modulomarket_0_8_1_visual_foundation.py" in MANIFEST["files"]
     assert MANIFEST["file_count"] == len(MANIFEST["files"])

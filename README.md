@@ -1,4 +1,17 @@
-# Modulo Market 0.8.8
+# Modulo Market 0.9.0
+
+**Current player milestone:** Combined Dark Foundry visual refinement based on the player's 0.8.9 Forever screenshot. The header's ForeverDB summary is concise while full detail remains available through the status tooltip; dropdown menus suppress stale control tooltips and use tighter option rows; the Relationships inspector gains viewport height; Market History is rebalanced with a smaller graph and retained history text. Six tabs and all existing data, filters, market calculations, scan behavior and SavedVariables remain unchanged. Forever runtime acceptance for 0.9.0 is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.0.md` and `docs/MODULOMARKET-UI-VISUAL-REDESIGN-0.9.0.md`.
+
+## Current 0.9.0 milestone — combined visual refinement
+
+- Header/status: shortened the ForeverDB provenance summary to fit the status rail; the complete provider detail remains available in the existing status tooltip.
+- Dropdowns: hide the dropdown help tooltip as soon as the menu opens and when it closes; option rows are slightly more compact. Selected option, disabled state, popup, and callbacks are unchanged.
+- Inspector: Relationships viewport grows from 106px to 124px. Market History card is reduced from 224px to 206px, with a shorter graph area; history text and four-point graph remain.
+- Preserve the six-tab structure, My Crafts absence, filters, market data, recipes, gathering, calculations, scanning, SavedVariables, dependencies and ForeverDB attribution.
+- The 0.8.9 screenshot is FOREVER OBSERVED evidence for 0.8.9 only. It confirms dropdown colours and shows the long status summary and tooltip/menu overlap; it does not prove 0.9.0 behavior.
+- Offline verification: focused visual regressions 6 PASS; full suite 246 PASS / 61 historical failures with identical failing IDs to 0.8.9; Lua syntax 9/9 PASS. Forever runtime NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.0.md`.
+
+## Historical 0.8.8 milestone — Dark Foundry visual finish
 **Current player milestone:** Dark Foundry visual finish pass for the All Items workspace. 0.8.8 strengthens the shared three-panel surface treatment, fitted panel-header rails, selected/inactive tab contrast, table header band and selected-row emphasis while preserving the 0.8.7 geometry and all market behavior. Six tabs remain; My Crafts remains absent. No recipes, gathering mappings, market calculations, scan behavior, SavedVariables or parent MODULO source changed. Forever runtime acceptance of this visual pass is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.8.8.md`.
 
 ## Current 0.8.8 milestone — Dark Foundry visual finish
