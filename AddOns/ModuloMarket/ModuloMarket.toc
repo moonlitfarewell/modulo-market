@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: Modulo Market
-## Notes: Profession-aware market economics with automatic reagent costs, recipe profit, market valuation and price history.
+## Notes: Auction House economics, profession recipes, materials, Waylaid crate turn-in analysis and price history.
 ## Author: MODULO Project
-## Version: 0.9.9
+## Version: 0.10.0
 ## Category: Modulo By Wells
 ## Group: Modulo
 ## Dependencies: Modulo
@@ -16,5 +16,7 @@ RecipeEngine.lua
 GatheringItems.lua
 ForeverDBData.lua
 ProfessionData.lua
+TurnInData.lua
+TurnInEngine.lua
 MarketUI.lua
 Diagnostics.lua

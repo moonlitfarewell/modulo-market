@@ -49,10 +49,13 @@ local UI = {
         crafts = { key = "profit", ascending = false },
         materials = { key = "name", ascending = true },
         low = { key = "name", ascending = true },
+        turnins = { key = "net", ascending = true },
         history = { key = "change", ascending = false },
     },
     refreshElapsed = 0,
     lowSupplyThreshold = 5,
+    turnInTierFilter = "all",
+    turnInCategoryFilter = "all",
     auctionHouseButtons = {},
     craftingScope = "account",
     tooltipSearchCache = {},
@@ -1188,6 +1191,9 @@ function UI.StartViewBuild()
         source = GetAllCraftSources()
     elseif UI.activeTab == "materials" then
         source = GetMaterialCatalog()
+    elseif UI.activeTab == "turnins" then
+        local turnInPriceIndex = UI.recipeMarketBuildCompatible == false and {} or UI.catalogByID
+        source = MM.TurnInEngine and MM.TurnInEngine.BuildRows(UI.catalog, turnInPriceIndex) or {}
     else
         source = UI.catalog
     end
@@ -1203,6 +1209,8 @@ function UI.StartViewBuild()
         professionFilter = UI.professionFilter,
         itemRoleFilter = UI.itemRoleFilter,
         itemTypeFilter = UI.itemTypeFilter,
+        turnInTierFilter = UI.turnInTierFilter or "all",
+        turnInCategoryFilter = UI.turnInCategoryFilter or "all",
         economicsFilters = {
             crafted = UI.economicsFilters.crafted,
             gathered = UI.economicsFilters.gathered,
@@ -1297,6 +1305,10 @@ local function StepView()
         end
         if type(item) == "table" then
             local matches = MatchesSearch(item, build.query, isCrafting, build.includeTooltip)
+            if matches and build.tab == "turnins" then
+                if build.turnInTierFilter ~= "all" and item.tier ~= build.turnInTierFilter then matches = false end
+                if matches and build.turnInCategoryFilter ~= "all" and item.category ~= build.turnInCategoryFilter then matches = false end
+            end
             if matches == nil and tonumber(item.itemID) then
                 build.pendingTooltipIDs[tonumber(item.itemID)] = true
             end
@@ -1433,8 +1445,12 @@ local function StepView()
         }
         local sortLabel = sort.key == "name" and "name"
             or (sort.key == "price" and (build.tab == "market" and "cheapest price" or "sale price")
+            or (sort.key == "completion" and "completion cost"
+            or (sort.key == "net" and "net cost per Favor"
+            or (sort.key == "favor" and "Favor return"
+            or (sort.key == "reputation" and "reputation return"
             or (sort.key == "depth" and "at-price quantity"
-            or (sort.key == "change" and "price change" or "profit")))
+            or (sort.key == "change" and "price change" or "profit")))))))
         SetStatus(string.format("Sorting all %d %s by %s…", #build.rows,
             (build.tab == "crafts" and "profession crafts") or "items", sortLabel))
         return
@@ -1545,6 +1561,7 @@ function UI.FinishView(rows)
         if UI.detailBadges then UI.detailBadges:SetText("") end
         SetDetailEconomics("No entries match the current filters. Adjust the filters or search to see results.")
     end
+    if UI.activeTab ~= "turnins" and UI.RenderHistory then UI.RenderHistory() end
     UpdateResultRange()
     local provider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
         and MM.ProfessionData.GetFutureProviderStatus()
@@ -1603,6 +1620,15 @@ local function ComesBefore(a, b, key, ascending)
     elseif key == "total" then
         av = tonumber(a.totalQuantity) or math.huge
         bv = tonumber(b.totalQuantity) or math.huge
+    elseif key == "completion" then
+        av = tonumber(a.completionCostCopper) or math.huge
+        bv = tonumber(b.completionCostCopper) or math.huge
+    elseif key == "favor" then
+        av = tonumber(a.rewardFavor) or (ascending and math.huge or -math.huge)
+        bv = tonumber(b.rewardFavor) or (ascending and math.huge or -math.huge)
+    elseif key == "net" then
+        av = tonumber(a.netCostPerFavorCopper) or math.huge
+        bv = tonumber(b.netCostPerFavorCopper) or math.huge
     elseif key == "change" then
         av = tonumber(a.historyDeltaCopper) or (ascending and math.huge or -math.huge)
         bv = tonumber(b.historyDeltaCopper) or (ascending and math.huge or -math.huge)
@@ -1722,6 +1748,66 @@ local function UpdateAllItemsColumnLayout()
     end
 end
 
+local function UpdateTurnInColumnLayout()
+    if UI.activeTab ~= "turnins" or not UI.headerButtons or not UI.headerButtons[6] then return end
+    local function measured(fs, fallback)
+        local width = fs and type(fs.GetStringWidth) == "function" and fs:GetStringWidth() or 0
+        return math.max(fallback, tonumber(width) or 0)
+    end
+    local widths = {
+        completion = measured(UI.headerButtons[2] and UI.headerButtons[2].label, 116),
+        cash = measured(UI.headerButtons[3] and UI.headerButtons[3].label, 86),
+        favor = measured(UI.headerButtons[4] and UI.headerButtons[4].label, 58),
+        reputation = measured(UI.headerButtons[5] and UI.headerButtons[5].label, 80),
+        net = measured(UI.headerButtons[6] and UI.headerButtons[6].label, 118),
+    }
+    for i = 1, math.min(UI.visibleCount or #(UI.rows or {}), #(UI.rows or {})) do
+        local row = UI.rows[i]
+        if row and UI.visibleRows and UI.visibleRows[i] then
+            widths.completion = math.max(widths.completion, measured(row.price, 116))
+            widths.cash = math.max(widths.cash, measured(row.depth, 86))
+            widths.favor = math.max(widths.favor, measured(row.atPrice, 58))
+            widths.reputation = math.max(widths.reputation, measured(row.total, 80))
+            widths.net = math.max(widths.net, measured(row.profit, 118))
+        end
+    end
+    widths.completion = math.min(142, widths.completion + 12)
+    widths.cash = math.min(106, widths.cash + 10)
+    widths.favor = math.min(72, widths.favor + 10)
+    widths.reputation = math.min(100, widths.reputation + 10)
+    widths.net = math.min(150, widths.net + 12)
+    local right, gap, pad = 796, 6, 8
+    local xNet = right - pad - widths.net
+    local xRep = xNet - gap - widths.reputation
+    local xFavor = xRep - gap - widths.favor
+    local xCash = xFavor - gap - widths.cash
+    local xCompletion = xCash - gap - widths.completion
+    local nameWidth = math.max(78, xCompletion - gap - 27)
+    local columns = {
+        {x=302,w=nameWidth+12,justify="LEFT"},
+        {x=298+xCompletion,w=widths.completion,justify="RIGHT"},
+        {x=298+xCash,w=widths.cash,justify="RIGHT"},
+        {x=298+xFavor,w=widths.favor,justify="RIGHT"},
+        {x=298+xRep,w=widths.reputation,justify="RIGHT"},
+        {x=298+xNet,w=widths.net,justify="RIGHT"},
+    }
+    for i, column in ipairs(columns) do
+        local header = UI.headerButtons[i]
+        header:ClearAllPoints(); header:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", column.x, -218)
+        header:SetWidth(column.w); header.label:SetWidth(math.max(1, column.w - (i == 1 and 4 or 12)))
+        header.label:SetJustifyH(column.justify)
+    end
+    for _, row in ipairs(UI.rows or {}) do
+        row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(nameWidth)
+        row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", xCompletion, 0); row.price:SetWidth(widths.completion)
+        row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", xCash, 0); row.depth:SetWidth(widths.cash)
+        row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", xFavor, 0); row.atPrice:SetWidth(widths.favor)
+        row.total:ClearAllPoints(); row.total:SetPoint("LEFT", row, "LEFT", xRep, 0); row.total:SetWidth(widths.reputation)
+        row.profit:ClearAllPoints(); row.profit:SetPoint("LEFT", row, "LEFT", xNet, 0); row.profit:SetWidth(widths.net)
+        row.total:Show(); row.profit:Show()
+    end
+end
+
 function UI.RenderRows()
     -- Item-data callbacks may arrive while ProfessionMaster is initializing,
     -- before CreateUI has populated the virtual row pool. An empty table is
@@ -1761,7 +1847,18 @@ function UI.RenderRows()
                 button.rowShade:Show()
             end
             local profitText = "—"
-            if isCrafting then
+            if UI.activeTab == "turnins" and item.turnIn then
+                button.name:SetText(GetItemDisplayName(item))
+                button.price:SetText(item.completionCostCopper and FormatMoney(item.completionCostCopper) or "Incomplete")
+                button.depth:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper) or "Unknown")
+                button.atPrice:SetText(item.rewardFavor ~= nil and tostring(item.rewardFavor) or "Unknown")
+                button.total:SetText(item.reputation ~= nil and tostring(item.reputation) or "Unknown")
+                profitText = item.netCostPerFavorCopper ~= nil
+                    and FormatMoney(item.netCostPerFavorCopper) or "—"
+                if button.statusMarker then button.statusMarker:Hide() end
+                if button.total then button.total:Show() end
+                if button.profit then button.profit:Show() end
+            elseif isCrafting then
                 local status = GetCraftSourceStatus(item)
                 local color = status == "known" and "|cff8ee6a2"
                     or (status == "learnable" and "|cffffd77a"
@@ -1912,6 +2009,7 @@ function UI.RenderRows()
         end
     end
     if UI.activeTab == "market" then UpdateAllItemsColumnLayout() end
+    if UI.activeTab == "turnins" then UpdateTurnInColumnLayout() end
     UpdateResultRange()
 end
 
@@ -2361,6 +2459,45 @@ end
 
 SelectItem = function(item)
     if not item then return end
+    if item.turnIn then
+        UI.selectedItem = item
+        UI.selectedByTab[UI.activeTab] = { itemID = tonumber(item.itemID) }
+        UI.detailHeading:SetText("Selected Turn-In")
+        UI.detailName:SetText(GetItemDisplayName(item))
+        UI.detailIcon:SetTexture(GetItemIcon(item.itemID)); UI.detailIcon:Show()
+        UI.detailBadges:SetText(string.upper(tostring(item.tier)) .. "  ·  " .. string.upper(tostring(item.category)))
+        UI.detailVariants:SetText(tostring(#(item.bundleAlternatives or {})) .. " accepted bundles · Reputation " .. tostring(item.reputation or "UNKNOWN"))
+        UI.marketInfoHeading:SetText("Turn-In Economics")
+        UI.detailProfitLabel:SetText("NET COST / FAVOR")
+        UI.detailPrice:SetText(item.completionCostCopper and FormatMoney(item.completionCostCopper) or "Incomplete")
+        UI.detailSupply:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper) or "Unknown")
+        UI.detailAtPrice:SetText(item.rewardFavor ~= nil and tostring(item.rewardFavor) or "Unknown")
+        UI.detailProfit:SetText(item.netCostPerFavorCopper ~= nil and FormatMoney(item.netCostPerFavorCopper) or "—")
+        UI.relationshipHeading:SetText("Required Bundles")
+        local lines = {}
+        lines[#lines+1] = "CRATE PURCHASE"
+        lines[#lines+1] = item.cratePriceCopper and ("1 × " .. FormatMoney(item.cratePriceCopper)) or ("Unavailable: " .. tostring(item.cratePriceReason or "no current listing"))
+        lines[#lines+1] = ""
+        lines[#lines+1] = "MATERIAL OPTIONS (choose one)"
+        for i, alternative in ipairs(item.bundleAlternatives or {}) do
+            local cost = alternative.complete and FormatMoney(alternative.costCopper) or "Incomplete / unknown"
+            lines[#lines+1] = string.format("Option %d · %s", i, cost)
+            for _, reagent in ipairs(alternative.lines or {}) do
+                local detail = reagent.lineCostCopper and FormatMoney(reagent.lineCostCopper)
+                    or (reagent.reason or "Price unavailable")
+                lines[#lines+1] = string.format("  %s × %d · %s", reagent.itemName, reagent.quantity, detail)
+            end
+        end
+        lines[#lines+1] = ""
+        lines[#lines+1] = "REWARDS"
+        lines[#lines+1] = item.rewardFavor ~= nil and (tostring(item.rewardFavor) .. " Merchant's Favor") or "Merchant's Favor: UNKNOWN"
+        lines[#lines+1] = item.cashReturnCopper ~= nil and (FormatMoney(item.cashReturnCopper) .. " cash") or "Cash return: UNKNOWN"
+        lines[#lines+1] = "Reputation per crate: " .. tostring(item.reputation or "UNKNOWN") .. " (reported)"
+        lines[#lines+1] = "The first Shipping Label quest is a separate one-time reward: 50 Favor + 2,000 reputation. Not included above."
+        lines[#lines+1] = "Performance Bonus is not assumed."
+        SetDetailEconomics(table.concat(lines, "\n"))
+        return
+    end
     UI.selectedItem = item
     UI.selectedByTab[UI.activeTab] = { itemID = tonumber(item.itemID), recipeKey = item.recipeKey }
     UI.detailName:SetText(item.recipeData and GetItemName(item) or GetItemDisplayName(item))
@@ -2730,7 +2867,7 @@ local function SetTab(tab)
     if UI.search then UI.search:SetText(saved.search or "") end
     local tabTitle = tab == "market" and "All Items"
         or (tab == "crafts" and "Crafts"
-        or (tab == "low" and "Low Supply" or tab:gsub("^%l", string.upper)))
+        or (tab == "turnins" and "Turn-Ins" or (tab == "low" and "Low Supply" or tab:gsub("^%l", string.upper))))
     if UI.centerHeading then UI.centerHeading:SetText(tabTitle) end
     if UI.filterHeading then UI.filterHeading:SetText("Filters — " .. tabTitle) end
     if UI.professionDropdown and UI.professionDropdown.RefreshText then UI.professionDropdown.RefreshText() end
@@ -2769,6 +2906,9 @@ local function SetTab(tab)
     elseif tab == "low" then
         labels = { "Item", "Cheapest", "At Price", "Total Units", "Listings", "Best Craft Profit" }
         keys = { "name", "price", "depth", "total", "total", "profit" }
+    elseif tab == "turnins" then
+        labels = { "Waylaid Crate", "Completion Cost", "Cash Return", "Favor", "Reputation", "Net Cost / Favor" }
+        keys = { "name", "completion", "price", "favor", "reputation", "net" }
     elseif tab == "history" then
         labels = { "Item", "Cheapest", "Price Change", "Latest Units", "Total", "Best Craft Profit" }
         keys = { "name", "price", "change", "total", "total", "profit" }
@@ -2859,6 +2999,8 @@ local function SetTab(tab)
         end
     elseif tab == "market" then
         UpdateAllItemsColumnLayout()
+    elseif tab == "turnins" then
+        UpdateTurnInColumnLayout()
     else
         local marketColumns = {
             { x = 302, w = 205, justify = "LEFT" },
@@ -2884,16 +3026,32 @@ local function SetTab(tab)
             row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(176)
         end
     end
+    local showTurnInFilters = tab == "turnins"
+    if UI.searchLabel then UI.searchLabel:SetText(showTurnInFilters and "Search crate / material" or "Search") end
+    if UI.professionLabel then if showTurnInFilters then UI.professionLabel:Hide() else UI.professionLabel:Show() end end
+    if UI.professionDropdown then if showTurnInFilters then UI.professionDropdown:Hide() else UI.professionDropdown:Show() end end
     if UI.roleLabel then
         UI.roleLabel:SetText(craftTab and "Recipe status"
             or (tab == "materials" and "Material relationship" or "Item role"))
+        if showTurnInFilters then UI.roleLabel:Hide() else UI.roleLabel:Show() end
     end
     UpdateHeaderIndicators()
 
     if UI.roleDropdown then
         UI.roleDropdown:Enable()
+        if showTurnInFilters then UI.roleDropdown:Hide() else UI.roleDropdown:Show() end
         if UI.roleDropdown.RefreshText then UI.roleDropdown.RefreshText() end
     end
+    if UI.craftingScopeLabel then if showTurnInFilters then UI.craftingScopeLabel:Hide() else UI.craftingScopeLabel:Show() end end
+    if UI.craftingScopeDropdown then if showTurnInFilters then UI.craftingScopeDropdown:Hide() else UI.craftingScopeDropdown:Show() end end
+    for _, control in ipairs({UI.recipeDataLabel, UI.recipeDataState, UI.reviewDataLabel}) do
+        if control then if showTurnInFilters then control:Hide() else control:Show() end end
+    end
+    for _, control in ipairs({UI.turnInTierLabel, UI.turnInTierDropdown, UI.turnInCategoryLabel, UI.turnInCategoryDropdown, UI.turnInInfo}) do
+        if control then if showTurnInFilters then control:Show() else control:Hide() end end
+    end
+    if UI.turnInTierDropdown and UI.turnInTierDropdown.RefreshText then UI.turnInTierDropdown.RefreshText() end
+    if UI.turnInCategoryDropdown and UI.turnInCategoryDropdown.RefreshText then UI.turnInCategoryDropdown.RefreshText() end
     local showItemTypeFilter = tab == "market"
     if UI.itemTypeLabel then
         if showItemTypeFilter then UI.itemTypeLabel:Show() else UI.itemTypeLabel:Hide() end
@@ -2936,7 +3094,7 @@ local function SetTab(tab)
             if showMarketQuickFilters then control.label:Show() else control.label:Hide() end
         end
     end
-    if UI.detailHeading then UI.detailHeading:SetText(craftTab and "Selected Recipe" or "Selected Item") end
+    if UI.detailHeading then UI.detailHeading:SetText(tab == "turnins" and "Selected Turn-In" or (craftTab and "Selected Recipe" or "Selected Item")) end
     if UI.detailName then UI.detailName:SetText("Loading selection…") end
     if UI.detailIcon then UI.detailIcon:Hide() end
     if UI.detailBadges then UI.detailBadges:SetText("") end
@@ -2944,21 +3102,37 @@ local function SetTab(tab)
     if UI.detailSupply then UI.detailSupply:SetText("—") end
     if UI.detailVariants then UI.detailVariants:SetText("") end
     if UI.marketInfoHeading then
-        UI.marketInfoHeading:SetText(craftTab and "Craft Economics" or "Market Information")
+        UI.marketInfoHeading:SetText(tab == "turnins" and "Turn-In Economics" or (craftTab and "Craft Economics" or "Market Information"))
     end
     if UI.relationshipHeading then
-        UI.relationshipHeading:SetText(craftTab and "Recipe Details" or "Relationships")
+        UI.relationshipHeading:SetText(tab == "turnins" and "Required Bundles" or (craftTab and "Recipe Details" or "Relationships"))
     end
+    if UI.detailPriceLabel then UI.detailPriceLabel:SetText(tab == "turnins" and "COMPLETION COST" or "SALE PRICE / UNIT") end
+    if UI.detailSupplyLabel then UI.detailSupplyLabel:SetText(tab == "turnins" and "CASH RETURN" or "TOTAL LISTED") end
+    if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(tab == "turnins" and "MERCHANT'S FAVOR" or "AT PRICE") end
     if UI.detailProfitLabel then
-        UI.detailProfitLabel:SetText(craftTab and "PROFIT / CRAFT" or "BEST CRAFT PROFIT")
+        UI.detailProfitLabel:SetText(tab == "turnins" and "NET COST / FAVOR" or (craftTab and "PROFIT / CRAFT" or "BEST CRAFT PROFIT"))
     end
     if UI.detailProfit then UI.detailProfit:SetText("—") end
-    SetDetailEconomics(craftTab
+    SetDetailEconomics(tab == "turnins"
+        and "Select a Waylaid Crate to compare its Auction House price, the cheapest fully priced material option, cash return and Merchant's Favor. Unknown values are never estimated."
+        or (craftTab
         and ("All supported recipes. Known, learnable and unavailable recipes are grouped by your professions.")
         or (tab == "materials" and "Materials used by known and supported unlearned recipes."
-            or "Select an item to inspect its market, vendor value and recipe relationships."))
+            or "Select an item to inspect its market, vendor value and recipe relationships.")))
+    if UI.historyHeading then UI.historyHeading:SetText(tab == "turnins" and "Turn-In Notes" or "Market History") end
     if UI.historyGraph then
+        if tab == "turnins" then UI.historyGraph:Hide() else UI.historyGraph:Show() end
         for _, bar in ipairs(UI.historyBars or {}) do bar:Hide() end
+    end
+    if UI.historyText then
+        if tab == "turnins" then
+            UI.historyText:SetHeight(158)
+            UI.historyText:SetText("Crates pay Merchant's Favor and cash, but no reputation. The first Shipping Label quest is separate: +50 Favor and +2,000 reputation once. Artisan rewards remain unknown. Performance Bonus is not included.")
+        else
+            UI.historyText:SetHeight(54)
+            UI.historyText:SetText("Select an item to compare saved prices.")
+        end
     end
     UI.StartViewBuild()
 end
@@ -3110,7 +3284,7 @@ local function CreateUI()
         { "economics", "Economics", 194 },
         { "crafts", "Crafts", 194 },
         { "materials", "Materials", 194 },
-        { "low", "Low Supply", 194 },
+        { "turnins", "Turn-Ins", 194 },
         { "history", "History", 194 },
     }
     local tabX = 22
@@ -3158,6 +3332,8 @@ local function CreateUI()
             button.tooltipText = "Items used as reagents by known or supported unlearned recipes, with their market value and recipe relationships."
         elseif key == "low" then
             button.tooltipText = "Low-supply items, including crafting materials. Supply thresholds adjust for materials and stackable goods."
+        elseif key == "turnins" then
+            button.tooltipText = "Compare every Waylaid Crate by its Auction House completion cost, cash return and Merchant's Favor income."
         elseif key == "history" then
             button.tooltipText = "Compare recent saved market prices and supply. Each completed full scan adds a point."
         end
@@ -3257,7 +3433,7 @@ local function CreateUI()
     tableHeaderBottom:SetPoint("BOTTOMLEFT", tableHeaderBand, "BOTTOMLEFT", 0, 0)
     tableHeaderBottom:SetPoint("BOTTOMRIGHT", tableHeaderBand, "BOTTOMRIGHT", 0, 0)
     tableHeaderBottom:SetHeight(1)
-    AddLabel(frame, "Search", 30, -198, 230, 18, "GameFontNormal")
+    UI.searchLabel = AddLabel(frame, "Search", 30, -198, 230, 18, "GameFontNormal")
     UI.search = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
     UI.search:SetSize(230, 24)
     UI.search:SetPoint("TOPLEFT", frame, "TOPLEFT", 32, -220)
@@ -3477,6 +3653,28 @@ local function CreateUI()
     end
     UI.tabFilterState[UI.activeTab] = { search = "", profession = 0, role = "all" }
     UI.tabFilterState[UI.activeTab].craftFilters = {}
+    UI.turnInTierLabel = AddLabel(frame, "Crate tier", 30, -252, 230, 18, "GameFontNormal")
+    UI.turnInTierDropdown = CreateDropdown(frame, 230, 32, -284,
+        function() return {
+            { text="All tiers", value="all" }, { text="Apprentice", value="Apprentice" },
+            { text="Journeyman", value="Journeyman" }, { text="Expert", value="Expert" },
+            { text="Artisan", value="Artisan" },
+        } end,
+        function() return UI.turnInTierFilter or "all" end,
+        function(value) UI.turnInTierFilter = value or "all"; UI.StartViewBuild() end)
+    UI.turnInCategoryLabel = AddLabel(frame, "Crate category", 30, -334, 230, 18, "GameFontNormal")
+    UI.turnInCategoryDropdown = CreateDropdown(frame, 230, 32, -366,
+        function() return {
+            { text="All categories", value="all" }, { text="Herbs", value="Herbs" },
+            { text="Ore", value="Ore" }, { text="Textiles", value="Textiles" },
+            { text="Curiosities", value="Curiosities" }, { text="Fabrics", value="Fabrics" },
+            { text="Ingots", value="Ingots" }, { text="Parts", value="Parts" },
+        } end,
+        function() return UI.turnInCategoryFilter or "all" end,
+        function(value) UI.turnInCategoryFilter = value or "all"; UI.StartViewBuild() end)
+    UI.turnInInfo = AddLabel(frame, "All 30 labelled crates remain visible. Prices require enough units at the cheapest listed price; deeper price levels are not guessed.", 30, -410, 230, 72, "GameFontHighlightSmall")
+    UI.turnInInfo:SetWordWrap(true)
+    if UI.turnInInfo.SetNonSpaceWrap then UI.turnInInfo:SetNonSpaceWrap(true) end
     UI.resultCount = AddLabel(frame, "", 990, -166, 116, 20, "GameFontNormalSmall")
     UI.resultCount:SetWordWrap(false)
     UI.resultCount:SetJustifyH("RIGHT")
@@ -3707,11 +3905,11 @@ local function CreateUI()
         return value
     end
     UI.marketInfoHeading = AddLabel(frame, "Market Information", 1142, -278, 268, 22, "GameFontNormalLarge")
-    AddDetailRowLabel("SALE PRICE / UNIT", 1142, -304, 128)
+    UI.detailPriceLabel = AddDetailRowLabel("SALE PRICE / UNIT", 1142, -304, 128)
     UI.detailPrice = AddDetailRowValue("—", 1274, -304, 132)
-    AddDetailRowLabel("TOTAL LISTED", 1142, -328, 128)
+    UI.detailSupplyLabel = AddDetailRowLabel("TOTAL LISTED", 1142, -328, 128)
     UI.detailSupply = AddDetailRowValue("—", 1274, -328, 132)
-    AddDetailRowLabel("AT PRICE", 1142, -352, 128)
+    UI.detailAtPriceLabel = AddDetailRowLabel("AT PRICE", 1142, -352, 128)
     UI.detailAtPrice = AddDetailRowValue("—", 1274, -352, 132)
     UI.detailProfitLabel = AddDetailRowLabel("BEST CRAFT PROFIT", 1142, -376, 128)
     UI.detailProfit = AddDetailRowValue("—", 1274, -376, 132)
