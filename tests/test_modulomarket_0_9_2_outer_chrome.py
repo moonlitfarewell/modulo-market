@@ -8,16 +8,10 @@ TOC = (ROOT / "AddOns/ModuloMarket/ModuloMarket.toc").read_text(encoding="utf-8"
 MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
-def test_release_versions_align():
-    assert 'MM.version = "0.9.2"' in CORE
-    assert "## Version: 0.9.2" in TOC
-    assert MANIFEST["version"] == "0.9.2"
-
-
-def test_outer_template_chrome_is_hidden_without_removing_template_controls():
+def test_native_template_chrome_is_restored_without_custom_outer_bevel():
     assert 'CreateFrame("Frame", "ModuloMarketMainFrame", UIParent, "BasicFrameTemplateWithInset")' in UI
-    assert 'for _, chromeKey in ipairs({ "NineSlice", "Inset", "TitleBg", "TopTileStreaks" }) do' in UI
-    assert 'if chrome and chrome.Hide then chrome:Hide() end' in UI
+    assert 'for _, chromeKey in ipairs({ "NineSlice", "Inset", "TitleBg", "TopTileStreaks" }) do' not in UI
+    assert 'frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -18)' in UI
     assert 'frame.TitleText:SetText("Modulo Market")' in UI
 
 

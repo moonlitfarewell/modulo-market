@@ -2882,12 +2882,9 @@ end
 local function CreateUI()
     if UI.frame then return UI.frame end
     local frame = CreateFrame("Frame", "ModuloMarketMainFrame", UIParent, "BasicFrameTemplateWithInset")
-    -- Keep the template's functional close control and title text, but remove its
-    -- decorative perimeter/inset chrome. ModuloMarket draws its own inner panels.
-    for _, chromeKey in ipairs({ "NineSlice", "Inset", "TitleBg", "TopTileStreaks" }) do
-        local chrome = frame[chromeKey]
-        if chrome and chrome.Hide then chrome:Hide() end
-    end
+    -- Use Blizzard's native frame chrome and title strip. The custom gold
+    -- perimeter bevel is intentionally omitted; inner ModuloMarket panels
+    -- retain their own borders.
     frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
     frame:SetClampedToScreen(true)
@@ -2909,28 +2906,11 @@ local function CreateUI()
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-    local titlePlate = frame:CreateTexture(nil, "BACKGROUND")
-    titlePlate:SetColorTexture(0.028, 0.020, 0.009, 1)
-    titlePlate:SetPoint("TOP", frame, "TOP", 0, -2)
-    titlePlate:SetSize(340, 36)
-    AddBevelBorder(frame, 560, -2, 340, 36, "plaque", "BORDER")
-    local titleInner = frame:CreateTexture(nil, "ARTWORK")
-    titleInner:SetColorTexture(0.16, 0.105, 0.035, 0.28)
-    titleInner:SetPoint("TOPLEFT", titlePlate, "TOPLEFT", 5, -5)
-    titleInner:SetPoint("BOTTOMRIGHT", titlePlate, "BOTTOMRIGHT", -5, 5)
-    local titleAccentLeft = frame:CreateTexture(nil, "ARTWORK")
-    titleAccentLeft:SetColorTexture(0.86, 0.67, 0.29, 0.95)
-    titleAccentLeft:SetSize(5, 5)
-    titleAccentLeft:SetPoint("LEFT", titlePlate, "LEFT", 8, 0)
-    local titleAccentRight = frame:CreateTexture(nil, "ARTWORK")
-    titleAccentRight:SetColorTexture(0.86, 0.67, 0.29, 0.95)
-    titleAccentRight:SetSize(5, 5)
-    titleAccentRight:SetPoint("RIGHT", titlePlate, "RIGHT", -8, 0)
     AddInsetSurface(frame, 18, -30, 1424, 78, {0.018, 0.016, 0.012, 0.86})
     AddBevelBorder(frame, 18, -30, 1424, 78, "panel", "BORDER")
     frame.TitleText:ClearAllPoints()
-    frame.TitleText:SetPoint("CENTER", titlePlate, "CENTER", 0, 0)
-    frame.TitleText:SetSize(310, 28)
+    frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -18)
+    frame.TitleText:SetSize(360, 28)
     frame.TitleText:SetText("Modulo Market")
     if frame.TitleText.SetFontObject then frame.TitleText:SetFontObject("GameFontNormalLarge") end
     if frame.TitleText.SetTextColor then frame.TitleText:SetTextColor(1, 0.82, 0.12) end

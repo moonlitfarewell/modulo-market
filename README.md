@@ -1,8 +1,21 @@
-# Modulo Market 0.9.2
+# Modulo Market 0.9.3
 
-**Current player milestone:** Outer-window chrome reduction. The BasicFrameTemplateWithInset perimeter/inset/title decorations and custom full-window bevel are hidden/removed; the title and close control remain. All inner panel, tab, filter, table, dropdown, inspector and history borders are preserved. The 0.9.1 dropdown lifecycle fix is unchanged and player-confirmed working. 0.9.2 visual runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.2.md` and `docs/MODULOMARKET-UI-OUTER-CHROME-0.9.2.md`.
+**Current player milestone:** Corrected the main window to use Blizzard's native frame background and title strip. The custom centered title plaque is removed; “Modulo Market” is centered in the native title region. The additional thin-gold full-window perimeter bevel remains absent, while internal panel/control borders are preserved. The 0.9.1 dropdown lifecycle correction remains. No market/data behavior changed. 0.9.3 Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.3.md` and `docs/MODULOMARKET-UI-NATIVE-WINDOW-CHROME-0.9.3.md`.
 
-## Current 0.9.2 milestone — outer window chrome reduction
+## Current 0.9.3 milestone — Blizzard-native window chrome
+
+- Restore the `BasicFrameTemplateWithInset` frame background and title strip by leaving NineSlice, Inset, TitleBg and TopTileStreaks visible.
+- Remove the custom centered title plaque, tint, side accents and plaque bevel.
+- Center the title in the native title region and retain the native close control.
+- Keep the extra custom full-window gold perimeter bevel removed; preserve all internal panel/control borders.
+- Preserve six tabs, dropdown lifecycle fix, market calculations, scanning, recipes, gathering, SavedVariables and data provenance.
+- 0.9.2 screenshots are FOREVER OBSERVED for 0.9.2 only. 0.9.3 runtime acceptance NOT RUN.
+
+# Modulo Market 0.9.3
+
+**Historical 0.9.2 milestone:** Outer-window chrome reduction. The BasicFrameTemplateWithInset perimeter/inset/title decorations and custom full-window bevel are hidden/removed; the title and close control remain. All inner panel, tab, filter, table, dropdown, inspector and history borders are preserved. The 0.9.1 dropdown lifecycle fix is unchanged and player-confirmed working. 0.9.2 visual runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.2.md` and `docs/MODULOMARKET-UI-OUTER-CHROME-0.9.2.md`.
+
+## Historical 0.9.2 milestone — outer window chrome reduction
 
 - Hide template `NineSlice`, `Inset`, `TitleBg` and `TopTileStreaks` regions when present; retain the title text and functional close control.
 - Remove the custom full-window outer bevel.
