@@ -17,8 +17,10 @@ def test_release_versions_and_runtime_build_agree():
     assert MANIFEST["version"] == CORE.split('MM.version = "', 1)[1].split('"', 1)[0]
     assert f'MM.version = "{MANIFEST["version"]}"' in CORE
     assert f"## Version: {MANIFEST['version']}" in TOC
-    assert CANONICAL["client_build"] == "1.60.1.70888"
-    assert '["clientBuild"]="1.60.1.70888"' in DATA
+    assert CANONICAL["client_build"] == "1.60.1.70888"  # retained historical canonical
+    active = json.loads((ROOT / "data/ForeverDB-Canonical-1.60.1.70938.json").read_text())
+    assert active["client_build"] == "1.60.1.70938"
+    assert '["clientBuild"]="1.60.1.70938"' in DATA
 
 def test_historical_baseline_is_preserved_and_catalogue_identity_stable():
     assert OLD["client_build"] == "1.60.1.70862"

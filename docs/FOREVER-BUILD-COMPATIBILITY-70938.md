@@ -101,3 +101,7 @@ Offline tests and package verification are recorded in the release handoff and f
 8. Check that the 0.8.4 graphical appearance remains unchanged.
 
 **FOREVER RUNTIME:** `/mmcompat` NOT RUN; 70938 Full Market rescan NOT RUN; craft-profitability recovery NOT RUN. The user screenshot is **FOREVER OBSERVED** for the 0.8.4 All Items screen only.
+
+
+## 2026-11-13 catalogue reconciliation addendum (ModuloMarket 0.8.6)
+The complete 2026-11-13 ForeverDB capture for client build 1.60.1.70938 is now normalized and validated. It contains 2,493 recipes across all 12 professions; per-profession captured totals match reported totals and no pagination shape is unknown. Compared with 70888, recipe additions/removals/changed records are all zero. The bundled catalogue provenance advances to 70938; this does not change the independent Full Market snapshot gate. See `FOREVERDB-DATA-REVIEW-2026-11-13.md`. Runtime acceptance remains NOT RUN.

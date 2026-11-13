@@ -1,4 +1,4 @@
--- Offline read-only compatibility diagnostic harness for ModuloMarket 0.8.5.
+-- Offline read-only compatibility diagnostic harness for ModuloMarket 0.8.6.
 _G.C_TradeSkillUI = {}
 _G.C_AuctionHouse = {
     SendBrowseQuery = function() end,
@@ -36,7 +36,7 @@ local snapshot = {
     rows = {},
 }
 local MM = {
-    version = "0.8.5",
+    version = "0.8.6",
     db = { lastMarketSnapshot = snapshot },
     Scanner = {},
     Print = function() end,
@@ -74,4 +74,4 @@ assert(report:find("NO REQUESTS SENT", 1, true), "read-only declaration missing"
 assert(report:find("choose Update Full Market, confirm the full scan", 1, true), "rescan instructions missing")
 assert(report:find("previous complete snapshot is retained", 1, true), "transactional snapshot note missing")
 assert(not report:find("PROFESSION SKILL-LINE ENUMERATION", 1, true), "compat report should not enumerate professions")
-print("ModuloMarket 0.8.5 build compatibility harness PASS")
+print("ModuloMarket 0.8.6 build compatibility harness PASS")

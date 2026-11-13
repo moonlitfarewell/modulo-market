@@ -73,9 +73,9 @@ def test_visual_redesign_preserves_behavioral_boundaries_and_release_alignment()
     assert "function UI.RefreshActions()" in UI
     assert "function UI.StartViewBuild()" in UI
     assert "function UI.RenderRows()" in UI
-    assert 'MM.version = "0.8.5"' in CORE
-    assert '## Version: 0.8.5' in TOC
-    assert MANIFEST["version"] == "0.8.5"
+    assert 'MM.version = "0.8.6"' in CORE
+    assert '## Version: 0.8.6' in TOC
+    assert MANIFEST["version"] == "0.8.6"
     assert "MODULOMARKET-RUNTIME-AUDIT-0.8.4.md" in MANIFEST["files"]
     assert "tests/test_modulomarket_0_8_4_visual_redesign.py" in MANIFEST["files"]
     assert MANIFEST["file_count"] == len(MANIFEST["files"])

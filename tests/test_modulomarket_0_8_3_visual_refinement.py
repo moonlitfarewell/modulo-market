@@ -90,9 +90,9 @@ def test_existing_six_tabs_and_market_engine_boundaries_remain_unchanged():
 
 
 def test_release_versions_and_manifest_inventory_align():
-    assert 'MM.version = "0.8.5"' in CORE
-    assert '## Version: 0.8.5' in TOC
-    assert MANIFEST["version"] == "0.8.5"
+    assert 'MM.version = "0.8.6"' in CORE
+    assert '## Version: 0.8.6' in TOC
+    assert MANIFEST["version"] == "0.8.6"
     assert "MODULOMARKET-RUNTIME-AUDIT-0.8.3.md" in MANIFEST["files"]
     assert "tests/test_modulomarket_0_8_3_visual_refinement.py" in MANIFEST["files"]
     assert MANIFEST["file_count"] == len(MANIFEST["files"])

@@ -57,9 +57,9 @@ def test_automatic_capture_and_snapshot_schema_are_unchanged():
 
 
 def test_release_metadata_alignment_and_manifest_inventory():
-    assert '## Version: 0.8.5' in TOC
-    assert 'MM.version = "0.8.5"' in CORE
-    assert MANIFEST["version"] == "0.8.5"
+    assert '## Version: 0.8.6' in TOC
+    assert 'MM.version = "0.8.6"' in CORE
+    assert MANIFEST["version"] == "0.8.6"
     assert "MODULOMARKET-RUNTIME-AUDIT-0.8.3.md" in MANIFEST["files"]
     assert "tests/test_modulomarket_0_8_0_status_integrity.py" in MANIFEST["files"]
     assert MANIFEST["file_count"] == len(MANIFEST["files"])

@@ -20,3 +20,14 @@ See `docs/FOREVERDB-DATA-REVIEW-2026-11-11.md` for field mappings, evidence clas
 - `ForeverDB-Canonical-1.60.1.70888.json` is the active 12 November normalized capture and current runtime source for ModuloMarket 0.6.1.
 - The active `AddOns/ModuloMarket/ForeverDBData.lua` is generated from the 70888 canonical file with the 0.2.3 `compile-runtime` command. The runtime metadata preserves provider URL, retrieval timestamp, manifest hash and exact source build.
 - The raw capture archive is not distributed in the GitHub update; its hash, request inventory and review are recorded in `docs/FOREVERDB-DATA-REVIEW-2026-11-12.md`.
+
+
+## Canonical build history — 13 November 2026
+
+- `ForeverDB-Canonical-1.60.1.70862.json` remains the historical 11 November baseline.
+- `ForeverDB-Canonical-1.60.1.70888.json` remains the historical 12 November canonical capture.
+- `ForeverDB-Canonical-1.60.1.70938.json` is the validated 13 November capture and active runtime source for ModuloMarket 0.8.6.
+- Raw capture `capture-20261113-105521.zip` is retained outside the public repository. Its SHA-256, complete manifest, response hashes and request inventory are recorded in `docs/FOREVERDB-DATA-REVIEW-2026-11-13.md`.
+- The 70938 canonical capture contains the same 2,493 recipe records as 70888: zero additions, removals or changed recipe records across all 12 professions. The provider build metadata changed; the recipe catalogue content did not.
+- `AddOns/ModuloMarket/ForeverDBData.lua` was regenerated from the 70938 canonical JSON using the embedded repository compiler. The complete profession runtime payload is semantically identical to the 70888 runtime payload; only provider/client build and capture provenance metadata advance.
+- Auction snapshot exact-build compatibility remains independent and fail-closed. The 70938 auction snapshot is a separately refreshed player SavedVariables asset, not bundled recipe data.
