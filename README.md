@@ -1,8 +1,20 @@
+# Modulo Market 0.9.4
+
+**Current player milestone:** Increased the native Blizzard title strip to 38 px, recentered and resized the title text to fit, and removed only the vertical one-pixel strokes between adjacent tabs. Tab top/bottom accents, backgrounds, selected markers, all inner panel borders, native frame chrome and dropdown lifecycle behavior are retained. No market/data behavior changed. 0.9.4 Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.4.md` and `docs/MODULOMARKET-UI-TITLE-TABS-0.9.4.md`.
+
+## Current 0.9.4 milestone — title strip and tab separation
+
+- Native TitleBg height set to 38 px; title centred at -19 px with a 280x24 text region.
+- Remove tab left/right one-pixel strokes; keep top/bottom strokes, backgrounds, hover and selected marker.
+- Preserve all inner panel borders and the 0.9.3 native frame treatment.
+- No market calculations, scans, data, SavedVariables, dependencies or parent MODULO changes.
+- Forever runtime acceptance NOT RUN for 0.9.4.
+
 # Modulo Market 0.9.3
 
-**Current player milestone:** Corrected the main window to use Blizzard's native frame background and title strip. The custom centered title plaque is removed; “Modulo Market” is centered in the native title region. The additional thin-gold full-window perimeter bevel remains absent, while internal panel/control borders are preserved. The 0.9.1 dropdown lifecycle correction remains. No market/data behavior changed. 0.9.3 Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.3.md` and `docs/MODULOMARKET-UI-NATIVE-WINDOW-CHROME-0.9.3.md`.
+**Historical 0.9.3 milestone:** Corrected the main window to use Blizzard's native frame background and title strip. The custom centered title plaque is removed; “Modulo Market” is centered in the native title region. The additional thin-gold full-window perimeter bevel remains absent, while internal panel/control borders are preserved. The 0.9.1 dropdown lifecycle correction remains. No market/data behavior changed. 0.9.3 Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.3.md` and `docs/MODULOMARKET-UI-NATIVE-WINDOW-CHROME-0.9.3.md`.
 
-## Current 0.9.3 milestone — Blizzard-native window chrome
+## Historical 0.9.3 milestone — Blizzard-native window chrome
 
 - Restore the `BasicFrameTemplateWithInset` frame background and title strip by leaving NineSlice, Inset, TitleBg and TopTileStreaks visible.
 - Remove the custom centered title plaque, tint, side accents and plaque bevel.
