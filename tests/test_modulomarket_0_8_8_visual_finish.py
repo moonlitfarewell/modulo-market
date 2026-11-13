@@ -25,10 +25,10 @@ def test_tabs_have_clear_active_and_inactive_visual_states():
 
 def test_table_finish_changes_are_visual_only():
     assert 'tableHeaderBand:SetColorTexture(0.105, 0.078, 0.038, 0.88)' in UI
-    assert 'row.selectedWash:SetColorTexture(0.42, 0.29, 0.065, 0.36)' in UI
+    assert 'row.selectedWash:SetColorTexture(0.48, 0.32, 0.055, 0.43)' in UI
     assert 'row:SetSize(796, UI.rowHeight)' in UI
 
 def test_release_metadata_is_aligned():
-    assert 'MM.version = "0.9.0"' in CORE
-    assert '## Version: 0.9.0' in TOC
-    assert MANIFEST["version"] == "0.9.0"
+    assert 'MM.version = "0.9.1"' in CORE
+    assert '## Version: 0.9.1' in TOC
+    assert MANIFEST["version"] == "0.9.1"

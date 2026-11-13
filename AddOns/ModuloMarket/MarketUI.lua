@@ -808,6 +808,14 @@ local function AddInsetSurface(parent, x, top, width, height, color)
     return surface
 end
 
+UI.dropdowns = UI.dropdowns or {}
+
+function UI.CloseDropdownMenus()
+    for _, dropdown in ipairs(UI.dropdowns or {}) do
+        if dropdown and dropdown.CloseMenu then dropdown:CloseMenu() end
+    end
+end
+
 local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChanged)
     -- Use an explicit button + popup rather than UIDropDownMenuTemplate.
     -- The stock dropdown menu has been visible but inert on the target Forever
@@ -934,7 +942,11 @@ local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChang
     dropdown.ToggleMenu = function()
         if popup:IsShown() then closeMenu() else openMenu() end
     end
+    dropdown.CloseMenu = closeMenu
+    dropdown.menu = popup
     dropdown:SetScript("OnClick", dropdown.ToggleMenu)
+    dropdown:SetScript("OnHide", closeMenu)
+    UI.dropdowns[#UI.dropdowns + 1] = dropdown
     dropdown.RefreshText = updateText
     dropdown.SetEnabled = function(self, enabled)
         if enabled then
@@ -1660,9 +1672,9 @@ function UI.RenderRows()
             end
             if button.rowShade then
                 if index % 2 == 0 then
-                    button.rowShade:SetColorTexture(0.22, 0.17, 0.095, 0.27)
+                    button.rowShade:SetColorTexture(0.105, 0.086, 0.052, 0.30)
                 else
-                    button.rowShade:SetColorTexture(0.025, 0.023, 0.020, 0.18)
+                    button.rowShade:SetColorTexture(0.018, 0.019, 0.021, 0.26)
                 end
                 button.rowShade:Show()
             end
@@ -1867,7 +1879,9 @@ function UI.RenderHistory()
         local point = points[i]
         local percentLabel = UI.historyBarLabels and UI.historyBarLabels[i]
         if point then
-            local height = 12 + ((point.price - minPrice) / span) * 52
+            local graphHeight = UI.historyGraph and UI.historyGraph.GetHeight
+                and (UI.historyGraph:GetHeight() or 104) or 104
+            local height = 10 + ((point.price - minPrice) / span) * math.max(24, graphHeight - 42)
             bar:ClearAllPoints()
             bar:SetPoint("BOTTOMLEFT", UI.historyGraph, "BOTTOMLEFT", (i - 1) * 58 + 8, 4)
             bar:SetSize(38, height)
@@ -1876,7 +1890,8 @@ function UI.RenderHistory()
                 and ((point.price - previous.price) / previous.price * 100) or 0
             if percentLabel then
                 percentLabel:ClearAllPoints()
-                percentLabel:SetPoint("BOTTOM", UI.historyGraph, "BOTTOMLEFT", (i - 1) * 58 + 27, math.min(height + 1, 70))
+                percentLabel:SetPoint("BOTTOM", UI.historyGraph, "BOTTOMLEFT",
+                    (i - 1) * 58 + 27, math.min(height + 1, graphHeight - 24))
                 percentLabel:SetText(string.format("%+.1f%%", change))
                 if type(percentLabel.SetTextColor) == "function" then
                     percentLabel:SetTextColor(change > 0 and 0.35 or (change < 0 and 1 or 0.85),
@@ -2606,6 +2621,7 @@ local function SetTab(tab)
     if UI.selectedItem then
         UI.selectedByTab[previousTab] = { itemID = tonumber(UI.selectedItem.itemID), recipeKey = UI.selectedItem.recipeKey }
     end
+    UI.CloseDropdownMenus()
     UI.activeTab = tab
     if tab ~= "economics" then UI.economicsIndexBuild = nil end
     local saved = UI.tabFilterState[tab] or {}
@@ -3428,6 +3444,18 @@ local function CreateUI()
     UI.resultCount:SetJustifyH("RIGHT")
 
     UI.headerButtons = {}
+    UI.tableHeaderSurface = AddInsetSurface(frame, 302, -218, 802, 34,
+        {0.035, 0.029, 0.018, 0.98})
+    UI.tableHeaderBorder = AddBevelBorder(frame, 302, -218, 802, 34, "control", "BORDER")
+    UI.tableColumnGuides = {}
+    for _, guideX in ipairs({ 520, 650, 760, 850, 935 }) do
+        local guide = frame:CreateTexture(nil, "BORDER")
+        guide:SetColorTexture(0.48, 0.36, 0.16, 0.22)
+        guide:SetPoint("TOPLEFT", frame, "TOPLEFT", guideX, -220)
+        guide:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", guideX, -252)
+        guide:SetWidth(1)
+        UI.tableColumnGuides[#UI.tableColumnGuides + 1] = guide
+    end
     local headers = {
         { "Recipe / Item", 302, 205, "LEFT", "name" },
         { "Sale / Unit", 680, 96, "RIGHT", "price" },
@@ -3508,13 +3536,13 @@ local function CreateUI()
         row.selectedWash = row:CreateTexture(nil, "BACKGROUND")
         row.selectedWash:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
         row.selectedWash:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
-        row.selectedWash:SetColorTexture(0.42, 0.29, 0.065, 0.36)
+        row.selectedWash:SetColorTexture(0.48, 0.32, 0.055, 0.43)
         row.selectedWash:Hide()
         row.selectedAccent = row:CreateTexture(nil, "ARTWORK")
         row.selectedAccent:SetColorTexture(0.96, 0.70, 0.22, 1)
         row.selectedAccent:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
         row.selectedAccent:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
-        row.selectedAccent:SetWidth(2)
+        row.selectedAccent:SetWidth(3)
         row.selectedAccent:Hide()
         row.selectedTop = row:CreateTexture(nil, "ARTWORK")
         row.selectedTop:SetColorTexture(0.86, 0.62, 0.20, 0.82)
@@ -3722,6 +3750,11 @@ local function CreateUI()
     UI.historyGraph = CreateFrame("Frame", nil, UI.detailFooter)
     UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -90)
     UI.historyGraph:SetSize(236, 104)
+    UI.historyBaseline = UI.historyGraph:CreateTexture(nil, "BORDER")
+    UI.historyBaseline:SetColorTexture(0.62, 0.48, 0.22, 0.52)
+    UI.historyBaseline:SetPoint("BOTTOMLEFT", UI.historyGraph, "BOTTOMLEFT", 3, 3)
+    UI.historyBaseline:SetPoint("BOTTOMRIGHT", UI.historyGraph, "BOTTOMRIGHT", -3, 3)
+    UI.historyBaseline:SetHeight(1)
     UI.historyBarLabels = {}
     for i = 1, 4 do
         local label = UI.historyGraph:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -3736,7 +3769,12 @@ local function CreateUI()
         bar:Hide()
     end
 
+    frame:SetScript("OnHide", function()
+        UI.CloseDropdownMenus()
+        if _G.GameTooltip then GameTooltip:Hide() end
+    end)
     frame:SetScript("OnShow", function(self)
+        UI.CloseDropdownMenus()
         self:SetFrameStrata("DIALOG")
         self:SetToplevel(true)
         if type(self.Raise) == "function" then self:Raise() end

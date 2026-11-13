@@ -1,4 +1,17 @@
-# Modulo Market 0.9.0
+# Modulo Market 0.9.1
+
+**Current player milestone:** Combined UI refinement and dropdown lifecycle correction. Dropdown popups are tracked independently and explicitly dismissed when the main window hides/shows, a dropdown anchor hides, or tabs change. The table receives a stronger header rail, restrained column guides and clearer selected-row treatment. Market-history bars and labels scale to the actual graph height and include a baseline. Six tabs remain; My Crafts remains absent. No market calculations, scanning, recipe/gathering data, SavedVariables or parent MODULO code changed. 0.9.1 Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.1.md` and `docs/MODULOMARKET-UI-VISUAL-REDESIGN-0.9.1.md`.
+
+## Current 0.9.1 milestone — coordinated UI and lifecycle pass
+
+- Dropdown popup frames are parented to `UIParent`; the previous main frame lacked an `OnHide` cleanup. Every dropdown is now registered and closed from the main-frame lifecycle, dropdown-anchor hide, and tab changes.
+- Table: dark inset header rail, subtle bronze column guides, clearer selected row and less visually noisy alternating surfaces.
+- Market History: baseline added; bar height and percentage-label position derive from the graph's actual height.
+- Preserve dropdown option values, disabled choices, callbacks, six tabs, table row height/virtualization, sorting, history points, market formulas, scan behavior and all data.
+- 0.9.0 screenshot is FOREVER OBSERVED for the visible 0.9.0 surfaces on client build 70938. 0.9.1 runtime acceptance remains NOT RUN.
+- Offline tests and package evidence are recorded in `MODULOMARKET-RUNTIME-AUDIT-0.9.1.md`.
+
+## Historical 0.9.0 milestone — combined Dark Foundry pass
 
 **Current player milestone:** Combined Dark Foundry visual refinement based on the player's 0.8.9 Forever screenshot. The header's ForeverDB summary is concise while full detail remains available through the status tooltip; dropdown menus suppress stale control tooltips and use tighter option rows; the Relationships inspector gains viewport height; Market History is rebalanced with a smaller graph and retained history text. Six tabs and all existing data, filters, market calculations, scan behavior and SavedVariables remain unchanged. Forever runtime acceptance for 0.9.0 is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.0.md` and `docs/MODULOMARKET-UI-VISUAL-REDESIGN-0.9.0.md`.
 
