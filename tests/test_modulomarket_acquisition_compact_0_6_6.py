@@ -49,7 +49,7 @@ def test_history_bars_show_percentage_change_labels():
     assert "UI.historyBarLabels = {}" in UI
     assert 'string.format("%+.1f%%", change)' in UI
     assert "percentLabel:Show()" in UI
-    assert 'UI.historyGraph:SetSize(236, 145)' in UI
+    assert 'UI.historyGraph:SetSize(236, 126)' in UI
 
 
 def test_release_versions_agree():

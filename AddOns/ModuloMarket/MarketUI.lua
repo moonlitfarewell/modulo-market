@@ -2628,7 +2628,7 @@ local function SetTab(tab)
         if name == tab then
             button:Disable()
             if button.selectedMark then button.selectedMark:Show() end
-            if button.background then button.background:SetColorTexture(0.20, 0.135, 0.045, 1) end
+            if button.background then button.background:SetColorTexture(0.28, 0.185, 0.060, 1) end
             if button.marketTop then button.marketTop:SetColorTexture(0.98, 0.76, 0.30, 1) end
             if button.marketBottom then button.marketBottom:SetColorTexture(0.34, 0.22, 0.065, 1) end
             if button.marketLeft then button.marketLeft:SetColorTexture(0.86, 0.64, 0.25, 1) end
@@ -2636,8 +2636,8 @@ local function SetTab(tab)
         else
             button:Enable()
             if button.selectedMark then button.selectedMark:Hide() end
-            if button.background then button.background:SetColorTexture(0.035, 0.029, 0.020, 0.98) end
-            if button.marketTop then button.marketTop:SetColorTexture(0.62, 0.46, 0.20, 0.82) end
+            if button.background then button.background:SetColorTexture(0.022, 0.020, 0.018, 0.99) end
+            if button.marketTop then button.marketTop:SetColorTexture(0.48, 0.36, 0.18, 0.92) end
             if button.marketBottom then button.marketBottom:SetColorTexture(0.12, 0.085, 0.035, 0.98) end
             if button.marketLeft then button.marketLeft:SetColorTexture(0.44, 0.32, 0.13, 0.82) end
             if button.marketRight then button.marketRight:SetColorTexture(0.08, 0.06, 0.025, 0.98) end
@@ -2680,7 +2680,7 @@ local function SetTab(tab)
             { x = 680, w = 96, justify = "RIGHT" },
             { x = 782, w = 70, justify = "RIGHT" },
             { x = 858, w = 70, justify = "RIGHT" },
-            { x = 936, w = 170, justify = "RIGHT" },
+            { x = 920, w = 170, justify = "RIGHT" },
         }
         for i, column in ipairs(craftColumns) do
             local header = UI.headerButtons[i]
@@ -2702,7 +2702,7 @@ local function SetTab(tab)
             { x = 620, w = 150, justify = "RIGHT" },
             { x = 776, w = 72, justify = "RIGHT" },
             { x = 852, w = 72, justify = "RIGHT" },
-            { x = 930, w = 176, justify = "RIGHT" },
+            { x = 914, w = 176, justify = "RIGHT" },
         }
         for i, column in ipairs(economicsColumns) do
             local header = UI.headerButtons[i]
@@ -2724,7 +2724,7 @@ local function SetTab(tab)
             { x = 510, w = 105, justify = "RIGHT" },
             { x = 620, w = 150, justify = "RIGHT" },
             { x = 776, w = 72, justify = "RIGHT" },
-            { x = 852, w = 254, justify = "RIGHT" },
+            { x = 836, w = 254, justify = "RIGHT" },
         }
         for i, column in ipairs(materialColumns) do
             local header = UI.headerButtons[i]
@@ -2747,7 +2747,7 @@ local function SetTab(tab)
             { x = 620, w = 150, justify = "RIGHT" },
             { x = 776, w = 72, justify = "RIGHT" },
             { x = 852, w = 72, justify = "RIGHT" },
-            { x = 930, w = 176, justify = "RIGHT" },
+            { x = 914, w = 176, justify = "RIGHT" },
         }
         for i, column in ipairs(marketColumns) do
             local header = UI.headerButtons[i]
@@ -3097,9 +3097,20 @@ local function CreateUI()
     local function AddPanelBorder(x, y, width, height)
         AddBevelBorder(frame, x, y, width, height, "panel", "BORDER")
     end
-    AddPanelBorder(18, -158, 260, 650)
-    AddPanelBorder(286, -158, 834, 650)
-    AddPanelBorder(1126, -158, 300, 650)
+    local function AddPanelInnerEdge(x, y, width, height)
+        local sheen = frame:CreateTexture(nil, "ARTWORK")
+        sheen:SetColorTexture(0.62, 0.47, 0.22, 0.055)
+        sheen:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 2, y - 2)
+        sheen:SetSize(width - 4, 18)
+        local inner = frame:CreateTexture(nil, "ARTWORK")
+        inner:SetColorTexture(0.0, 0.0, 0.0, 0.42)
+        inner:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x + 2, y - height + 2)
+        inner:SetSize(width - 4, 12)
+        AddPanelBorder(x, y, width, height)
+    end
+    AddPanelInnerEdge(18, -158, 260, 650)
+    AddPanelInnerEdge(286, -158, 834, 650)
+    AddPanelInnerEdge(1126, -158, 300, 650)
     local function AddPanelHeader(x, y, width)
         local plate = frame:CreateTexture(nil, "ARTWORK")
         plate:SetColorTexture(0.15, 0.105, 0.045, 0.78)
@@ -3115,9 +3126,21 @@ local function CreateUI()
         rule:SetPoint("TOPLEFT", plate, "BOTTOMLEFT", 0, 0)
         rule:SetSize(width - 4, 1)
         local lowerRule = frame:CreateTexture(nil, "ARTWORK")
-        lowerRule:SetColorTexture(0.06, 0.045, 0.02, 0.95)
+        lowerRule:SetColorTexture(0.025, 0.018, 0.009, 1)
         lowerRule:SetPoint("TOPLEFT", plate, "BOTTOMLEFT", 0, -1)
         lowerRule:SetSize(width - 4, 1)
+        -- Short bright end caps make the header plate read as a fitted metal
+        -- rail rather than a flat strip, without changing panel geometry.
+        for _, side in ipairs({"LEFT", "RIGHT"}) do
+            local cap = frame:CreateTexture(nil, "ARTWORK")
+            cap:SetColorTexture(0.88, 0.66, 0.29, 0.82)
+            if side == "LEFT" then
+                cap:SetPoint("TOPLEFT", plate, "TOPLEFT", 0, -1)
+            else
+                cap:SetPoint("TOPRIGHT", plate, "TOPRIGHT", 0, -1)
+            end
+            cap:SetSize(2, 23)
+        end
     end
     AddPanelHeader(18, -158, 260)
     AddPanelHeader(286, -158, 834)
@@ -3155,16 +3178,16 @@ local function CreateUI()
     UI.centerHeading = AddLabel(frame, "All Items", 302, -166, 500, 24, "GameFontNormalLarge")
     IncreaseFontSize(UI.centerHeading, 2)
     local tableHeaderBand = frame:CreateTexture(nil, "ARTWORK")
-    tableHeaderBand:SetColorTexture(0.075, 0.060, 0.035, 0.62)
+    tableHeaderBand:SetColorTexture(0.105, 0.078, 0.038, 0.88)
     tableHeaderBand:SetPoint("TOPLEFT", frame, "TOPLEFT", 298, -210)
     tableHeaderBand:SetSize(812, 28)
     local tableHeaderTop = frame:CreateTexture(nil, "ARTWORK")
-    tableHeaderTop:SetColorTexture(0.38, 0.28, 0.12, 0.72)
+    tableHeaderTop:SetColorTexture(0.72, 0.53, 0.22, 0.92)
     tableHeaderTop:SetPoint("TOPLEFT", tableHeaderBand, "TOPLEFT", 0, 0)
     tableHeaderTop:SetPoint("TOPRIGHT", tableHeaderBand, "TOPRIGHT", 0, 0)
     tableHeaderTop:SetHeight(1)
     local tableHeaderBottom = frame:CreateTexture(nil, "ARTWORK")
-    tableHeaderBottom:SetColorTexture(0.72, 0.52, 0.20, 0.78)
+    tableHeaderBottom:SetColorTexture(0.28, 0.19, 0.07, 0.98)
     tableHeaderBottom:SetPoint("BOTTOMLEFT", tableHeaderBand, "BOTTOMLEFT", 0, 0)
     tableHeaderBottom:SetPoint("BOTTOMRIGHT", tableHeaderBand, "BOTTOMRIGHT", 0, 0)
     tableHeaderBottom:SetHeight(1)
@@ -3401,7 +3424,7 @@ local function CreateUI()
         { "Materials (cost)", 510, 166, "LEFT", "materials" },
         { "At Price", 782, 70, "RIGHT", "depth" },
         { "Total", 858, 70, "RIGHT", "total" },
-        { "Profit / Craft", 936, 170, "RIGHT", "profit" },
+        { "Profit / Craft", 920, 170, "RIGHT", "profit" },
     }
     for i = 1, #headers do
         local h = headers[i]
@@ -3475,7 +3498,7 @@ local function CreateUI()
         row.selectedWash = row:CreateTexture(nil, "BACKGROUND")
         row.selectedWash:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
         row.selectedWash:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
-        row.selectedWash:SetColorTexture(0.30, 0.21, 0.045, 0.28)
+        row.selectedWash:SetColorTexture(0.42, 0.29, 0.065, 0.36)
         row.selectedWash:Hide()
         row.selectedAccent = row:CreateTexture(nil, "ARTWORK")
         row.selectedAccent:SetColorTexture(0.96, 0.70, 0.22, 1)
@@ -3588,8 +3611,8 @@ local function CreateUI()
         AddBevelBorder(frame, x, top, width, height, "card", "OVERLAY")
     end
     AddInspectorCard(1136, -270, 280, 144)
-    AddInspectorCard(1136, -422, 280, 120)
-    AddInspectorCard(1136, -552, 280, 256)
+    AddInspectorCard(1136, -422, 280, 152)
+    AddInspectorCard(1136, -584, 280, 224)
 
     UI.detailHeading = AddLabel(frame, "Selected item", 1142, -166, 268, 24, "GameFontNormalLarge")
     IncreaseFontSize(UI.detailHeading, 2)
@@ -3633,7 +3656,7 @@ local function CreateUI()
     IncreaseFontSize(UI.relationshipHeading, 1)
     UI.detailScroll = CreateFrame("ScrollFrame", "ModuloMarketDetailScrollFrame", frame, "UIPanelScrollFrameTemplate")
     UI.detailScroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 1140, -456)
-    UI.detailScroll:SetSize(270, 74)
+    UI.detailScroll:SetSize(270, 106)
     local detailScrollBar = _G.ModuloMarketDetailScrollFrameScrollBar
     if detailScrollBar then
         detailScrollBar:ClearAllPoints()
@@ -3642,13 +3665,13 @@ local function CreateUI()
         detailScrollBar:SetWidth(12)
     end
     UI.detailScrollChild = CreateFrame("Frame", nil, UI.detailScroll)
-    UI.detailScrollChild:SetSize(250, 74)
+    UI.detailScrollChild:SetSize(250, 106)
     UI.detailScroll:SetScrollChild(UI.detailScrollChild)
     UI.detailEconomics = UI.detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     IncreaseFontSize(UI.detailEconomics, 1)
     UI.detailEconomics:SetPoint("TOPLEFT", UI.detailScrollChild, "TOPLEFT", 0, 0)
     UI.detailEconomics:SetWidth(244)
-    UI.detailEconomics:SetHeight(74)
+    UI.detailEconomics:SetHeight(106)
     UI.detailEconomics:SetWordWrap(true)
     if UI.detailEconomics.SetNonSpaceWrap then UI.detailEconomics:SetNonSpaceWrap(true) end
     UI.detailEconomics:SetJustifyH("LEFT")
@@ -3678,17 +3701,17 @@ local function CreateUI()
     UI.detailRecipeTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
 
     UI.detailFooter = CreateFrame("Frame", nil, frame)
-    UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -552)
-    UI.detailFooter:SetSize(280, 256)
-    UI.historyHeading = AddLabel(frame, "Market History", 1142, -560, 268, 22, "GameFontNormalLarge")
+    UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -584)
+    UI.detailFooter:SetSize(280, 224)
+    UI.historyHeading = AddLabel(frame, "Market History", 1142, -592, 268, 22, "GameFontNormalLarge")
     IncreaseFontSize(UI.historyHeading, 1)
-    UI.historyText = AddLabel(UI.detailFooter, "", 6, -36, 268, 58, "GameFontHighlight")
+    UI.historyText = AddLabel(UI.detailFooter, "", 6, -32, 268, 58, "GameFontHighlight")
     IncreaseFontSize(UI.historyText, 1)
     UI.historyText:SetWordWrap(true)
     if UI.historyText.SetNonSpaceWrap then UI.historyText:SetNonSpaceWrap(true) end
     UI.historyGraph = CreateFrame("Frame", nil, UI.detailFooter)
-    UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -102)
-    UI.historyGraph:SetSize(236, 145)
+    UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -96)
+    UI.historyGraph:SetSize(236, 126)
     UI.historyBarLabels = {}
     for i = 1, 4 do
         local label = UI.historyGraph:CreateFontString(nil, "OVERLAY", "GameFontNormal")

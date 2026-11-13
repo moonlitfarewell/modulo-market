@@ -8,10 +8,10 @@ TOC = (ROOT / "AddOns/ModuloMarket/ModuloMarket.toc").read_text()
 
 
 def test_version_and_command_are_advanced_for_compatibility_slice():
-    assert 'MM.version = "0.8.6"' in CORE
+    assert 'MM.version = "0.8.8"' in CORE
     assert "SLASH_MODULOMARKETCOMPAT1 = \"/mmcompat\"" in CORE
     assert "MM.Diagnostics.ShowCompatibility()" in CORE
-    assert "## Version: 0.8.6" in TOC
+    assert "## Version: 0.8.8" in TOC
 
 
 def test_compatibility_report_is_read_only_and_checks_actual_full_market_snapshot():

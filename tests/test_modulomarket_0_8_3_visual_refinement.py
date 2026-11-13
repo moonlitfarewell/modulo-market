@@ -77,7 +77,7 @@ def test_selected_item_inspector_uses_larger_icon_and_more_readable_values():
     assert 'local function AddDetailRowLabel' in UI
     assert 'local function AddDetailRowValue' in UI
     assert '"GameFontHighlightLarge"' in UI
-    assert 'UI.historyText = AddLabel(UI.detailFooter, "", 6, -36, 268, 58, "GameFontHighlight")' in UI
+    assert 'UI.historyText = AddLabel(UI.detailFooter, "", 6, -32, 268, 58, "GameFontHighlight")' in UI
 
 
 def test_existing_six_tabs_and_market_engine_boundaries_remain_unchanged():
@@ -90,9 +90,9 @@ def test_existing_six_tabs_and_market_engine_boundaries_remain_unchanged():
 
 
 def test_release_versions_and_manifest_inventory_align():
-    assert 'MM.version = "0.8.6"' in CORE
-    assert '## Version: 0.8.6' in TOC
-    assert MANIFEST["version"] == "0.8.6"
+    assert 'MM.version = "0.8.8"' in CORE
+    assert '## Version: 0.8.8' in TOC
+    assert MANIFEST["version"] == "0.8.8"
     assert "MODULOMARKET-RUNTIME-AUDIT-0.8.3.md" in MANIFEST["files"]
     assert "tests/test_modulomarket_0_8_3_visual_refinement.py" in MANIFEST["files"]
     assert MANIFEST["file_count"] == len(MANIFEST["files"])

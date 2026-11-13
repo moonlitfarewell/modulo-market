@@ -1,7 +1,19 @@
-# Modulo Market 0.8.6
-**Current player milestone:** Validated ForeverDB catalogue provenance refresh to WoW Forever 1.60.1 build 70938. The complete 12-profession capture normalizes to 2,493 recipes; recipe content is unchanged from 70888 (zero additions, removals or changed records). Runtime data is regenerated with the existing repository compiler, preserving all acquisition-source rows, skill thresholds, trainer-cost evidence, reagent/output quantities and speculative exclusions. `/mmcompat` and the exact-build Full Market snapshot gate remain unchanged and fail-closed. No market calculations, scan acquisition behavior, SavedVariables schema, parent MODULO source or visual redesign changed. Forever runtime acceptance of the 70938 catalogue and `/mmcompat` remains NOT RUN. See `docs/FOREVERDB-DATA-REVIEW-2026-11-13.md`, `docs/FOREVER-BUILD-COMPATIBILITY-70938.md` and `MODULOMARKET-RUNTIME-AUDIT-0.8.6.md`.
+# Modulo Market 0.8.8
+**Current player milestone:** Dark Foundry visual finish pass for the All Items workspace. 0.8.8 strengthens the shared three-panel surface treatment, fitted panel-header rails, selected/inactive tab contrast, table header band and selected-row emphasis while preserving the 0.8.7 geometry and all market behavior. Six tabs remain; My Crafts remains absent. No recipes, gathering mappings, market calculations, scan behavior, SavedVariables or parent MODULO source changed. Forever runtime acceptance of this visual pass is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.8.8.md`.
 
-## Current 0.8.6 milestone — validated ForeverDB 70938 catalogue refresh
+## Current 0.8.8 milestone — Dark Foundry visual finish
+
+- Added subtle inset top sheen and lower shadow treatment to the three main panels without changing their dimensions or positions.
+- Refined panel header rails with brighter upper metal edges, darker lower bevel rules and small end caps.
+- Increased active-tab face contrast and gold label emphasis; darkened inactive faces and softened their label color for clearer state hierarchy.
+- Strengthened the central table heading band and selected-row wash while preserving existing row positions, density, sorting, values and virtual-row behavior.
+- Kept the existing six tabs, My Crafts absence, filter semantics, three-column geometry, inspector layout, status/provenance truthfulness and all existing controls.
+- No new textures/assets, APIs, dependencies, SavedVariables, data, market formulas, scan acquisition or specialist-addon changes.
+- Offline verification and runtime limitations are recorded in `MODULOMARKET-RUNTIME-AUDIT-0.8.8.md`.
+
+
+
+## Historical 0.8.6 milestone — validated ForeverDB 70938 catalogue refresh
 
 - Captured and verified 34 raw ForeverDB API responses for client build 1.60.1.70938; all 12 professions and reported recipe totals reconcile.
 - Normalized and validated 2,493 recipe records: 2,310 item outputs, 183 non-item/unknown outputs, 143 speculative records retained in canonical data and excluded from runtime as before.
