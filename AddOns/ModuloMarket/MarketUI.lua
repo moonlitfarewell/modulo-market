@@ -719,44 +719,36 @@ local function RaiseMarketTooltip(owner, title, body)
 end
 
 local function AddBevelBorder(parent, x, top, width, height, style, layer)
+    -- Flat, restrained outlines replace the previous multi-layer embossed
+    -- treatment. Keep the helper/API stable so every existing panel/control
+    -- receives the same visual language without changing layout or behavior.
     x, top = tonumber(x) or 0, tonumber(top) or 0
-    width, height = math.max(4, tonumber(width) or 4), math.max(4, tonumber(height) or 4)
+    width, height = math.max(2, tonumber(width) or 2), math.max(2, tonumber(height) or 2)
     style = style or "panel"
     layer = layer or "BORDER"
-    local palettes = {
-        outer = { dark = {0.012, 0.009, 0.006, 0.98}, gold = {0.70, 0.52, 0.22, 0.95}, shade = {0.16, 0.105, 0.035, 0.98}, bright = {0.90, 0.72, 0.36, 0.90}, thick = 3 },
-        plaque = { dark = {0.012, 0.009, 0.006, 1}, gold = {0.82, 0.64, 0.27, 1}, shade = {0.20, 0.13, 0.045, 1}, bright = {0.98, 0.80, 0.40, 1}, thick = 2 },
-        panel = { dark = {0.012, 0.010, 0.008, 0.96}, gold = {0.55, 0.40, 0.17, 0.88}, shade = {0.20, 0.14, 0.065, 0.95}, bright = {0.78, 0.60, 0.29, 0.72}, thick = 2 },
-        card = { dark = {0.008, 0.007, 0.006, 0.98}, gold = {0.65, 0.48, 0.20, 0.95}, shade = {0.22, 0.15, 0.06, 0.96}, bright = {0.86, 0.68, 0.33, 0.88}, thick = 2 },
-        tab = { dark = {0.008, 0.007, 0.005, 0.95}, gold = {0.50, 0.36, 0.14, 0.90}, shade = {0.15, 0.105, 0.045, 0.95}, bright = {0.72, 0.55, 0.24, 0.82}, thick = 1 },
-        control = { dark = {0.008, 0.006, 0.004, 0.98}, gold = {0.58, 0.42, 0.17, 0.95}, shade = {0.18, 0.12, 0.045, 0.98}, bright = {0.78, 0.60, 0.28, 0.82}, thick = 1 },
-        button = { dark = {0.008, 0.006, 0.004, 1}, gold = {0.72, 0.52, 0.19, 1}, shade = {0.24, 0.12, 0.035, 1}, bright = {0.92, 0.70, 0.28, 0.95}, thick = 2 },
+    local palette = {
+        outer = {0.40, 0.30, 0.16, 0.88},
+        plaque = {0.48, 0.36, 0.19, 0.90},
+        panel = {0.34, 0.26, 0.14, 0.78},
+        card = {0.38, 0.29, 0.16, 0.84},
+        tab = {0.32, 0.24, 0.13, 0.76},
+        control = {0.42, 0.32, 0.17, 0.86},
+        button = {0.46, 0.32, 0.15, 0.90},
     }
-    local c = palettes[style] or palettes.panel
-    local t = c.thick
-    local function edge(name, color, px, py, w, h)
+    local color = palette[style] or palette.panel
+    local function edge(px, py, w, h)
         local texture = parent:CreateTexture(nil, layer)
         texture:SetColorTexture(color[1], color[2], color[3], color[4])
         texture:SetPoint("TOPLEFT", parent, "TOPLEFT", px, py)
         texture:SetSize(math.max(1, w), math.max(1, h))
         return texture
     end
-    local result = {}
-    result.topShadow = edge("topShadow", c.dark, x, top, width, t)
-    result.bottomShadow = edge("bottomShadow", c.dark, x, top - height + t, width, t)
-    result.leftShadow = edge("leftShadow", c.dark, x, top, t, height)
-    result.rightShadow = edge("rightShadow", c.dark, x + width - t, top, t, height)
-    result.topGold = edge("topGold", c.gold, x + t, top - t, width - (t * 2), 1)
-    result.leftGold = edge("leftGold", c.bright, x + t, top - t, 1, height - (t * 2))
-    result.bottomShade = edge("bottomShade", c.shade, x + t, top - height + t, width - (t * 2), 1)
-    result.rightShade = edge("rightShade", c.shade, x + width - t - 1, top - t, 1, height - (t * 2))
-    if style == "plaque" or style == "outer" then
-        result.cornerTL = edge("cornerTL", c.bright, x + t, top - t, 3, 3)
-        result.cornerTR = edge("cornerTR", c.bright, x + width - t - 3, top - t, 3, 3)
-        result.cornerBL = edge("cornerBL", c.shade, x + t, top - height + t, 3, 3)
-        result.cornerBR = edge("cornerBR", c.shade, x + width - t - 3, top - height + t, 3, 3)
-    end
-    return result
+    return {
+        top = edge(x, top, width, 1),
+        bottom = edge(x, top - height + 1, width, 1),
+        left = edge(x, top, 1, height),
+        right = edge(x + width - 1, top, 1, height),
+    }
 end
 
 local function ApplyMarketButtonSkin(button, style)
@@ -2894,11 +2886,11 @@ local function CreateUI()
         MM.db and MM.db.backgroundOpacity or 0.85)
     -- Extra vertical room accommodates the taller native title strip while
     -- keeping the existing content/footer clear of the title and frame edges.
-    frame:SetSize(1460, 882)
+    frame:SetSize(1460, 894)
     if type(_G.GetScreenWidth) == "function" and type(_G.GetScreenHeight) == "function" then
         local screenWidth, screenHeight = _G.GetScreenWidth(), _G.GetScreenHeight()
         if tonumber(screenWidth) and tonumber(screenHeight) then
-            local fitScale = math.min(1, (screenWidth - 40) / 1460, (screenHeight - 40) / 882)
+            local fitScale = math.min(1, (screenWidth - 40) / 1460, (screenHeight - 40) / 894)
             frame:SetScale(math.max(0.70, fitScale))
         end
     end
@@ -2916,12 +2908,13 @@ local function CreateUI()
         frame.TitleBg:ClearAllPoints()
         frame.TitleBg:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -5)
         frame.TitleBg:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -5)
-        frame.TitleBg:SetHeight(44)
+        frame.TitleBg:SetHeight(56)
     end
     frame.TitleText:ClearAllPoints()
-    frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -27)
+    frame.TitleText:SetPoint("CENTER", frame, "TOP", 0, -33)
     frame.TitleText:SetSize(320, 28)
     frame.TitleText:SetText("Modulo Market")
+    UI.titleStripBorder = AddBevelBorder(frame, 8, -5, 1444, 56, "panel", "BORDER")
     if frame.TitleText.SetFontObject then frame.TitleText:SetFontObject("GameFontNormalLarge") end
     if frame.TitleText.SetTextColor then frame.TitleText:SetTextColor(1, 0.82, 0.12) end
     frame:Hide()
@@ -3113,14 +3106,7 @@ local function CreateUI()
         AddBevelBorder(frame, x, y, width, height, "panel", "BORDER")
     end
     local function AddPanelInnerEdge(x, y, width, height)
-        local sheen = frame:CreateTexture(nil, "ARTWORK")
-        sheen:SetColorTexture(0.62, 0.47, 0.22, 0.055)
-        sheen:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 2, y - 2)
-        sheen:SetSize(width - 4, 18)
-        local inner = frame:CreateTexture(nil, "ARTWORK")
-        inner:SetColorTexture(0.0, 0.0, 0.0, 0.42)
-        inner:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x + 2, y - height + 2)
-        inner:SetSize(width - 4, 12)
+        -- A single flat outline is clearer than top/bottom simulated bevels.
         AddPanelBorder(x, y, width, height)
     end
     AddPanelInnerEdge(18, -158, 260, 650)
@@ -3131,11 +3117,6 @@ local function CreateUI()
         plate:SetColorTexture(0.15, 0.105, 0.045, 0.78)
         plate:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 2, y - 1)
         plate:SetSize(width - 4, 27)
-        local upper = frame:CreateTexture(nil, "ARTWORK")
-        upper:SetColorTexture(0.52, 0.38, 0.15, 0.20)
-        upper:SetPoint("TOPLEFT", plate, "TOPLEFT", 0, 0)
-        upper:SetPoint("TOPRIGHT", plate, "TOPRIGHT", 0, 0)
-        upper:SetHeight(9)
         local rule = frame:CreateTexture(nil, "ARTWORK")
         rule:SetColorTexture(0.78, 0.58, 0.25, 0.82)
         rule:SetPoint("TOPLEFT", plate, "BOTTOMLEFT", 0, 0)
@@ -3626,11 +3607,6 @@ local function CreateUI()
         header:SetColorTexture(0.16, 0.115, 0.050, 0.78)
         header:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 2, top - 2)
         header:SetSize(width - 4, 24)
-        local headerGlow = frame:CreateTexture(nil, "ARTWORK")
-        headerGlow:SetColorTexture(0.55, 0.40, 0.16, 0.18)
-        headerGlow:SetPoint("TOPLEFT", header, "TOPLEFT", 0, 0)
-        headerGlow:SetPoint("TOPRIGHT", header, "TOPRIGHT", 0, 0)
-        headerGlow:SetHeight(8)
         local rule = frame:CreateTexture(nil, "ARTWORK")
         rule:SetColorTexture(0.78, 0.58, 0.25, 0.84)
         rule:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, 0)
@@ -3843,7 +3819,7 @@ local function CreateUI()
     -- Shift only addon-owned direct children/regions anchored to the main frame.
     -- The native close button, title text/background and Blizzard frame chrome
     -- stay in place; nested control internals move with their owning widgets.
-    local contentShift = 16
+    local contentShift = 28
     local frameChildren = { frame:GetChildren() }
     for _, child in ipairs(frameChildren) do
         local childName = child.GetName and child:GetName()

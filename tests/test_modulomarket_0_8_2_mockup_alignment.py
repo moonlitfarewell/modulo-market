@@ -64,9 +64,9 @@ def test_header_keeps_scan_state_without_fabricated_percentage():
 
 
 def test_release_alignment():
-    assert 'MM.version = "0.9.5"' in CORE
-    assert '## Version: 0.9.5' in TOC
-    assert MANIFEST["version"] == "0.9.5"
+    assert 'MM.version = "0.9.6"' in CORE
+    assert '## Version: 0.9.6' in TOC
+    assert MANIFEST["version"] == "0.9.6"
     assert "MODULOMARKET-RUNTIME-AUDIT-0.8.3.md" in MANIFEST["files"]
     assert "tests/test_modulomarket_0_8_2_mockup_alignment.py" in MANIFEST["files"]
     assert MANIFEST["file_count"] == len(MANIFEST["files"])

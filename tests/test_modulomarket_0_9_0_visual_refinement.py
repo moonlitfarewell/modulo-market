@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.9.5"' in CORE
-    assert "## Version: 0.9.5" in TOC
-    assert MANIFEST["version"] == "0.9.5"
+    assert 'MM.version = "0.9.6"' in CORE
+    assert "## Version: 0.9.6" in TOC
+    assert MANIFEST["version"] == "0.9.6"
 
 
 def test_foreverdb_status_is_compact_but_full_tooltip_is_retained():

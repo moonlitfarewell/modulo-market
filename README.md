@@ -1,8 +1,22 @@
+# Modulo Market 0.9.6
+
+**Current player milestone:** A genuinely taller, outlined title strip with the title centred inside it, plus a flatter visual system. The shared border helper now draws simple one-pixel outlines instead of multi-layer embossed bevels; extra panel/header highlight layers are removed. The 0.9.5 zero-gap tabs remain. Internal borders, dropdown lifecycle behavior and all market/data behavior are preserved. 0.9.6 Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.6.md` and `docs/MODULOMARKET-UI-FLAT-TITLE-FRAME-0.9.6.md`.
+
+## Current 0.9.6 milestone — framed title and flatter surfaces
+
+- Native TitleBg height 56px with explicit anchors; flat 1px outline frames the title region.
+- Title centred at -33px; frame height 894px; content shift 28px for clearance.
+- Replace shared embossed border layers with simple one-pixel outlines.
+- Remove panel sheen/bottom-shadow and header/inspector glow layers.
+- Preserve six zero-gap tabs, selected/hover states, internal panel borders and dropdown popup lifecycle fix.
+- No market calculations, scans, recipe/gathering data, SavedVariables, dependencies or parent MODULO changes.
+- Forever runtime acceptance NOT RUN for 0.9.6.
+
 # Modulo Market 0.9.5
 
-**Current player milestone:** Corrected the ineffective 0.9.4 title/tab treatment. The native TitleBg is explicitly re-anchored and resized to 44px; the title is centred in a 320x28 region; the main content is shifted down 16px within a taller 882px frame; adjacent tabs now have zero spacing. Internal borders, native close control and dropdown lifecycle behavior remain. No market/data behavior changed. Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.5.md` and `docs/MODULOMARKET-UI-TITLE-TABS-0.9.5.md`.
+**Historical 0.9.5 milestone:** Corrected the ineffective 0.9.4 title/tab treatment. The native TitleBg is explicitly re-anchored and resized to 44px; the title is centred in a 320x28 region; the main content is shifted down 16px within a taller 882px frame; adjacent tabs now have zero spacing. Internal borders, native close control and dropdown lifecycle behavior remain. No market/data behavior changed. Forever runtime acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.5.md` and `docs/MODULOMARKET-UI-TITLE-TABS-0.9.5.md`.
 
-## Current 0.9.5 milestone — native title strip and continuous tabs
+## Historical 0.9.5 milestone — native title strip and continuous tabs
 
 - Explicitly re-anchor `TitleBg` before setting 44px height; centre title at -27px with 320x28 text region.
 - Add 16px of content clearance and increase frame height to 882px.
