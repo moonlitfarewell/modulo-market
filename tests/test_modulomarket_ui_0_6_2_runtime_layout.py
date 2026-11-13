@@ -9,9 +9,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_release_versions_agree():
-    assert 'MM.version = "0.6.3"' in CORE
-    assert '## Version: 0.6.3' in TOC
-    assert MANIFEST["version"] == "0.6.3"
+    assert 'MM.version = "0.8.2"' in CORE
+    assert '## Version: 0.8.2' in TOC
+    assert MANIFEST["version"] == "0.8.2"
 
 
 def test_render_rows_returns_before_early_item_data_callback_can_dereference_empty_pool():
@@ -35,7 +35,7 @@ def test_centre_panel_reclaims_space_from_inspector_and_expands_scroll_rows():
     assert 'rightPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 1126, -158)' in UI
     assert "rightPanel:SetSize(300, 650)" in UI
     assert "UI.scroll:SetSize(812, 555)" in UI
-    assert "row:SetSize(812, UI.rowHeight)" in UI
+    assert "row:SetSize(796, UI.rowHeight)" in UI
 
 
 def test_craft_material_cost_column_is_wider_and_reagent_tooltip_is_preserved():
@@ -54,7 +54,7 @@ def test_panel_titles_and_result_count_live_in_their_header_strips():
 
 
 def test_inspector_text_is_constrained_to_narrower_panel():
-    assert 'UI.detailScroll:SetSize(270, 164)' in UI
+    assert 'UI.detailScroll:SetSize(270, 74)' in UI
     assert 'UI.detailEconomics:SetWidth(244)' in UI
     assert 'UI.detailEconomics:SetWordWrap(true)' in UI
     assert 'UI.detailVariants:SetWordWrap(true)' in UI
@@ -62,7 +62,7 @@ def test_inspector_text_is_constrained_to_narrower_panel():
 
 
 def test_skill_up_thresholds_are_shown_with_forever_and_classic_evidence_separated():
-    assert "AppendSkillThresholdLines(lines, recipe.skillThresholds or item.skillThresholds)" in UI
+    assert "AppendSkillThresholdLines(lines, future.skillThresholds)" in UI
     assert 'evidence == "FOREVER_CLIENT"' in UI
     assert 'thresholds.orange_classic' in UI
     assert 'borrowed; not Forever-confirmed' in UI

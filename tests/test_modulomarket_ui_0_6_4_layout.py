@@ -41,6 +41,6 @@ def test_scrollbar_is_inside_middle_viewport():
     assert 'row:SetSize(796, UI.rowHeight)' in UI
 
 def test_opacity_label_and_value_are_above_slider():
-    assert 'UI.opacityLabel = AddLabel(frame, "Window opacity", 1000, -30, 112, 18' in UI
-    assert 'UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1002, -54)' in UI
-    assert 'UI.opacityValue = AddLabel(frame, "", 1116, -30, 48, 18' in UI
+    assert 'UI.opacityLabel = AddLabel(frame, "Window opacity", 1260, -30, 112, 18' in UI
+    assert 'UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1262, -54)' in UI
+    assert 'UI.opacityValue = AddLabel(frame, "", 1376, -30, 48, 18' in UI

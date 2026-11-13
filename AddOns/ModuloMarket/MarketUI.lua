@@ -23,6 +23,12 @@ local UI = {
     tabFilterState = {},
     craftFilters = { craftableOnly = false, profitableOnly = false, reviewOnly = false, hideLowProfit = false },
     economicsFilters = { crafted = false, gathered = false, material = false, other = false },
+    marketQuickFilters = {
+        craftingMaterialsOnly = false,
+        lowSupplyOnly = false,
+        highProfitOnly = false,
+        reviewOnly = false,
+    },
     economicsByItemID = nil,
     vendorPriceCache = {},
     vendorPriceRequested = {},
@@ -456,6 +462,20 @@ local function GetCraftSourceStatus(recipe)
     return "unknown"
 end
 
+local function HasExplicitReviewForItem(itemID)
+    local data = MM.ProfessionData
+    local entry = data and data.GetItem and data.GetItem(itemID)
+    if not entry then return false end
+    for _, key in ipairs({ "knownCrafts", "futureCrafts", "unknownFutureCrafts" }) do
+        for _, recipe in ipairs(entry[key] or {}) do
+            local freshness = recipe.freshnessStatus
+                or (recipe.recipeData and recipe.recipeData.freshnessStatus)
+            if freshness == "review" then return true end
+        end
+    end
+    return false
+end
+
 local function StartEconomicsIndex()
     if UI.economicsIndexBuild then return end
     local recipes = GetAllCraftSources()
@@ -782,7 +802,12 @@ local function AddButton(parent, text, width, x, y, callback)
 end
 
 SetStatus = function(text)
-    if UI.status then UI.status:SetText(tostring(text or "")) end
+    if not UI.status then return end
+    local fullText = tostring(text or "")
+    UI.statusMessage = fullText
+    local displayText = fullText
+    if #displayText > 210 then displayText = displayText:sub(1, 207) .. "..." end
+    UI.status:SetText(displayText)
 end
 
 local function NewAggregate(row)
@@ -929,7 +954,9 @@ function UI.StartViewBuild()
     else
         source = UI.catalog
     end
-    if UI.activeTab == "economics" and not UI.economicsByItemID then
+    if (UI.activeTab == "economics"
+        or (UI.activeTab == "market" and UI.marketQuickFilters.highProfitOnly))
+        and not UI.economicsByItemID then
         StartEconomicsIndex()
         return
     end
@@ -949,6 +976,12 @@ function UI.StartViewBuild()
             profitableOnly = UI.craftFilters.profitableOnly,
             reviewOnly = UI.craftFilters.reviewOnly,
             hideLowProfit = UI.craftFilters.hideLowProfit,
+        },
+        marketQuickFilters = {
+            craftingMaterialsOnly = UI.marketQuickFilters.craftingMaterialsOnly,
+            lowSupplyOnly = UI.marketQuickFilters.lowSupplyOnly,
+            highProfitOnly = UI.marketQuickFilters.highProfitOnly,
+            reviewOnly = UI.marketQuickFilters.reviewOnly,
         },
         source = source or {}, total = #(source or {}), startedAt = Now(), pendingTooltipIDs = {},
         includeTooltip = UI.tooltipSearchMode == true,
@@ -1046,6 +1079,24 @@ local function StepView()
             elseif matches and not isCrafting and build.itemRoleFilter ~= "all" then
                 matches = MM.ProfessionData and MM.ProfessionData.Matches(item.itemID, 0,
                     build.itemRoleFilter) or false
+            end
+            if matches and build.tab == "market" then
+                local filters = build.marketQuickFilters or {}
+                if filters.craftingMaterialsOnly then
+                    matches = MM.ProfessionData and MM.ProfessionData.IsMaterial
+                        and MM.ProfessionData.IsMaterial(item.itemID) or false
+                end
+                if matches and filters.lowSupplyOnly then
+                    matches = (tonumber(item.totalQuantity) or 0) <= GetLowSupplyThreshold(item)
+                end
+                if matches and filters.highProfitOnly then
+                    local best = UI.economicsByItemID and UI.economicsByItemID[tonumber(item.itemID)]
+                    matches = best ~= nil and tonumber(best.profitCopper) ~= nil
+                        and tonumber(best.profitCopper) > 0
+                end
+                if matches and filters.reviewOnly then
+                    matches = HasExplicitReviewForItem(item.itemID)
+                end
             end
             if matches and build.tab == "economics" then
                 local filters = build.economicsFilters or {}
@@ -1589,7 +1640,7 @@ function UI.RenderHistory()
         local point = points[i]
         local percentLabel = UI.historyBarLabels and UI.historyBarLabels[i]
         if point then
-            local height = 8 + ((point.price - minPrice) / span) * 34
+            local height = 12 + ((point.price - minPrice) / span) * 52
             bar:ClearAllPoints()
             bar:SetPoint("BOTTOMLEFT", UI.historyGraph, "BOTTOMLEFT", (i - 1) * 58 + 8, 4)
             bar:SetSize(38, height)
@@ -1598,7 +1649,7 @@ function UI.RenderHistory()
                 and ((point.price - previous.price) / previous.price * 100) or 0
             if percentLabel then
                 percentLabel:ClearAllPoints()
-                percentLabel:SetPoint("BOTTOM", UI.historyGraph, "BOTTOMLEFT", (i - 1) * 58 + 27, math.min(height + 1, 44))
+                percentLabel:SetPoint("BOTTOM", UI.historyGraph, "BOTTOMLEFT", (i - 1) * 58 + 27, math.min(height + 1, 70))
                 percentLabel:SetText(string.format("%+.1f%%", change))
                 if type(percentLabel.SetTextColor) == "function" then
                     percentLabel:SetTextColor(change > 0 and 0.35 or (change < 0 and 1 or 0.85),
@@ -1804,6 +1855,45 @@ local function RenderMarketRecipeContext(item)
     local lines = {}
     local professionData = MM.ProfessionData and MM.ProfessionData.GetItem(itemID)
     local gathering = MM.ProfessionData and MM.ProfessionData.GetGatheringInfo(itemID)
+    local knownOutputCount = 0
+    for _, recipe in ipairs(professionData and professionData.knownCrafts or {}) do
+        if tonumber(recipe.outputItemID or recipe.craftedItemId) == itemID then
+            knownOutputCount = knownOutputCount + 1
+        end
+    end
+    local otherOutputCount = math.max(0, #makes - knownOutputCount)
+    local craftingSummary = knownOutputCount > 0
+        and string.format("%d known recipe%s", knownOutputCount, knownOutputCount == 1 and "" or "s")
+        or "No known recipes"
+    if otherOutputCount > 0 then
+        craftingSummary = craftingSummary .. " · other supported routes"
+    end
+    lines[#lines + 1] = "|TInterface\\Icons\\Trade_BlackSmithing:16|t |cffffd100Crafting:|r " .. craftingSummary
+    local gatheringNames = {}
+    if gathering then
+        for _, professionID in ipairs({ 182, 186, 356, 393 }) do
+            local info = gathering[professionID]
+            if info then
+                local professionName = (professionData and professionData.professions[professionID])
+                    or "Gathering profession"
+                gatheringNames[#gatheringNames + 1] = {
+                    name = tostring(professionName) .. " (Classic)",
+                    skill = tonumber(info.requiredSkill) or 1,
+                    currentSkill = tonumber(info.currentSkill),
+                    canGatherNow = info.canGatherNow == true,
+                    skillKnown = info.skillKnown == true,
+                }
+            end
+        end
+    end
+    if #gatheringNames > 0 then
+        local names = {}
+        for _, entry in ipairs(gatheringNames) do names[#names + 1] = entry.name end
+        lines[#lines + 1] = "|TInterface\\Icons\\INV_Misc_Herb_01:16|t |cff66ccffGathering:|r "
+            .. table.concat(names, ", ")
+    else
+        lines[#lines + 1] = "|TInterface\\Icons\\INV_Misc_Herb_01:16|t |cff66ccffGathering:|r No mapped source"
+    end
     local futureRecipes = {}
     if professionData then
         for _, future in ipairs(professionData.futureCrafts or {}) do
@@ -1844,21 +1934,18 @@ local function RenderMarketRecipeContext(item)
             end
         end
     end
-    if gathering then
-        lines[#lines + 1] = "|cff66ccffGATHERED BY|r"
-        for professionID, info in pairs(gathering) do
-            local professionName = (professionData and professionData.professions[professionID])
-                or "Gathering profession"
-            local requirement = tonumber(info.requiredSkill) or 1
-            if info.canGatherNow then
+    if #gatheringNames > 0 then
+        lines[#lines + 1] = "|cff66ccffGATHERING REQUIREMENTS|r"
+        for _, entry in ipairs(gatheringNames) do
+            if entry.canGatherNow then
                 lines[#lines + 1] = string.format("%s · can gather now (skill %d; your skill %d)",
-                    tostring(professionName), requirement, tonumber(info.currentSkill) or requirement)
-            elseif info.skillKnown then
+                    entry.name, entry.skill, entry.currentSkill or entry.skill)
+            elseif entry.skillKnown then
                 lines[#lines + 1] = string.format("%s · requires skill %d (your skill %d)",
-                    tostring(professionName), requirement, tonumber(info.currentSkill) or 0)
+                    entry.name, entry.skill, entry.currentSkill or 0)
             else
                 lines[#lines + 1] = string.format("%s · requires skill %d (current skill not captured)",
-                    tostring(professionName), requirement)
+                    entry.name, entry.skill)
             end
         end
     end
@@ -1931,9 +2018,6 @@ local function RenderMarketRecipeContext(item)
                 lines[#lines + 1] = "Vendor profit / craft: " .. color .. FormatMoney(vendorProfit) .. "|r"
             end
         end
-    end
-    if #lines == 0 then
-        lines[1] = "No captured recipe or confirmed gathering relationship is known for this item."
     end
     SetDetailEconomics(table.concat(lines, "\n"))
     if UI.detailProfit then
@@ -2048,20 +2132,34 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
     end
 end)
 
+local function NormalizeBuildKey(value)
+    local text = tostring(value or "")
+    local trailingNumber = text:match("(%d+)$")
+    return trailingNumber or text
+end
+
 local function UpdateMetadata()
     local snapshot = GetSnapshot()
     local provider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
         and MM.ProfessionData.GetFutureProviderStatus() or nil
     local currentBuild = provider and provider.currentBuild or nil
-    if not currentBuild and type(_G.GetBuildInfo) == "function" then
+    local currentVersion, clientBuild
+    if type(_G.GetBuildInfo) == "function" then
         local ok, version, build = pcall(_G.GetBuildInfo)
-        if ok and version and build then currentBuild = tostring(version) .. "." .. tostring(build) end
+        if ok then currentVersion, clientBuild = version, build end
+    end
+    if not currentBuild and currentVersion and clientBuild then
+        currentBuild = tostring(currentVersion) .. "." .. tostring(clientBuild)
     end
     if not snapshot then
         UI.metadata:SetText("No saved Auction House data")
-        if UI.auctionDataLabel then UI.auctionDataLabel:SetText("|cffffaa44Auction Data: unavailable|r") end
+        if UI.auctionDataLabel then UI.auctionDataLabel:SetText("Auction Data: unavailable") end
+        if UI.auctionDataState then
+            UI.auctionDataState:SetText("|cffffaa44Unknown|r")
+        end
     else
-        local age = math.max(0, (type(_G.time) == "function" and _G.time() or 0) - (tonumber(snapshot.timestamp) or 0))
+        local age = math.max(0, (type(_G.time) == "function" and _G.time() or 0)
+            - (tonumber(snapshot.timestamp) or 0))
         local ageText = age < 3600 and string.format("%dm", math.floor(age / 60))
             or (age < 86400 and string.format("%dh", math.floor(age / 3600))
             or string.format("%dd", math.floor(age / 86400)))
@@ -2069,23 +2167,31 @@ local function UpdateMetadata()
         UI.metadata:SetText(string.format("%s data · %s ago · %s auction records",
             source, ageText, tostring(snapshot.auctionCount or snapshot.resultCount or 0)))
         local snapshotBuild = tostring(snapshot.clientBuild or "UNKNOWN")
-        local match = currentBuild and snapshot.clientBuild and snapshotBuild == tostring(currentBuild)
+        local match = currentBuild and snapshot.clientBuild
+            and NormalizeBuildKey(snapshotBuild) == NormalizeBuildKey(currentBuild)
         local stateText = match and "|cff55dd77Current|r"
-            or (currentBuild and snapshot.clientBuild and "|cffffaa44Build mismatch|r"
-            or "|cffaaaaaaBuild unknown|r")
+            or (currentBuild and snapshot.clientBuild and "|cffffaa44Mismatch|r"
+            or "|cffaaaaaaUnknown|r")
+        local displayBuild = match and tostring(currentBuild) or snapshotBuild
         if UI.auctionDataLabel then
-            UI.auctionDataLabel:SetText("Auction Data: " .. snapshotBuild .. "  " .. stateText)
+            UI.auctionDataLabel:SetText("Auction Data: " .. displayBuild)
         end
+        if UI.auctionDataState then UI.auctionDataState:SetText(stateText) end
     end
     if UI.recipeDataLabel then
         if provider and provider.available then
-            local datasetBuild = tostring(provider.datasetBuild or "UNKNOWN")
-            local stateText = provider.dataBuildMatchesClient and "|cff55dd77Current|r" or "|cff79c9ffBaseline|r"
-            local reviewCount = tonumber(provider.reviewWatchCount) or 0
-            local reviewText = reviewCount > 0 and ("  |cffffc04dReview: " .. tostring(reviewCount) .. "|r") or ""
-            UI.recipeDataLabel:SetText("Recipe Data: " .. datasetBuild .. "  " .. stateText .. reviewText)
+            UI.recipeDataLabel:SetText("Recipe Data: " .. tostring(provider.datasetBuild or "UNKNOWN"))
+            if UI.recipeDataState then
+                UI.recipeDataState:SetText(provider.dataBuildMatchesClient
+                    and "|cff55dd77Current|r" or "|cff79c9ffBaseline|r")
+            end
+            if UI.reviewDataLabel then
+                UI.reviewDataLabel:SetText("Review records: " .. tostring(tonumber(provider.reviewWatchCount) or 0))
+            end
         else
-            UI.recipeDataLabel:SetText("|cffffaa44Recipe Data: unavailable|r")
+            UI.recipeDataLabel:SetText("Recipe Data: unavailable")
+            if UI.recipeDataState then UI.recipeDataState:SetText("|cffffaa44Unknown|r") end
+            if UI.reviewDataLabel then UI.reviewDataLabel:SetText("Review records: —") end
         end
     end
 end
@@ -2252,6 +2358,12 @@ local function SetTab(tab)
         reviewOnly = UI.craftFilters.reviewOnly,
         hideLowProfit = UI.craftFilters.hideLowProfit,
     }
+    UI.tabFilterState[previousTab].marketQuickFilters = {
+        craftingMaterialsOnly = UI.marketQuickFilters.craftingMaterialsOnly,
+        lowSupplyOnly = UI.marketQuickFilters.lowSupplyOnly,
+        highProfitOnly = UI.marketQuickFilters.highProfitOnly,
+        reviewOnly = UI.marketQuickFilters.reviewOnly,
+    }
     if UI.selectedItem then
         UI.selectedByTab[previousTab] = { itemID = tonumber(UI.selectedItem.itemID), recipeKey = UI.selectedItem.recipeKey }
     end
@@ -2270,6 +2382,11 @@ local function SetTab(tab)
     UI.craftFilters.profitableOnly = savedCraft.profitableOnly == true
     UI.craftFilters.reviewOnly = savedCraft.reviewOnly == true
     UI.craftFilters.hideLowProfit = savedCraft.hideLowProfit == true
+    local savedMarket = saved.marketQuickFilters or {}
+    UI.marketQuickFilters.craftingMaterialsOnly = savedMarket.craftingMaterialsOnly == true
+    UI.marketQuickFilters.lowSupplyOnly = savedMarket.lowSupplyOnly == true
+    UI.marketQuickFilters.highProfitOnly = savedMarket.highProfitOnly == true
+    UI.marketQuickFilters.reviewOnly = savedMarket.reviewOnly == true
     if UI.search then UI.search:SetText(saved.search or "") end
     local tabTitle = tab == "market" and "All Items"
         or (tab == "crafts" and "Crafts"
@@ -2441,6 +2558,18 @@ local function SetTab(tab)
             if showEconomicsFilters then control.label:Show() else control.label:Hide() end
         end
     end
+    local showMarketQuickFilters = tab == "market"
+    if UI.marketQuickFilterHeading then
+        if showMarketQuickFilters then UI.marketQuickFilterHeading:Show()
+        else UI.marketQuickFilterHeading:Hide() end
+    end
+    for key, control in pairs(UI.marketQuickFilterControls or {}) do
+        if showMarketQuickFilters then control:Show() else control:Hide() end
+        if control.SetChecked then control:SetChecked(UI.marketQuickFilters[key] == true) end
+        if control.label then
+            if showMarketQuickFilters then control.label:Show() else control.label:Hide() end
+        end
+    end
     if UI.detailHeading then UI.detailHeading:SetText(craftTab and "Selected Recipe" or "Selected Item") end
     if UI.detailName then UI.detailName:SetText("Loading selection…") end
     if UI.detailIcon then UI.detailIcon:Hide() end
@@ -2503,6 +2632,8 @@ local function CreateUI()
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
     frame.TitleText:SetText("Modulo Market")
+    if frame.TitleText.SetFontObject then frame.TitleText:SetFontObject("GameFontNormalLarge") end
+    if frame.TitleText.SetTextColor then frame.TitleText:SetTextColor(1, 0.82, 0.12) end
     frame:Hide()
     _G.UISpecialFrames = _G.UISpecialFrames or {}
     local specialFrameRegistered = false
@@ -2513,11 +2644,24 @@ local function CreateUI()
         _G.UISpecialFrames[#_G.UISpecialFrames + 1] = "ModuloMarketMainFrame"
     end
 
-    UI.metadata = AddLabel(frame, "Loading market data…", 24, -36, 410, 18, "GameFontNormal")
-    UI.scanStateLabel = AddLabel(frame, "Scan: Idle", 450, -36, 190, 18, "GameFontNormalSmall")
-    UI.auctionDataLabel = AddLabel(frame, "Auction Data: unavailable", 660, -34, 330, 18, "GameFontNormalSmall")
-    UI.recipeDataLabel = AddLabel(frame, "Recipe Data: unavailable", 660, -55, 330, 18, "GameFontNormalSmall")
-    UI.status = AddLabel(frame, "Ready", 24, -92, 900, 18, "GameFontDisableSmall")
+    UI.metadata = AddLabel(frame, "Loading market data…", 24, -36, 390, 18, "GameFontNormal")
+    UI.scanStateLabel = AddLabel(frame, "Scan: Idle", 438, -36, 250, 18, "GameFontNormal")
+    UI.status = AddLabel(frame, "Ready", 24, -92, 1400, 18, "GameFontDisableSmall")
+    UI.status:SetWordWrap(false)
+    UI.statusTooltip = CreateFrame("Button", nil, frame)
+    UI.statusTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 24, -92)
+    UI.statusTooltip:SetSize(1400, 18)
+    UI.statusTooltip:SetFrameLevel(frame:GetFrameLevel() + 2)
+    UI.statusTooltip:SetScript("OnEnter", function(self)
+        if not _G.GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT")
+        GameTooltip:SetText("Market status", 1, 0.82, 0.15)
+        GameTooltip:AddLine(UI.statusMessage or "", 0.9, 0.9, 0.9, true)
+        GameTooltip:Show()
+    end)
+    UI.statusTooltip:SetScript("OnLeave", function()
+        if _G.GameTooltip then GameTooltip:Hide() end
+    end)
     if MM.ForeverDBData and MM.ForeverDBData.meta then
         UI.attribution = AddLabel(frame,
             "|cff66ccffData from ForeverDB.net — https://foreverdb.net|r",
@@ -2553,11 +2697,11 @@ local function CreateUI()
     end)
     AddButton(frame, "Close", 80, 645, -62, function() frame:Hide() end)
 
-    UI.opacityLabel = AddLabel(frame, "Window opacity", 1000, -30, 112, 18, "GameFontNormalSmall")
+    UI.opacityLabel = AddLabel(frame, "Window opacity", 1260, -30, 112, 18, "GameFontNormalSmall")
     UI.opacityLabel:SetJustifyH("CENTER")
     UI.opacitySlider = CreateFrame("Slider", nil, frame)
     UI.opacitySlider:SetSize(108, 14)
-    UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1002, -54)
+    UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1262, -54)
     UI.opacitySlider:SetOrientation("HORIZONTAL")
     UI.opacitySlider:SetMinMaxValues(0.35, 1.0)
     UI.opacitySlider:SetValueStep(0.05)
@@ -2568,25 +2712,7 @@ local function CreateUI()
     opacityTrack:SetPoint("LEFT", UI.opacitySlider, "LEFT", 0, 0)
     opacityTrack:SetPoint("RIGHT", UI.opacitySlider, "RIGHT", 0, 0)
     opacityTrack:SetHeight(6)
-    UI.opacityValue = AddLabel(frame, "", 1116, -30, 48, 18, "GameFontHighlightSmall")
-    UI.craftingScopeLabel = AddLabel(frame, "CRAFTING SCOPE", 1190, -30, 220, 16, "GameFontNormalSmall")
-    UI.craftingScopeDropdown = CreateDropdown(frame, 220, 1190, -48,
-        function() return {
-            { text = "Account Crafting", value = "account", tooltipTitle = "Account Crafting",
-                tooltipText = "Combines known recipes and recorded profession ownership across characters that have been captured on this account. Missing character evidence remains Unknown." },
-            { text = "Character Crafting", value = "character", tooltipTitle = "Character Crafting",
-                tooltipText = "Uses only the currently logged-in character's learned recipes and native profession list." },
-        } end,
-        function() return UI.craftingScope end,
-        function(value)
-            UI.craftingScope = value == "character" and "character" or "account"
-            MM.db.craftingScope = UI.craftingScope
-            if MM.ProfessionData and MM.ProfessionData.Refresh then MM.ProfessionData.Refresh() end
-            UI.economicsByItemID = nil
-            UI.economicsIndexBuild = nil
-            RefreshProfessionOptions()
-            UI.StartViewBuild()
-        end)
+    UI.opacityValue = AddLabel(frame, "", 1376, -30, 48, 18, "GameFontHighlightSmall")
     ApplyBackgroundOpacity(frame, initialOpacity)
     UI.opacitySlider:SetValue(initialOpacity)
     UI.opacitySlider:SetScript("OnValueChanged", function(_, value)
@@ -2697,6 +2823,32 @@ local function CreateUI()
     AddPanelHeader(18, -158, 260)
     AddPanelHeader(286, -158, 834)
     AddPanelHeader(1126, -158, 300)
+    AddPanelBorder(26, -574, 244, 222)
+    AddPanelHeader(26, -574, 244)
+    UI.dataHeading = AddLabel(frame, "Data", 36, -582, 220, 22, "GameFontNormal")
+    UI.auctionDataLabel = AddLabel(frame, "Auction Data: unavailable", 36, -612, 166, 18, "GameFontHighlightSmall")
+    UI.auctionDataState = AddLabel(frame, "Unknown", 204, -612, 58, 18, "GameFontNormalSmall")
+    UI.recipeDataLabel = AddLabel(frame, "Recipe Data: unavailable", 36, -640, 166, 18, "GameFontHighlightSmall")
+    UI.recipeDataState = AddLabel(frame, "Unknown", 204, -640, 58, 18, "GameFontNormalSmall")
+    UI.reviewDataLabel = AddLabel(frame, "Review records: —", 36, -668, 220, 18, "GameFontHighlightSmall")
+    UI.craftingScopeLabel = AddLabel(frame, "Crafting Scope", 36, -696, 220, 16, "GameFontNormalSmall")
+    UI.craftingScopeDropdown = CreateDropdown(frame, 220, 36, -714,
+        function() return {
+            { text = "Account Crafting", value = "account", tooltipTitle = "Account Crafting",
+                tooltipText = "Combines known recipes and recorded profession ownership across characters that have been captured on this account. Missing character evidence remains Unknown." },
+            { text = "Character Crafting", value = "character", tooltipTitle = "Character Crafting",
+                tooltipText = "Uses only the currently logged-in character's learned recipes and native profession list." },
+        } end,
+        function() return UI.craftingScope end,
+        function(value)
+            UI.craftingScope = value == "character" and "character" or "account"
+            MM.db.craftingScope = UI.craftingScope
+            if MM.ProfessionData and MM.ProfessionData.Refresh then MM.ProfessionData.Refresh() end
+            UI.economicsByItemID = nil
+            UI.economicsIndexBuild = nil
+            RefreshProfessionOptions()
+            UI.StartViewBuild()
+        end)
     UI.filterHeading = AddLabel(frame, "Filters — All Items", 30, -166, 230, 24, "GameFontNormalLarge")
     UI.centerHeading = AddLabel(frame, "All Items", 302, -166, 500, 24, "GameFontNormalLarge")
     AddLabel(frame, "Search", 30, -198, 230, 18, "GameFontNormalSmall")
@@ -2845,6 +2997,40 @@ local function CreateUI()
         UI.economicsFilterControls[spec[1]] = check
     end
     UI.economicsFilterHeading = AddLabel(frame, "ECONOMICS FILTERS", 30, -394, 230, 18, "GameFontNormal")
+
+    UI.marketQuickFilterControls = {}
+    UI.marketQuickFilterHeading = AddLabel(frame, "OPTIONS", 30, -394, 230, 18, "GameFontNormal")
+    local marketQuickFilterSpecs = {
+        { "craftingMaterialsOnly", "Crafting materials only",
+            "Items used as reagents by supported recipes; uses the existing profession material catalogue." },
+        { "lowSupplyOnly", "Low supply only",
+            "Uses the same item-aware supply threshold as the Low Supply tab." },
+        { "highProfitOnly", "High profit only",
+            "Shows market items with a source-confirmed best craft route and positive calculated auction profit after the configured cut." },
+        { "reviewOnly", "Show review items only",
+            "Shows only items linked to recipe records explicitly marked for hotfix-linked review." },
+    }
+    for i, spec in ipairs(marketQuickFilterSpecs) do
+        local y = -420 - ((i - 1) * 29)
+        local check = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+        check:SetSize(22, 22)
+        check:SetPoint("TOPLEFT", frame, "TOPLEFT", 28, y)
+        local label = AddLabel(frame, spec[2], 54, y, 210, 20, "GameFontHighlightSmall")
+        check.label = label
+        check.filterKey = spec[1]
+        check:SetScript("OnEnter", function(self) RaiseMarketTooltip(self, spec[2], spec[3]) end)
+        check:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
+        check:SetScript("OnClick", function(self)
+            UI.marketQuickFilters[self.filterKey] = self:GetChecked() == true
+            if self.filterKey == "highProfitOnly" and UI.marketQuickFilters.highProfitOnly
+                and not UI.economicsByItemID then
+                StartEconomicsIndex()
+            else
+                UI.StartViewBuild()
+            end
+        end)
+        UI.marketQuickFilterControls[spec[1]] = check
+    end
     UI.tabFilterState[UI.activeTab] = { search = "", profession = 0, role = "all" }
     UI.tabFilterState[UI.activeTab].craftFilters = {}
     UI.resultCount = AddLabel(frame, "", 990, -166, 116, 20, "GameFontNormalSmall")
@@ -3034,8 +3220,8 @@ local function CreateUI()
         rightLine:SetSize(1, height)
     end
     AddInspectorCard(1136, -270, 280, 144)
-    AddInspectorCard(1136, -422, 280, 210)
-    AddInspectorCard(1136, -640, 280, 168)
+    AddInspectorCard(1136, -422, 280, 120)
+    AddInspectorCard(1136, -552, 280, 256)
 
     UI.detailHeading = AddLabel(frame, "Selected item", 1142, -166, 268, 24, "GameFontNormalLarge")
     UI.detailHeading:SetWordWrap(false)
@@ -3064,7 +3250,7 @@ local function CreateUI()
     UI.relationshipHeading = AddLabel(frame, "Relationships", 1142, -430, 268, 22, "GameFontNormal")
     UI.detailScroll = CreateFrame("ScrollFrame", "ModuloMarketDetailScrollFrame", frame, "UIPanelScrollFrameTemplate")
     UI.detailScroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 1140, -456)
-    UI.detailScroll:SetSize(270, 164)
+    UI.detailScroll:SetSize(270, 74)
     local detailScrollBar = _G.ModuloMarketDetailScrollFrameScrollBar
     if detailScrollBar then
         detailScrollBar:ClearAllPoints()
@@ -3073,12 +3259,12 @@ local function CreateUI()
         detailScrollBar:SetWidth(12)
     end
     UI.detailScrollChild = CreateFrame("Frame", nil, UI.detailScroll)
-    UI.detailScrollChild:SetSize(250, 164)
+    UI.detailScrollChild:SetSize(250, 74)
     UI.detailScroll:SetScrollChild(UI.detailScrollChild)
     UI.detailEconomics = UI.detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     UI.detailEconomics:SetPoint("TOPLEFT", UI.detailScrollChild, "TOPLEFT", 0, 0)
     UI.detailEconomics:SetWidth(244)
-    UI.detailEconomics:SetHeight(164)
+    UI.detailEconomics:SetHeight(74)
     UI.detailEconomics:SetWordWrap(true)
     if UI.detailEconomics.SetNonSpaceWrap then UI.detailEconomics:SetNonSpaceWrap(true) end
     UI.detailEconomics:SetJustifyH("LEFT")
@@ -3108,15 +3294,15 @@ local function CreateUI()
     UI.detailRecipeTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
 
     UI.detailFooter = CreateFrame("Frame", nil, frame)
-    UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -640)
-    UI.detailFooter:SetSize(280, 168)
-    UI.historyHeading = AddLabel(frame, "Market History", 1142, -648, 268, 22, "GameFontNormal")
-    UI.historyText = AddLabel(UI.detailFooter, "", 6, -36, 268, 48, "GameFontHighlightSmall")
+    UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -552)
+    UI.detailFooter:SetSize(280, 256)
+    UI.historyHeading = AddLabel(frame, "Market History", 1142, -560, 268, 22, "GameFontNormal")
+    UI.historyText = AddLabel(UI.detailFooter, "", 6, -36, 268, 58, "GameFontHighlightSmall")
     UI.historyText:SetWordWrap(true)
     if UI.historyText.SetNonSpaceWrap then UI.historyText:SetNonSpaceWrap(true) end
     UI.historyGraph = CreateFrame("Frame", nil, UI.detailFooter)
-    UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -90)
-    UI.historyGraph:SetSize(236, 66)
+    UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -102)
+    UI.historyGraph:SetSize(236, 145)
     UI.historyBarLabels = {}
     for i = 1, 4 do
         local label = UI.historyGraph:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")

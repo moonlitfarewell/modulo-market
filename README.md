@@ -1,7 +1,22 @@
-# Modulo Market 0.8.1
-**Current player milestone:** All Items visual foundation. The existing six-tab navigation, market table, filters and market data model are retained. The header now presents scan state and auction/recipe data provenance more clearly. The Selected Item inspector is organised into Market Information, Relationships and Market History cards, with a scrollable relationship detail area. No market calculations, recipe data, auction snapshots or SavedVariables schema changed. Forever runtime acceptance is NOT RUN.
+# Modulo Market 0.8.2
+**Current player milestone:** All Items mockup alignment. The header is simplified, auction/recipe provenance and crafting scope are grouped in a left-side Data card, and the All Items filter panel gains four functional quick filters. The Selected Item Relationships section now presents Crafting and Gathering separately, and Market History receives more vertical space. Auction build comparison normalizes a numeric build (`70888`) against the full client identity (`1.60.1.70888`) to avoid a false mismatch. Market data, recipe facts, calculations and SavedVariables schema are unchanged. Forever runtime acceptance for the new slice is NOT RUN.
 
-## Current 0.8.1 milestone — All Items visual foundation
+## Current 0.8.2 milestone — All Items mockup alignment
+
+- Reworked the top header to reduce competing data labels; retained market snapshot summary, scan state, scan controls and window opacity.
+- Moved Auction Data, Recipe Data, review-record count and Crafting Scope into a dedicated Data card in the left filter panel.
+- Corrected auction build identity comparison by comparing the trailing numeric build component, so `70888` and `1.60.1.70888` identify the same client build.
+- Added four All Items quick filters with actual source-grounded behavior: crafting materials only, low supply only (same item-aware threshold as Low Supply tab), high profit only (positive calculated best-craft auction profit), and explicit review items only (recipe records marked `freshnessStatus == "review"`).
+- Quick filter state is retained per tab. High Profit builds the existing recipe economics index before filtering.
+- Split selected-item Relationships into explicit Crafting and Gathering rows. Gathering profession labels use existing item-ID mappings only; unmapped items say "No mapped source".
+- Shortened the Relationships card and expanded Market History, retaining the existing saved-history points and graph.
+- Preserved all six tabs, market columns, search, sorting, tooltips, opacity, auction scan behavior, recipe/provider data, calculations, and SavedVariables schema.
+- No new addon dependency; parent MODULO 1.0.48 remains unchanged.
+
+Offline verification: focused regressions 51 PASS; Lua syntax 9/9 PASS; profession capture harness PASS. Full historical suite: 214 PASS / 62 legacy or superseded failures. Forever runtime NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.8.2.md`.
+
+## Previous 0.8.1 milestone — All Items visual foundation
+
 
 - Reorganised the existing Selected Item inspector into three bordered sections: Market Information, Relationships and Market History.
 - Kept the existing market identity, sale price, listed quantity, at-price quantity, best-craft-profit, relationship, acquisition/context and saved-history sources.
