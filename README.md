@@ -1,7 +1,21 @@
-# Modulo Market 0.8.0
-**Current player milestone:** Recipe status presentation fails closed. Missing or invalid `craftSourceStatus` is `unknown`, never `known`; the economics index, crafting view, filters, row renderer, selected detail and best-craft explanation share the same status semantics. The 0.7.9 snapshot schema 2 and automatic profession capture are unchanged. Forever runtime acceptance is NOT RUN.
+# Modulo Market 0.8.1
+**Current player milestone:** All Items visual foundation. The existing six-tab navigation, market table, filters and market data model are retained. The header now presents scan state and auction/recipe data provenance more clearly. The Selected Item inspector is organised into Market Information, Relationships and Market History cards, with a scrollable relationship detail area. No market calculations, recipe data, auction snapshots or SavedVariables schema changed. Forever runtime acceptance is NOT RUN.
 
-## Current 0.8.0 milestone — Root Tea status integrity
+## Current 0.8.1 milestone — All Items visual foundation
+
+- Reorganised the existing Selected Item inspector into three bordered sections: Market Information, Relationships and Market History.
+- Kept the existing market identity, sale price, listed quantity, at-price quantity, best-craft-profit, relationship, acquisition/context and saved-history sources.
+- Made the relationship detail area scrollable so long recipe/gathering evidence is not forced into a fixed-height text block.
+- Added header labels for auction snapshot build and age, recipe dataset build/status and review count, sourced from existing snapshot/provider metadata.
+- Added a scan-state label based only on existing Replicate state. No percentage progress is shown because the current Replicate state contract exposes no progress percentage.
+- Retained the existing six tabs. No My Crafts tab was reintroduced.
+- Retained the existing All Items table columns, search, filters, selection, sort, item tooltips, history data and opacity behavior.
+- Parent MODULO 1.0.48, market/recipe data, price calculations and SavedVariables schema are unchanged.
+
+Offline verification: focused regressions 34 PASS; Lua syntax 9/9 PASS; profession capture harness PASS. Full historical suite: 203 PASS / 65 legacy or superseded failures. Forever runtime NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.8.1.md`.
+
+## Previous 0.8.0 milestone — Root Tea status integrity
+
 
 - Removed six downstream fail-open defaults that promoted missing recipe status to `known`.
 - Added one status normalizer allowing only `known`, `learnable`, `unlearnable` and `unknown`.

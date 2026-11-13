@@ -50,14 +50,15 @@
     "version_visibility": "0.5.5_LOGIN_ANNOUNCEMENT; MMVERSION_COMMAND; MARKET_FOOTER_CLIENT_BUILD; OFFLINE_TESTED; FOREVER_RUNTIME_NOT_RUN",
     "market_ui_initialization": "0.7.6_APPLIES_ACTIVE_TAB_FILTER_VISIBILITY_DURING_INITIAL_CONSTRUCTION; FOREVER_RUNTIME_NOT_RUN",
     "market_ui_auction_house_launcher": "0.7.7_CLASSIC_AUCTIONFRAME_NATIVE_SELL_TAB_ONLY; HIDE_ON_OTHER_TABS; FAIL_CLOSED_UNKNOWN_SELECTION; FOREVER_RUNTIME_NOT_RUN",
-    "profession_recipe_snapshots": "0.7.9_PER_PROFESSION_SCHEMA_VERSION_2; GENERATION_AND_ADDON_BUILD_PROVENANCE; OLD_SCHEMA_EXCLUDED_FROM_KNOWN_UNTIL_AUTOMATIC_RECAPTURE; ACCOUNT_CHARACTER_SCOPE_STATUS_ISOLATION; FOREVER_RUNTIME_NOT_RUN; 0.8.0_SCHEMA_UNCHANGED; AUTOMATIC_CAPTURE_UNCHANGED"
+    "profession_recipe_snapshots": "0.7.9_PER_PROFESSION_SCHEMA_VERSION_2; GENERATION_AND_ADDON_BUILD_PROVENANCE; OLD_SCHEMA_EXCLUDED_FROM_KNOWN_UNTIL_AUTOMATIC_RECAPTURE; ACCOUNT_CHARACTER_SCOPE_STATUS_ISOLATION; FOREVER_RUNTIME_NOT_RUN; 0.8.0_SCHEMA_UNCHANGED; AUTOMATIC_CAPTURE_UNCHANGED",
+    "all_items_visual_foundation": "0.8.1_SOURCE_IMPLEMENTED; SIX_EXISTING_TABS_RETAINED; HEADER_SCAN_STATE_AND_DATA_PROVENANCE_LABELS; THREE_SECTION_SELECTED_ITEM_INSPECTOR; RELATIONSHIPS_SCROLLABLE; NO_MARKET_ENGINE_OR_DATA_SCHEMA_CHANGE; FOCUSED_TESTS_34_PASS; FRESH_EXTRACTION_TESTS_34_PASS; LUA_SYNTAX_9_FILES_PASS; FOREVER_RUNTIME_NOT_RUN"
   },
   "category": "Modulo By Wells",
   "dependencies": [
     "Modulo"
   ],
   "developer_tools_version": "Embedded repository importer 0.2.0 retained; standalone ForeverDB importer 0.2.3 used for the 70888 capture and runtime compilation (separate release lifecycle).",
-  "file_count": 148,
+  "file_count": 150,
   "files": [
     ".gitignore",
     "AddOns/ModuloMarket/Core.lua",
@@ -206,7 +207,9 @@
     "tools/foreverdb_importer/market_data_importer.py",
     "tools/foreverdb_importer/recipe-data-v1.schema.json",
     "MODULOMARKET-RUNTIME-AUDIT-0.8.0.md",
-    "tests/test_modulomarket_0_8_0_status_integrity.py"
+    "tests/test_modulomarket_0_8_0_status_integrity.py",
+    "MODULOMARKET-RUNTIME-AUDIT-0.8.1.md",
+    "tests/test_modulomarket_0_8_1_visual_foundation.py"
   ],
   "folder": "ModuloMarket",
   "group": "Modulo",
@@ -223,6 +226,11 @@
   "parentUploader": "developer",
   "parent_addon": "Modulo",
   "previousChildBundles": [
+    {
+      "bundle": "ModuloMarket-GitHub-Update-0.8.0.zip",
+      "bytes": 1720115,
+      "sha256": "ce3d4c486808a2404bc4f6bdecde0e81fcfbf1c84573d25f7c7f669fffe61d31"
+    },
     {
       "bundle": "ModuloMarket-GitHub-Update-0.7.9.zip",
       "bytes": 1954503,
@@ -339,12 +347,12 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.8.0_SOURCE_IMPLEMENTED; FOCUSED_TESTS_21_PASS; LUA_SYNTAX_9_FILES_PASS; PROFESSION_CAPTURE_HARNESS_PASS; FULL_HISTORICAL_SUITE_199_PASS_65_LEGACY_OR_SUPERSEDED_FAIL; FOREVER_RUNTIME_NOT_RUN",
+  "runtime_status": "0.8.1_SOURCE_IMPLEMENTED; FOCUSED_TESTS_34_PASS; FRESH_EXTRACTION_TESTS_34_PASS; LUA_SYNTAX_9_FILES_PASS; PROFESSION_CAPTURE_HARNESS_PASS; FULL_HISTORICAL_SUITE_203_PASS_65_LEGACY_OR_SUPERSEDED_FAIL; ZIP_CRC_PASS; FRESH_EXTRACTION_150_FILES_PASS; FOREVER_RUNTIME_NOT_RUN",
   "saved_variables": [
     "ModuloMarketDB"
   ],
-  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.7.9.zip",
-  "supersedesChildBytes": 1954503,
-  "supersedesChildSha256": "b8d48ec1aa17e78584baa56bd507d71d323c569f706eb9bcf307a403c7055dc6",
-  "version": "0.8.0"
+  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.8.0.zip",
+  "supersedesChildBytes": 1720115,
+  "supersedesChildSha256": "ce3d4c486808a2404bc4f6bdecde0e81fcfbf1c84573d25f7c7f669fffe61d31",
+  "version": "0.8.1"
 }

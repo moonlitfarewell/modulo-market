@@ -54,7 +54,8 @@ def test_panel_titles_and_result_count_live_in_their_header_strips():
 
 
 def test_inspector_text_is_constrained_to_narrower_panel():
-    assert '1142, -344, 268, 340, "GameFontHighlightSmall"' in UI
+    assert 'UI.detailScroll:SetSize(270, 164)' in UI
+    assert 'UI.detailEconomics:SetWidth(244)' in UI
     assert 'UI.detailEconomics:SetWordWrap(true)' in UI
     assert 'UI.detailVariants:SetWordWrap(true)' in UI
     assert 'UI.detailName:SetWordWrap(true)' in UI

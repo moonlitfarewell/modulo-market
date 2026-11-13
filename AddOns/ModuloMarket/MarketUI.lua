@@ -745,6 +745,22 @@ local function AddLabel(parent, text, x, y, width, height, font)
     return label
 end
 
+local function SetDetailEconomics(text)
+    if not UI.detailEconomics then return end
+    UI.detailEconomics:SetText(text or "")
+    local contentHeight = 1
+    if type(UI.detailEconomics.GetStringHeight) == "function" then
+        local ok, measured = pcall(UI.detailEconomics.GetStringHeight, UI.detailEconomics)
+        if ok then contentHeight = math.max(1, tonumber(measured) or 1) end
+    end
+    contentHeight = contentHeight + 8
+    if UI.detailEconomics.SetHeight then UI.detailEconomics:SetHeight(contentHeight) end
+    if UI.detailScrollChild and UI.detailScroll then
+        UI.detailScrollChild:SetHeight(math.max(UI.detailScroll:GetHeight(), contentHeight))
+        if UI.detailScroll.SetVerticalScroll then UI.detailScroll:SetVerticalScroll(0) end
+    end
+end
+
 local function CreateInput(parent, labelText, x, y, width, defaultValue)
     AddLabel(parent, labelText, x, y + 2, width, 18, "GameFontNormalSmall")
     local input = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
@@ -1235,7 +1251,7 @@ function UI.FinishView(rows)
         if UI.detailName then UI.detailName:SetText("No matching items") end
         if UI.detailIcon then UI.detailIcon:Hide() end
         if UI.detailBadges then UI.detailBadges:SetText("") end
-        if UI.detailEconomics then UI.detailEconomics:SetText("No entries match the current filters. Adjust the filters or search to see results.") end
+        SetDetailEconomics("No entries match the current filters. Adjust the filters or search to see results.")
     end
     UpdateResultRange()
     local provider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
@@ -1606,12 +1622,6 @@ function UI.RenderHistory()
     end
 end
 
-local function SetDetailEconomics(text)
-    if UI.detailEconomics then
-        UI.detailEconomics:SetText(text or "")
-    end
-end
-
 local function AppendSkillThresholdLines(lines, thresholds)
     if type(thresholds) ~= "table" then return end
     local evidence = thresholds.other_threshold_evidence or thresholds.threshold_evidence
@@ -1738,18 +1748,19 @@ local function RenderCraftDetail(item)
     if #(item.missing or {}) > 0 then
         lines[#lines + 1] = "|cffffaa44Unknown: " .. table.concat(item.missing, ", ") .. "|r"
     end
-    SetDetailEconomics(table.concat(lines, "\n"))
     if UI.detailProfit then
         if item.profitCopper ~= nil then
             local color = item.profitCopper >= 0 and "|cff55dd77" or "|cffff6666"
             local netSale = tonumber(item.netSaleCopper)
             local margin = netSale and netSale > 0 and (item.profitCopper / netSale * 100) or nil
-            UI.detailProfit:SetText(color .. FormatMoney(item.profitCopper) .. "|r profit / craft"
-                .. (margin and string.format(" (%.1f%%)", margin) or ""))
+            UI.detailProfit:SetText(color .. FormatMoney(item.profitCopper) .. "|r")
+            if margin then lines[#lines + 1] = string.format("Profit margin: %.1f%%", margin) end
         else
-            UI.detailProfit:SetText("Profit unavailable until every required price is known.")
+            UI.detailProfit:SetText("Incomplete")
+            lines[#lines + 1] = "Profit unavailable until every required price is known."
         end
     end
+    SetDetailEconomics(table.concat(lines, "\n"))
 end
 
 local function RenderMarketRecipeContext(item)
@@ -1757,7 +1768,7 @@ local function RenderMarketRecipeContext(item)
     local itemID = tonumber(item and item.itemID)
     if not itemID then
         SetDetailEconomics("Select an item to inspect its market, gathering and recipe relationships.")
-        if UI.detailProfit then UI.detailProfit:SetText("Market and profession data") end
+        if UI.detailProfit then UI.detailProfit:SetText("—") end
         return
     end
 
@@ -1926,18 +1937,16 @@ local function RenderMarketRecipeContext(item)
     end
     SetDetailEconomics(table.concat(lines, "\n"))
     if UI.detailProfit then
-        if UI.activeTab == "economics" then
-            local best = UI.economicsByItemID and UI.economicsByItemID[itemID]
-            if best and best.profitCopper ~= nil then
-                local color = best.profitCopper >= 0 and "|cff55dd77" or "|cffff6666"
-                UI.detailProfit:SetText(color .. FormatMoney(best.profitCopper) .. "|r best craft profit")
-            else
-                UI.detailProfit:SetText("No complete, source-confirmed craft route")
-            end
+        local best = UI.economicsByItemID and UI.economicsByItemID[itemID]
+        if best and best.profitCopper ~= nil then
+            local color = best.profitCopper >= 0 and "|cff55dd77" or "|cffff6666"
+            UI.detailProfit:SetText(color .. FormatMoney(best.profitCopper) .. "|r")
         else
-            UI.detailProfit:SetText("Gathering and recipe relationships")
+            UI.detailProfit:SetText("—")
         end
     end
+    if UI.relationshipHeading then UI.relationshipHeading:SetText("Relationships") end
+    if UI.marketInfoHeading then UI.marketInfoHeading:SetText("Market Information") end
 end
 
 SelectItem = function(item)
@@ -1963,6 +1972,15 @@ SelectItem = function(item)
             tags[#tags + 1] = "|cff79c9ffMARKET ITEM|r"
         end
         UI.detailBadges:SetText(table.concat(tags, "    "))
+    end
+    if UI.marketInfoHeading then
+        UI.marketInfoHeading:SetText(item.recipeData and "Craft Economics" or "Market Information")
+    end
+    if UI.relationshipHeading then
+        UI.relationshipHeading:SetText(item.recipeData and "Recipe Details" or "Relationships")
+    end
+    if UI.detailProfitLabel then
+        UI.detailProfitLabel:SetText(item.recipeData and "PROFIT / CRAFT" or "BEST CRAFT PROFIT")
     end
     local vendorPrice = GetVendorInfo(item.itemID, true)
     UI.detailPrice:SetText(item.minPriceCopper and FormatMoney(item.minPriceCopper)
@@ -2032,23 +2050,63 @@ end)
 
 local function UpdateMetadata()
     local snapshot = GetSnapshot()
+    local provider = MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus
+        and MM.ProfessionData.GetFutureProviderStatus() or nil
+    local currentBuild = provider and provider.currentBuild or nil
+    if not currentBuild and type(_G.GetBuildInfo) == "function" then
+        local ok, version, build = pcall(_G.GetBuildInfo)
+        if ok and version and build then currentBuild = tostring(version) .. "." .. tostring(build) end
+    end
     if not snapshot then
         UI.metadata:SetText("No saved Auction House data")
-        return
+        if UI.auctionDataLabel then UI.auctionDataLabel:SetText("|cffffaa44Auction Data: unavailable|r") end
+    else
+        local age = math.max(0, (type(_G.time) == "function" and _G.time() or 0) - (tonumber(snapshot.timestamp) or 0))
+        local ageText = age < 3600 and string.format("%dm", math.floor(age / 60))
+            or (age < 86400 and string.format("%dh", math.floor(age / 3600))
+            or string.format("%dd", math.floor(age / 86400)))
+        local source = snapshot.source == "C_AuctionHouse.ReplicateItems" and "Full Market" or "Browse"
+        UI.metadata:SetText(string.format("%s data · %s ago · %s auction records",
+            source, ageText, tostring(snapshot.auctionCount or snapshot.resultCount or 0)))
+        local snapshotBuild = tostring(snapshot.clientBuild or "UNKNOWN")
+        local match = currentBuild and snapshot.clientBuild and snapshotBuild == tostring(currentBuild)
+        local stateText = match and "|cff55dd77Current|r"
+            or (currentBuild and snapshot.clientBuild and "|cffffaa44Build mismatch|r"
+            or "|cffaaaaaaBuild unknown|r")
+        if UI.auctionDataLabel then
+            UI.auctionDataLabel:SetText("Auction Data: " .. snapshotBuild .. "  " .. stateText)
+        end
     end
-    local age = math.max(0, (type(_G.time) == "function" and _G.time() or 0) - (tonumber(snapshot.timestamp) or 0))
-    local ageText = age < 3600 and string.format("%dm", math.floor(age / 60))
-        or (age < 86400 and string.format("%dh", math.floor(age / 3600))
-        or string.format("%dd", math.floor(age / 86400)))
-    local source = snapshot.source == "C_AuctionHouse.ReplicateItems" and "Full Market" or "Browse"
-    UI.metadata:SetText(string.format("%s data · %s ago · %s auction records",
-        source, ageText, tostring(snapshot.auctionCount or snapshot.resultCount or 0)))
+    if UI.recipeDataLabel then
+        if provider and provider.available then
+            local datasetBuild = tostring(provider.datasetBuild or "UNKNOWN")
+            local stateText = provider.dataBuildMatchesClient and "|cff55dd77Current|r" or "|cff79c9ffBaseline|r"
+            local reviewCount = tonumber(provider.reviewWatchCount) or 0
+            local reviewText = reviewCount > 0 and ("  |cffffc04dReview: " .. tostring(reviewCount) .. "|r") or ""
+            UI.recipeDataLabel:SetText("Recipe Data: " .. datasetBuild .. "  " .. stateText .. reviewText)
+        else
+            UI.recipeDataLabel:SetText("|cffffaa44Recipe Data: unavailable|r")
+        end
+    end
 end
 
 function UI.RefreshActions()
     if not UI.frame then return end
     local state = MM.Replicate and MM.Replicate.GetState and MM.Replicate.GetState() or {}
     local remaining = math.max(0, tonumber(state.cooldownRemaining) or 0)
+    if UI.scanStateLabel then
+        if state.pendingConfirmation then
+            UI.scanStateLabel:SetText("|cffffc04dScan: Confirmation required|r")
+        elseif state.active then
+            UI.scanStateLabel:SetText("|cff55dd77Scan: Active|r")
+        elseif state.attemptedThisSession then
+            UI.scanStateLabel:SetText("|cffffaa44Scan: Used this session|r")
+        elseif remaining > 0 then
+            UI.scanStateLabel:SetText("|cffaaaaaaScan: Cooldown|r")
+        else
+            UI.scanStateLabel:SetText("|cff55dd77Scan: Idle|r")
+        end
+    end
     if state.pendingConfirmation then
         UI.confirmButton:Show()
         UI.cancelButton:Show()
@@ -2390,14 +2448,20 @@ local function SetTab(tab)
     if UI.detailPrice then UI.detailPrice:SetText("—") end
     if UI.detailSupply then UI.detailSupply:SetText("—") end
     if UI.detailVariants then UI.detailVariants:SetText("") end
+    if UI.marketInfoHeading then
+        UI.marketInfoHeading:SetText(craftTab and "Craft Economics" or "Market Information")
+    end
+    if UI.relationshipHeading then
+        UI.relationshipHeading:SetText(craftTab and "Recipe Details" or "Relationships")
+    end
+    if UI.detailProfitLabel then
+        UI.detailProfitLabel:SetText(craftTab and "PROFIT / CRAFT" or "BEST CRAFT PROFIT")
+    end
+    if UI.detailProfit then UI.detailProfit:SetText("—") end
     SetDetailEconomics(craftTab
         and ("All supported recipes. Known, learnable and unavailable recipes are grouped by your professions.")
         or (tab == "materials" and "Materials used by known and supported unlearned recipes."
             or "Select an item to inspect its market, vendor value and recipe relationships."))
-    if UI.detailProfit then
-        UI.detailProfit:SetText(tab == "economics" and "Auction and vendor sale comparison"
-            or (tab == "crafts" and "All profession recipes" or "Automatic recipe valuation"))
-    end
     if UI.historyGraph then
         for _, bar in ipairs(UI.historyBars or {}) do bar:Hide() end
     end
@@ -2449,7 +2513,10 @@ local function CreateUI()
         _G.UISpecialFrames[#_G.UISpecialFrames + 1] = "ModuloMarketMainFrame"
     end
 
-    UI.metadata = AddLabel(frame, "Loading market data…", 24, -36, 760, 18, "GameFontNormal")
+    UI.metadata = AddLabel(frame, "Loading market data…", 24, -36, 410, 18, "GameFontNormal")
+    UI.scanStateLabel = AddLabel(frame, "Scan: Idle", 450, -36, 190, 18, "GameFontNormalSmall")
+    UI.auctionDataLabel = AddLabel(frame, "Auction Data: unavailable", 660, -34, 330, 18, "GameFontNormalSmall")
+    UI.recipeDataLabel = AddLabel(frame, "Recipe Data: unavailable", 660, -55, 330, 18, "GameFontNormalSmall")
     UI.status = AddLabel(frame, "Ready", 24, -92, 900, 18, "GameFontDisableSmall")
     if MM.ForeverDBData and MM.ForeverDBData.meta then
         UI.attribution = AddLabel(frame,
@@ -2486,11 +2553,11 @@ local function CreateUI()
     end)
     AddButton(frame, "Close", 80, 645, -62, function() frame:Hide() end)
 
-    UI.opacityLabel = AddLabel(frame, "Window opacity", 860, -43, 170, 18, "GameFontNormalSmall")
+    UI.opacityLabel = AddLabel(frame, "Window opacity", 1000, -30, 112, 18, "GameFontNormalSmall")
     UI.opacityLabel:SetJustifyH("CENTER")
     UI.opacitySlider = CreateFrame("Slider", nil, frame)
-    UI.opacitySlider:SetSize(170, 14)
-    UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 860, -66)
+    UI.opacitySlider:SetSize(108, 14)
+    UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1002, -54)
     UI.opacitySlider:SetOrientation("HORIZONTAL")
     UI.opacitySlider:SetMinMaxValues(0.35, 1.0)
     UI.opacitySlider:SetValueStep(0.05)
@@ -2501,9 +2568,9 @@ local function CreateUI()
     opacityTrack:SetPoint("LEFT", UI.opacitySlider, "LEFT", 0, 0)
     opacityTrack:SetPoint("RIGHT", UI.opacitySlider, "RIGHT", 0, 0)
     opacityTrack:SetHeight(6)
-    UI.opacityValue = AddLabel(frame, "", 1036, -43, 48, 18, "GameFontHighlightSmall")
-    UI.craftingScopeLabel = AddLabel(frame, "CRAFTING SCOPE", 1135, -30, 210, 16, "GameFontNormalSmall")
-    UI.craftingScopeDropdown = CreateDropdown(frame, 210, 1135, -48,
+    UI.opacityValue = AddLabel(frame, "", 1116, -30, 48, 18, "GameFontHighlightSmall")
+    UI.craftingScopeLabel = AddLabel(frame, "CRAFTING SCOPE", 1190, -30, 220, 16, "GameFontNormalSmall")
+    UI.craftingScopeDropdown = CreateDropdown(frame, 220, 1190, -48,
         function() return {
             { text = "Account Crafting", value = "account", tooltipTitle = "Account Crafting",
                 tooltipText = "Combines known recipes and recorded profession ownership across characters that have been captured on this account. Missing character evidence remains Unknown." },
@@ -2933,6 +3000,43 @@ local function CreateUI()
     divider:SetSize(1, 650)
     divider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1119, -158)
 
+    -- Inspector cards mirror the approved proof of concept while reusing the
+    -- existing market, relationship and history data sources.
+    local function AddInspectorCard(x, top, width, height)
+        local background = frame:CreateTexture(nil, "ARTWORK")
+        background:SetColorTexture(0.012, 0.013, 0.016, 0.94)
+        background:SetPoint("TOPLEFT", frame, "TOPLEFT", x, top)
+        background:SetSize(width, height)
+        local header = frame:CreateTexture(nil, "ARTWORK")
+        header:SetColorTexture(0.18, 0.135, 0.065, 0.55)
+        header:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 1, top - 1)
+        header:SetSize(width - 2, 25)
+        local rule = frame:CreateTexture(nil, "ARTWORK")
+        rule:SetColorTexture(0.62, 0.46, 0.22, 0.72)
+        rule:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, 0)
+        rule:SetSize(width - 2, 1)
+        local borderColor = { 0.58, 0.43, 0.20, 0.88 }
+        local topLine = frame:CreateTexture(nil, "OVERLAY")
+        topLine:SetColorTexture(unpack(borderColor))
+        topLine:SetPoint("TOPLEFT", frame, "TOPLEFT", x, top)
+        topLine:SetSize(width, 1)
+        local bottomLine = frame:CreateTexture(nil, "OVERLAY")
+        bottomLine:SetColorTexture(unpack(borderColor))
+        bottomLine:SetPoint("TOPLEFT", frame, "TOPLEFT", x, top - height)
+        bottomLine:SetSize(width, 1)
+        local leftLine = frame:CreateTexture(nil, "OVERLAY")
+        leftLine:SetColorTexture(unpack(borderColor))
+        leftLine:SetPoint("TOPLEFT", frame, "TOPLEFT", x, top)
+        leftLine:SetSize(1, height)
+        local rightLine = frame:CreateTexture(nil, "OVERLAY")
+        rightLine:SetColorTexture(unpack(borderColor))
+        rightLine:SetPoint("TOPLEFT", frame, "TOPLEFT", x + width, top)
+        rightLine:SetSize(1, height)
+    end
+    AddInspectorCard(1136, -270, 280, 144)
+    AddInspectorCard(1136, -422, 280, 210)
+    AddInspectorCard(1136, -640, 280, 168)
+
     UI.detailHeading = AddLabel(frame, "Selected item", 1142, -166, 268, 24, "GameFontNormalLarge")
     UI.detailHeading:SetWordWrap(false)
     UI.detailIcon = frame:CreateTexture(nil, "ARTWORK")
@@ -2943,13 +3047,49 @@ local function CreateUI()
     UI.detailName:SetWordWrap(true)
     if UI.detailName.SetNonSpaceWrap then UI.detailName:SetNonSpaceWrap(true) end
     UI.detailBadges = AddLabel(frame, "", 1194, -230, 214, 18, "GameFontDisableSmall")
-    AddLabel(frame, "SALE PRICE / UNIT", 1142, -264, 128, 18, "GameFontNormalSmall")
-    UI.detailPrice = AddLabel(frame, "—", 1274, -264, 132, 18, "GameFontHighlight")
-    AddLabel(frame, "TOTAL LISTED", 1142, -290, 128, 18, "GameFontNormalSmall")
-    UI.detailSupply = AddLabel(frame, "—", 1274, -290, 132, 18, "GameFontHighlight")
-    UI.detailVariants = AddLabel(frame, "", 1142, -342, 268, 24, "GameFontDisableSmall")
+    UI.detailVariants = AddLabel(frame, "", 1142, -250, 268, 18, "GameFontDisableSmall")
     UI.detailVariants:SetWordWrap(true)
     if UI.detailVariants.SetNonSpaceWrap then UI.detailVariants:SetNonSpaceWrap(true) end
+
+    UI.marketInfoHeading = AddLabel(frame, "Market Information", 1142, -278, 268, 22, "GameFontNormal")
+    AddLabel(frame, "SALE PRICE / UNIT", 1142, -304, 128, 18, "GameFontNormalSmall")
+    UI.detailPrice = AddLabel(frame, "—", 1274, -304, 132, 18, "GameFontHighlight")
+    AddLabel(frame, "TOTAL LISTED", 1142, -328, 128, 18, "GameFontNormalSmall")
+    UI.detailSupply = AddLabel(frame, "—", 1274, -328, 132, 18, "GameFontHighlight")
+    AddLabel(frame, "AT PRICE", 1142, -352, 128, 18, "GameFontNormalSmall")
+    UI.detailAtPrice = AddLabel(frame, "—", 1274, -352, 132, 18, "GameFontHighlight")
+    UI.detailProfitLabel = AddLabel(frame, "BEST CRAFT PROFIT", 1142, -376, 128, 18, "GameFontNormalSmall")
+    UI.detailProfit = AddLabel(frame, "—", 1274, -376, 132, 18, "GameFontHighlight")
+
+    UI.relationshipHeading = AddLabel(frame, "Relationships", 1142, -430, 268, 22, "GameFontNormal")
+    UI.detailScroll = CreateFrame("ScrollFrame", "ModuloMarketDetailScrollFrame", frame, "UIPanelScrollFrameTemplate")
+    UI.detailScroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 1140, -456)
+    UI.detailScroll:SetSize(270, 164)
+    local detailScrollBar = _G.ModuloMarketDetailScrollFrameScrollBar
+    if detailScrollBar then
+        detailScrollBar:ClearAllPoints()
+        detailScrollBar:SetPoint("TOPRIGHT", UI.detailScroll, "TOPRIGHT", -1, -14)
+        detailScrollBar:SetPoint("BOTTOMRIGHT", UI.detailScroll, "BOTTOMRIGHT", -1, 14)
+        detailScrollBar:SetWidth(12)
+    end
+    UI.detailScrollChild = CreateFrame("Frame", nil, UI.detailScroll)
+    UI.detailScrollChild:SetSize(250, 164)
+    UI.detailScroll:SetScrollChild(UI.detailScrollChild)
+    UI.detailEconomics = UI.detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    UI.detailEconomics:SetPoint("TOPLEFT", UI.detailScrollChild, "TOPLEFT", 0, 0)
+    UI.detailEconomics:SetWidth(244)
+    UI.detailEconomics:SetHeight(164)
+    UI.detailEconomics:SetWordWrap(true)
+    if UI.detailEconomics.SetNonSpaceWrap then UI.detailEconomics:SetNonSpaceWrap(true) end
+    UI.detailEconomics:SetJustifyH("LEFT")
+    if UI.detailScroll.EnableMouseWheel then UI.detailScroll:EnableMouseWheel(true) end
+    UI.detailScroll:SetScript("OnMouseWheel", function(self, delta)
+        local current = self:GetVerticalScroll() or 0
+        local maxScroll = math.max(0, UI.detailScrollChild:GetHeight() - self:GetHeight())
+        self:SetVerticalScroll(math.max(0, math.min(maxScroll, current - (delta * 42)))
+        )
+    end)
+
     UI.detailItemTooltip = CreateFrame("Button", nil, frame)
     UI.detailItemTooltip:SetPoint("TOPLEFT", frame, "TOPLEFT", 1142, -200)
     UI.detailItemTooltip:SetSize(46, 48)
@@ -2966,28 +3106,17 @@ local function CreateUI()
         if UI.selectedItem then ShowMarketItemTooltip(self, UI.selectedItem, true) end
     end)
     UI.detailRecipeTooltip:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
-    AddLabel(frame, "AT PRICE", 1142, -316, 128, 18, "GameFontNormalSmall")
-    UI.detailAtPrice = AddLabel(frame, "—", 1274, -316, 132, 18, "GameFontHighlight")
-    UI.detailEconomics = AddLabel(frame,
-        "Open each profession window once. Market records your known recipes automatically. Install LibProfessionDB 1.9.1 to identify supported unlearned recipes.",
-        1142, -370, 268, 366, "GameFontHighlightSmall")
-    UI.detailEconomics:SetWordWrap(true)
-    if UI.detailEconomics.SetNonSpaceWrap then UI.detailEconomics:SetNonSpaceWrap(true) end
-    UI.detailEconomics:SetJustifyH("LEFT")
-    -- Keep the valuation/history footer inside the inspector's bottom edge.
-    -- The graph's baseline is anchored to the footer bottom so bars always rise upward.
+
     UI.detailFooter = CreateFrame("Frame", nil, frame)
-    UI.detailFooter:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1138, 52)
-    UI.detailFooter:SetSize(280, 122)
-    UI.detailProfit = AddLabel(UI.detailFooter, "Automatic recipe valuation", 4, -2, 272, 36, "GameFontNormalLarge")
-    UI.detailProfit:SetWordWrap(true)
-    if UI.detailProfit.SetNonSpaceWrap then UI.detailProfit:SetNonSpaceWrap(true) end
-    UI.historyText = AddLabel(UI.detailFooter, "", 4, -30, 272, 42, "GameFontHighlightSmall")
+    UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -640)
+    UI.detailFooter:SetSize(280, 168)
+    UI.historyHeading = AddLabel(frame, "Market History", 1142, -648, 268, 22, "GameFontNormal")
+    UI.historyText = AddLabel(UI.detailFooter, "", 6, -36, 268, 48, "GameFontHighlightSmall")
     UI.historyText:SetWordWrap(true)
     if UI.historyText.SetNonSpaceWrap then UI.historyText:SetNonSpaceWrap(true) end
     UI.historyGraph = CreateFrame("Frame", nil, UI.detailFooter)
-    UI.historyGraph:SetPoint("BOTTOMLEFT", UI.detailFooter, "BOTTOMLEFT", 4, 0)
-    UI.historyGraph:SetSize(236, 60)
+    UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -90)
+    UI.historyGraph:SetSize(236, 66)
     UI.historyBarLabels = {}
     for i = 1, 4 do
         local label = UI.historyGraph:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")

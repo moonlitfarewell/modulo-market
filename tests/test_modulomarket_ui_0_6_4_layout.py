@@ -29,7 +29,8 @@ def test_inspector_text_wraps():
     assert 'UI.detailName:SetWordWrap(true)' in UI
     assert 'UI.detailVariants:SetWordWrap(true)' in UI
     assert 'UI.detailEconomics:SetWordWrap(true)' in UI
-    assert 'UI.detailProfit:SetWordWrap(true)' in UI
+    assert 'UI.detailProfitLabel = AddLabel(frame, "BEST CRAFT PROFIT"' in UI
+    assert 'UI.detailProfit = AddLabel(frame, "—", 1274, -376' in UI
     assert 'UI.historyText:SetWordWrap(true)' in UI
 
 def test_scrollbar_is_inside_middle_viewport():
@@ -40,6 +41,6 @@ def test_scrollbar_is_inside_middle_viewport():
     assert 'row:SetSize(796, UI.rowHeight)' in UI
 
 def test_opacity_label_and_value_are_above_slider():
-    assert 'UI.opacityLabel = AddLabel(frame, "Window opacity", 860, -43, 170, 18' in UI
-    assert 'UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 860, -66)' in UI
-    assert 'UI.opacityValue = AddLabel(frame, "", 1036, -43, 48, 18' in UI
+    assert 'UI.opacityLabel = AddLabel(frame, "Window opacity", 1000, -30, 112, 18' in UI
+    assert 'UI.opacitySlider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1002, -54)' in UI
+    assert 'UI.opacityValue = AddLabel(frame, "", 1116, -30, 48, 18' in UI
