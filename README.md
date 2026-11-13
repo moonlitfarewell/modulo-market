@@ -1,3 +1,7 @@
+# Modulo Market 0.9.9
+
+**Current player milestone:** Restored the complete four-sided outline around the centre All Items table panel without restoring its redundant background fill or vertical table dividers. All Items numeric columns now size to the widest visible heading/value and anchor from the right edge in Total Units → At Price → Cheapest order; Item fills the remaining width. Other tab column layouts are unchanged. Existing sorting and scrolling are preserved. Forever runtime acceptance for 0.9.9 is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.9.md` and `docs/MODULOMARKET-ALL-ITEMS-COLUMN-FIT-0.9.9.md`.
+
 # Modulo Market 0.9.8
 
 **Current player milestone:** All Items is now a four-column auction-house browser (Item, Cheapest, At Price, Total Units). Existing incremental sorting and 10-row scroll movement are preserved. Item names use native item-quality colours; a narrow row marker communicates known craft (green), unlearned craft (yellow), unknown/unlearnable craft (red), or non-craft item (white). The redundant centre panel box and table column guides are removed. The duplicate All Items “Low supply only” shortcut is retired; the dedicated Low Supply tab remains unchanged for the planned future conversion. Other tabs retain their own columns and calculations. Forever runtime acceptance for 0.9.8 is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.9.8.md` and `docs/MODULOMARKET-ALL-ITEMS-BROWSER-0.9.8.md`.

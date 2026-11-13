@@ -1669,6 +1669,59 @@ local function StepRankSort()
     end
 end
 
+local function UpdateAllItemsColumnLayout()
+    if UI.activeTab ~= "market" or not UI.headerButtons or not UI.headerButtons[4] then return end
+    local function measuredWidth(fontString, fallback)
+        local width = fontString and type(fontString.GetStringWidth) == "function"
+            and fontString:GetStringWidth() or 0
+        return math.max(fallback, tonumber(width) or 0)
+    end
+    local widths = {
+        cheapest = measuredWidth(UI.headerButtons[2] and UI.headerButtons[2].label, 76),
+        atPrice = measuredWidth(UI.headerButtons[3] and UI.headerButtons[3].label, 58),
+        total = measuredWidth(UI.headerButtons[4] and UI.headerButtons[4].label, 72),
+    }
+    for i = 1, math.min(UI.visibleCount or #(UI.rows or {}), #(UI.rows or {})) do
+        local row = UI.rows[i]
+        if row and UI.visibleRows and UI.visibleRows[i] then
+            widths.cheapest = math.max(widths.cheapest, measuredWidth(row.price, 76))
+            widths.atPrice = math.max(widths.atPrice, measuredWidth(row.depth, 58))
+            widths.total = math.max(widths.total, measuredWidth(row.atPrice, 72))
+        end
+    end
+    widths.cheapest = math.min(170, widths.cheapest + 14)
+    widths.atPrice = math.min(110, widths.atPrice + 14)
+    widths.total = math.min(110, widths.total + 14)
+    local rowRight = 796
+    local rightPadding, columnGap = 8, 8
+    local xTotal = rowRight - rightPadding - widths.total
+    local xAtPrice = xTotal - columnGap - widths.atPrice
+    local xCheapest = xAtPrice - columnGap - widths.cheapest
+    local nameWidth = math.max(72, xCheapest - columnGap - 27)
+    local columns = {
+        { x = 302, w = nameWidth + 12, justify = "LEFT" },
+        { x = 298 + xCheapest, w = widths.cheapest, justify = "RIGHT" },
+        { x = 298 + xAtPrice, w = widths.atPrice, justify = "RIGHT" },
+        { x = 298 + xTotal, w = widths.total, justify = "RIGHT" },
+    }
+    for i, column in ipairs(columns) do
+        local header = UI.headerButtons[i]
+        header:ClearAllPoints()
+        header:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", column.x, -218)
+        header:SetWidth(column.w)
+        header.label:SetWidth(math.max(1, column.w - (i == 1 and 4 or 14)))
+        header.label:SetJustifyH(column.justify)
+    end
+    for _, row in ipairs(UI.rows or {}) do
+        row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(nameWidth)
+        row.price:ClearAllPoints(); row.price:SetPoint("LEFT", row, "LEFT", xCheapest, 0); row.price:SetWidth(widths.cheapest)
+        row.depth:ClearAllPoints(); row.depth:SetPoint("LEFT", row, "LEFT", xAtPrice, 0); row.depth:SetWidth(widths.atPrice)
+        row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("LEFT", row, "LEFT", xTotal, 0); row.atPrice:SetWidth(widths.total)
+        row.total:Hide()
+        row.profit:Hide()
+    end
+end
+
 function UI.RenderRows()
     -- Item-data callbacks may arrive while ProfessionMaster is initializing,
     -- before CreateUI has populated the virtual row pool. An empty table is
@@ -1858,6 +1911,7 @@ function UI.RenderRows()
             row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(widths.profit)
         end
     end
+    if UI.activeTab == "market" then UpdateAllItemsColumnLayout() end
     UpdateResultRange()
 end
 
@@ -2804,25 +2858,7 @@ local function SetTab(tab)
             row.profit:ClearAllPoints(); row.profit:SetPoint("RIGHT", row, "RIGHT", -4, 0); row.profit:SetWidth(254)
         end
     elseif tab == "market" then
-        local allItemsColumns = {
-            { x = 302, w = 252, justify = "LEFT" },
-            { x = 556, w = 160, justify = "RIGHT" },
-            { x = 718, w = 150, justify = "RIGHT" },
-            { x = 870, w = 220, justify = "RIGHT" },
-        }
-        for i, column in ipairs(allItemsColumns) do
-            local header = UI.headerButtons[i]
-            header:ClearAllPoints(); header:SetPoint("TOPLEFT", UI.frame, "TOPLEFT", column.x, -218); header:SetWidth(column.w)
-            header.label:SetWidth(column.w - 14); header.label:SetJustifyH(column.justify)
-        end
-        for _, row in ipairs(UI.rows or {}) do
-            row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", 27, 0); row.name:SetWidth(238)
-            row.price:ClearAllPoints(); row.price:SetPoint("RIGHT", row, "LEFT", 416, 0); row.price:SetWidth(150)
-            row.depth:ClearAllPoints(); row.depth:SetPoint("RIGHT", row, "LEFT", 568, 0); row.depth:SetWidth(100)
-            row.atPrice:ClearAllPoints(); row.atPrice:SetPoint("RIGHT", row, "LEFT", 778, 0); row.atPrice:SetWidth(150)
-            row.total:Hide()
-            row.profit:Hide()
-        end
+        UpdateAllItemsColumnLayout()
     else
         local marketColumns = {
             { x = 302, w = 205, justify = "LEFT" },
@@ -3160,6 +3196,7 @@ local function CreateUI()
         AddPanelBorder(x, y, width, height)
     end
     AddPanelInnerEdge(18, -158, 260, 650)
+    AddPanelInnerEdge(286, -158, 834, 650)
     AddPanelInnerEdge(1126, -158, 300, 650)
     local function AddPanelHeader(x, y, width)
         local plate = frame:CreateTexture(nil, "ARTWORK")

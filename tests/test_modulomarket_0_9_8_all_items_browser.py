@@ -10,9 +10,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.9.8"' in CORE
-    assert "## Version: 0.9.8" in TOC
-    assert MANIFEST["version"] == "0.9.8"
+    assert 'MM.version = "0.9.9"' in CORE
+    assert "## Version: 0.9.9" in TOC
+    assert MANIFEST["version"] == "0.9.9"
 
 
 def test_all_items_is_four_column_auction_browser():
@@ -23,7 +23,7 @@ def test_all_items_is_four_column_auction_browser():
 
 
 def test_all_items_uses_at_price_and_total_units_not_listing_count():
-    block = UI.split('elseif tab == "market" then\n        local allItemsColumns =', 1)[1].split("\n    else\n        local marketColumns", 1)[0]
+    block = UI.split("local function UpdateAllItemsColumnLayout()", 1)[1].split("\nend\n\nfunction UI.RenderRows()", 1)[0]
     assert "row.depth:SetPoint" in block
     assert "row.atPrice:SetPoint" in block
     assert "row.total:Hide()" in block
@@ -62,9 +62,9 @@ def test_all_items_low_supply_shortcut_is_removed_but_legacy_saved_state_is_iner
     assert "lowSupplyOnly = false," in UI
 
 
-def test_redundant_middle_panel_and_column_guides_are_removed():
+def test_middle_panel_outline_is_restored_without_background_or_column_guides():
     assert "local centerPanel = frame:CreateTexture" not in UI
-    assert "AddPanelInnerEdge(286, -158, 834, 650)" not in UI
+    assert "AddPanelInnerEdge(286, -158, 834, 650)" in UI
     assert "UI.tableColumnGuides" not in UI
     assert "local guideX in ipairs({ 520, 650, 760, 850, 935 })" not in UI
     assert "UI.tableHeaderSurface" not in UI
@@ -92,7 +92,7 @@ def test_manifest_inventory_matches_release_tree():
 def test_non_all_items_tabs_restore_their_own_profit_and_listing_fields():
     assert "row.profit:Show()" in UI
     assert "row.total:Show()" in UI
-    materials = UI.split('elseif tab == "materials" then\n        local materialColumns =', 1)[1].split('elseif tab == "market" then\n        local allItemsColumns =', 1)[0]
+    materials = UI.split('elseif tab == "materials" then\n        local materialColumns =', 1)[1].split('elseif tab == "market" then\n        -- The numeric columns size', 1)[0]
     assert "row.profit:Show()" in materials
-    all_items = UI.split('elseif tab == "market" then\n        local allItemsColumns =', 1)[1].split('\n    else\n        local marketColumns', 1)[0]
+    all_items = UI.split("local function UpdateAllItemsColumnLayout()", 1)[1].split("\nend\n\nfunction UI.RenderRows()", 1)[0]
     assert "row.total:Hide()" in all_items and "row.profit:Hide()" in all_items
