@@ -1,6 +1,6 @@
-# Modulo Market 0.10.3
+# Modulo Market 0.10.4
 
-**Current player milestone:** Turn-In reward display remains mutually exclusive. Inspector metric values now use a fixed font size derived from the same `GameFontHighlight + 1` template as the middle table rows; non-Turn-In metrics use a fixed `GameFontHighlightLarge + 1` size. Font size is assigned absolutely rather than incremented on each tab switch or item selection, preventing cumulative growth. Selecting a Turn-In now immediately refreshes the virtual row pool so its selected-row highlight appears without waiting for a later rebuild. Pricing, sorting, unknown handling and market data behavior are unchanged. Offline tests and runtime limitations are recorded in `MODULOMARKET-RUNTIME-AUDIT-0.10.3.md`. Forever runtime acceptance remains NOT RUN.
+**Current player milestone:** The Turn-In inspector's Required Bundles panel now renders every accepted one-of material alternative as a separate price breakdown. Each option shows its required quantities, known cheapest unit prices, line costs, material subtotal and explicit incomplete/unknown price reasons; the cheapest fully priceable option is marked BEST VALUE. The crate purchase price remains separate from material subtotals. The prior 0.10.3 fixed inspector font sizing and immediate Turn-In row highlight are preserved. Pricing calculations, market-depth requirements, alternatives, sorting and market data behavior are unchanged. Forever runtime acceptance remains NOT RUN; see `MODULOMARKET-RUNTIME-AUDIT-0.10.4.md` and `docs/MODULOMARKET-TURN-IN-BUNDLE-BREAKDOWN-0.10.4.md`.
 
 # Modulo Market 0.10.1
 

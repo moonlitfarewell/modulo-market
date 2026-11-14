@@ -11,10 +11,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.10.3"' in CORE
-    assert "## Version: 0.10.3" in TOC
-    assert 'version = "0.10.3"' in DATA
-    assert MANIFEST["version"] == "0.10.3"
+    assert 'MM.version = "0.10.4"' in CORE
+    assert "## Version: 0.10.4" in TOC
+    assert 'version = "0.10.4"' in DATA
+    assert MANIFEST["version"] == "0.10.4"
 
 
 def test_turnins_uses_five_columns_and_combined_reward_sort():
@@ -36,10 +36,14 @@ def test_reward_display_is_mutually_exclusive_and_preserves_zero_unknown():
     assert ' F · ' not in UI and ' Favor · ' not in UI
 
 
-def test_best_material_option_is_identified_and_itemized():
-    assert "BEST VALUE · OPTION %d · MATERIALS %s" in UI
-    assert "item.bestBundle.lines" in UI
-    assert "OTHER MATERIAL OPTIONS" in UI
+def test_every_material_option_is_rendered_as_a_separate_breakdown():
+    assert 'local function RenderTurnInBundleBreakdown(item)' in UI
+    assert 'for index, alternative in ipairs(item.bundleAlternatives or {}) do' in UI
+    assert 'OPTION %d%s' in UI
+    assert 'alternative.index == item.bestBundle.index' in UI
+    assert 'Material subtotal' in UI
+    assert 'Line: ' in UI
+    assert 'Unit: unknown' in UI
 
 
 def test_completion_cost_hover_explains_full_cost_and_unknowns():

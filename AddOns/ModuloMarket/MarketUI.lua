@@ -1018,9 +1018,19 @@ local function AddLabel(parent, text, x, y, width, height, font)
     return label
 end
 
+local function HideTurnInBreakdown()
+    for _, row in ipairs(UI.turnInBreakdownRows or {}) do
+        if row.left then row.left:Hide() end
+        if row.right then row.right:Hide() end
+    end
+    if UI.detailEconomics then UI.detailEconomics:Show() end
+end
+
 local function SetDetailEconomics(text)
+    HideTurnInBreakdown()
     if not UI.detailEconomics then return end
     UI.detailEconomics:SetText(text or "")
+    UI.detailEconomics:Show()
     local contentHeight = 1
     if type(UI.detailEconomics.GetStringHeight) == "function" then
         local ok, measured = pcall(UI.detailEconomics.GetStringHeight, UI.detailEconomics)
@@ -1032,6 +1042,88 @@ local function SetDetailEconomics(text)
         UI.detailScrollChild:SetHeight(math.max(UI.detailScroll:GetHeight(), contentHeight))
         if UI.detailScroll.SetVerticalScroll then UI.detailScroll:SetVerticalScroll(0) end
     end
+end
+
+local function RenderTurnInBundleBreakdown(item)
+    if not UI.detailScrollChild or not UI.detailScroll then return end
+    if not UI.turnInBreakdownRows then UI.turnInBreakdownRows = {} end
+    if UI.detailEconomics then UI.detailEconomics:Hide() end
+    for _, row in ipairs(UI.turnInBreakdownRows) do
+        if row.left then row.left:Hide() end
+        if row.right then row.right:Hide() end
+    end
+
+    local cursorY, usedRows = 0, 0
+    local function AddRow(leftText, rightText, style, fullWidth, height)
+        usedRows = usedRows + 1
+        local row = UI.turnInBreakdownRows[usedRows]
+        if not row then
+            row = {}
+            row.left = UI.detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            row.right = UI.detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            UI.turnInBreakdownRows[usedRows] = row
+        end
+        local font = style == "header" and GameFontNormal or (style == "muted" and GameFontDisableSmall or GameFontHighlight)
+        SetFontFromTemplate(row.left, font, 0)
+        SetFontFromTemplate(row.right, font, 0)
+        row.left:ClearAllPoints()
+        row.left:SetPoint("TOPLEFT", UI.detailScrollChild, "TOPLEFT", 0, -cursorY)
+        row.left:SetWidth(fullWidth and 238 or 146)
+        row.left:SetHeight(height or 15)
+        row.left:SetJustifyH("LEFT")
+        row.left:SetWordWrap(fullWidth == true)
+        row.left:SetText(leftText or "")
+        if style == "header" then row.left:SetTextColor(1, 0.82, 0.05)
+        elseif style == "muted" then row.left:SetTextColor(0.72, 0.72, 0.72)
+        else row.left:SetTextColor(0.92, 0.92, 0.92) end
+        row.left:Show()
+        if not fullWidth then
+            row.right:ClearAllPoints()
+            row.right:SetPoint("TOPLEFT", UI.detailScrollChild, "TOPLEFT", 148, -cursorY)
+            row.right:SetWidth(90)
+            row.right:SetHeight(height or 15)
+            row.right:SetJustifyH("RIGHT")
+            row.right:SetWordWrap(false)
+            row.right:SetText(rightText or "")
+            row.right:SetTextColor(style == "header" and 1 or 0.92, style == "header" and 0.82 or 0.92, style == "header" and 0.05 or 0.92)
+            row.right:Show()
+        else
+            row.right:Hide()
+        end
+        cursorY = cursorY + (height or 15)
+    end
+
+    AddRow("CRATE PURCHASE · 1 × CRATE", item.cratePriceCopper and FormatMoney(item.cratePriceCopper) or "Unavailable", "header")
+    if not item.cratePriceCopper then
+        AddRow(tostring(item.cratePriceReason or "No current crate listing"), nil, "muted", true, 25)
+    end
+    AddRow("MATERIAL OPTIONS · CHOOSE ONE", nil, "header", true)
+
+    for index, alternative in ipairs(item.bundleAlternatives or {}) do
+        local isBest = item.bestBundle and alternative.index == item.bestBundle.index
+        local title = string.format("OPTION %d%s", index, isBest and " · BEST VALUE" or "")
+        AddRow(title, alternative.complete and FormatMoney(alternative.costCopper) or "INCOMPLETE", "header")
+        for _, reagent in ipairs(alternative.lines or {}) do
+            AddRow(string.format("%d × %s", reagent.quantity or 0, reagent.itemName or "Unknown material"),
+                nil, "normal", true, 24)
+            AddRow(reagent.unitPriceCopper and ("Unit: " .. FormatMoney(reagent.unitPriceCopper) .. " / ea") or "Unit: unknown",
+                reagent.lineCostCopper and ("Line: " .. FormatMoney(reagent.lineCostCopper)) or "Line: unavailable", "normal")
+            if not reagent.lineCostCopper and reagent.reason then
+                AddRow("Price status: " .. tostring(reagent.reason), nil, "muted", true, 27)
+            end
+        end
+        AddRow("Material subtotal", alternative.complete and FormatMoney(alternative.costCopper) or "INCOMPLETE", "normal")
+        AddRow("", nil, "muted", true, 5)
+    end
+
+    for index = usedRows + 1, #UI.turnInBreakdownRows do
+        local row = UI.turnInBreakdownRows[index]
+        if row.left then row.left:Hide() end
+        if row.right then row.right:Hide() end
+    end
+    UI.detailScrollChild:SetHeight(math.max(UI.detailScroll:GetHeight(), cursorY + 4))
+    UI.detailScrollChild:SetWidth(250)
+    UI.detailScroll:SetVerticalScroll(0)
 end
 
 local function CreateInput(parent, labelText, x, y, width, defaultValue)
@@ -2496,33 +2588,7 @@ SelectItem = function(item)
             end
         end
         UI.relationshipHeading:SetText("Required Bundles")
-        local lines = {}
-        lines[#lines+1] = "CRATE PURCHASE"
-        lines[#lines+1] = item.cratePriceCopper and ("1 × " .. FormatMoney(item.cratePriceCopper)) or ("Unavailable: " .. tostring(item.cratePriceReason or "no current listing"))
-        lines[#lines+1] = ""
-        if item.bestBundle then
-            lines[#lines+1] = string.format("BEST VALUE · OPTION %d · MATERIALS %s", item.bestBundle.index, FormatMoney(item.bestBundle.costCopper))
-            for _, reagent in ipairs(item.bestBundle.lines or {}) do
-                lines[#lines+1] = string.format("  %s × %d · %s", reagent.itemName, reagent.quantity,
-                    reagent.lineCostCopper and FormatMoney(reagent.lineCostCopper) or "Price unknown")
-            end
-        else
-            lines[#lines+1] = "BEST VALUE · UNKNOWN (no fully priceable bundle)"
-        end
-        lines[#lines+1] = ""
-        lines[#lines+1] = "OTHER MATERIAL OPTIONS"
-        for i, alternative in ipairs(item.bundleAlternatives or {}) do
-            if not item.bestBundle or alternative.index ~= item.bestBundle.index then
-                local cost = alternative.complete and FormatMoney(alternative.costCopper) or "Incomplete / unknown"
-                lines[#lines+1] = string.format("Option %d · %s", i, cost)
-                for _, reagent in ipairs(alternative.lines or {}) do
-                    local detail = reagent.lineCostCopper and FormatMoney(reagent.lineCostCopper)
-                        or (reagent.reason or "Price unavailable")
-                    lines[#lines+1] = string.format("  %s × %d · %s", reagent.itemName, reagent.quantity, detail)
-                end
-            end
-        end
-        SetDetailEconomics(table.concat(lines, "\n"))
+        RenderTurnInBundleBreakdown(item)
         if UI.historyText then
             local outcome
             if item.cashReturnCopper ~= nil and item.rewardFavor ~= nil then

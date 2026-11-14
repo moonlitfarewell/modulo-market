@@ -2,7 +2,7 @@
 ## Title: Modulo Market
 ## Notes: Auction House economics, profession recipes, materials, Waylaid crate turn-in analysis and price history.
 ## Author: MODULO Project
-## Version: 0.10.3
+## Version: 0.10.4
 ## Category: Modulo By Wells
 ## Group: Modulo
 ## Dependencies: Modulo
