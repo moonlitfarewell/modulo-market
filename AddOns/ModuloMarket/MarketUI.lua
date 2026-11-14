@@ -1807,10 +1807,23 @@ local function StepTooltipSearchWarmup()
     end
 end
 
+local function GetMaximumListOffset(total)
+    total = math.max(0, tonumber(total) or 0)
+    local visible = math.max(1, tonumber(UI.visibleCount) or 1)
+    local rowHeight = math.max(1, tonumber(UI.rowHeight) or 1)
+    return math.max(0, (total - visible) * rowHeight)
+end
+
+local function ClampListOffset(offset, total)
+    local value = math.max(0, tonumber(offset) or 0)
+    return math.min(value, GetMaximumListOffset(total))
+end
+
 local function UpdateResultRange()
     if not UI.resultCount then return end
     local total = #(UI.viewRows or {})
-    local first = total > 0 and (math.floor((UI.listOffset or 0) / UI.rowHeight) + 1) or 0
+    UI.listOffset = ClampListOffset(UI.listOffset, total)
+    local first = total > 0 and (math.floor(UI.listOffset / UI.rowHeight) + 1) or 0
     local last = total > 0 and math.min(total, first + UI.visibleCount - 1) or 0
     UI.resultCount:SetText(string.format("%d-%d / %d", first, last, total))
 end
@@ -1819,7 +1832,13 @@ function UI.FinishView(rows)
     UI.viewRevision = (UI.viewRevision or 0) + 1
     UI.viewRows = rows
     UI.rankSort = nil
+    -- A new result set must never inherit the previous result set's scroll
+    -- position. Reset after replacing the scroll-child height as well as when
+    -- scheduling the build, because OnVerticalScroll may deliver a stale offset.
+    UI.listOffset = 0
     UI.scrollChild:SetHeight(math.max(1, #UI.viewRows * UI.rowHeight))
+    if UI.scroll then UI.scroll:SetVerticalScroll(0) end
+    UI.listOffset = 0
     UI.RenderRows()
     if UI.activeTab == "history" then UI.RenderHistory() end
     local wanted = UI.selectedByTab[UI.activeTab]
@@ -2097,7 +2116,8 @@ function UI.RenderRows()
     if type(UI.rows) ~= "table" or not UI.rows[1] or not UI.scrollChild then return end
     local rowPoolCount = #UI.rows
     if rowPoolCount == 0 then return end
-    local startIndex = math.floor((UI.listOffset or 0) / UI.rowHeight) + 1
+    UI.listOffset = ClampListOffset(UI.listOffset, #(UI.viewRows or {}))
+    local startIndex = math.floor(UI.listOffset / UI.rowHeight) + 1
     local isCrafting = UI.activeTab == "crafts"
     for i = 1, math.min(UI.visibleCount or rowPoolCount, rowPoolCount) do
         local index = startIndex + i - 1
@@ -4193,9 +4213,16 @@ local function CreateUI()
     UI.scrollChild = CreateFrame("Frame", nil, UI.scroll)
     UI.scrollChild:SetSize(796, 1)
     UI.scroll:SetScrollChild(UI.scrollChild)
-    UI.scroll:SetScript("OnVerticalScroll", function(_, offset)
-        UI.listOffset = offset
+    UI.scroll:SetScript("OnVerticalScroll", function(scrollFrame, offset)
+        local clamped = ClampListOffset(offset, #(UI.viewRows or {}))
+        UI.listOffset = clamped
+        if math.abs((tonumber(offset) or 0) - clamped) > 1 and not UI.clampingListOffset then
+            UI.clampingListOffset = true
+            scrollFrame:SetVerticalScroll(clamped)
+            UI.clampingListOffset = nil
+        end
         UI.RenderRows()
+        UpdateResultRange()
     end)
 
     for i = 1, UI.visibleCount do

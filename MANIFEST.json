@@ -75,7 +75,7 @@
     "Modulo"
   ],
   "developer_tools_version": "Embedded repository importer 0.2.0 used to compile the 70938 runtime; standalone ForeverDB importer 0.2.3 used to inspect, normalize and validate the raw 70938 capture (separate release lifecycle).",
-  "file_count": 263,
+  "file_count": 264,
   "files": [
     ".gitignore",
     "AddOns/ModuloMarket/Core.lua",
@@ -130,6 +130,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.11.9.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.12.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.12.1.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.12.2.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.2.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.1.md",
@@ -264,6 +265,7 @@
     "tests/test_modulomarket_0_11_9_passive_rarity.py",
     "tests/test_modulomarket_0_12_0_search_compat.py",
     "tests/test_modulomarket_0_12_1_rarity_markup.py",
+    "tests/test_modulomarket_0_12_2_search_scroll.py",
     "tests/test_modulomarket_0_5_6_redesign_and_capture_cache.py",
     "tests/test_modulomarket_0_7_0_scope_search_layout.py",
     "tests/test_modulomarket_0_7_3_search_warmup.py",
@@ -336,7 +338,6 @@
     "tools/foreverdb_importer/Normalize-Latest-Capture.cmd",
     "tools/foreverdb_importer/Normalize-Latest-Capture.ps1",
     "tools/foreverdb_importer/README.md",
-    "tools/foreverdb_importer/__pycache__/market_data_importer.cpython-313.pyc",
     "tools/foreverdb_importer/fixtures/canonical-sample.synthetic.json",
     "tools/foreverdb_importer/market_data_importer.py",
     "tools/foreverdb_importer/recipe-data-v1.schema.json"
@@ -574,5 +575,5 @@
   "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.11.5.zip",
   "supersedesChildBytes": 2481734,
   "supersedesChildSha256": "1bb4568df5fc8424773df36256e534922b0edeae9aa2dfd227181a8543c4b023",
-  "version": "0.12.1"
+  "version": "0.12.2"
 }

@@ -35,8 +35,8 @@ def test_existing_sort_and_scroll_behaviour_is_preserved():
     assert "function UI.FinishView(rows)" in UI
     assert "function UI.RenderRows()" in UI
     assert "UI.scroll:SetScript(\"OnVerticalScroll\"" in UI
-    assert "UI.listOffset = offset" in UI
-    assert "math.floor((UI.listOffset or 0) / UI.rowHeight) + 1" in UI
+    assert "local clamped = ClampListOffset(offset, #(UI.viewRows or {}))" in UI
+    assert "math.floor(UI.listOffset / UI.rowHeight) + 1" in UI
     assert "visibleCount = 25," in UI
     assert "key == \"depth\"" in UI and "a.minPriceQuantity" in UI
     assert "key == \"total\"" in UI and "a.totalQuantity" in UI
