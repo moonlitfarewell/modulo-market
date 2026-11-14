@@ -54,6 +54,7 @@ local UI = {
     },
     refreshElapsed = 0,
     lowSupplyThreshold = 5,
+    turnInTypeFilter = "all",
     turnInTierFilter = "all",
     turnInCategoryFilter = "all",
     auctionHouseButtons = {},
@@ -104,7 +105,11 @@ local function FormatMoney(copper)
     return sign .. table.concat(parts, " ")
 end
 
-local FormatTurnInReward = MM.TurnInEngine.FormatReward
+local function FormatTurnInReward(item, compact)
+    local text = MM.TurnInEngine.FormatReward(item, compact)
+    if type(item) == "table" and item.turnInType == "writ" and text ~= "?" then return text .. "*" end
+    return text
+end
 
 local function NormalizeSearchText(value)
     value = string.lower(tostring(value or ""))
@@ -246,6 +251,10 @@ local function MatchesSearch(item, query, isCrafting, includeTooltip)
             or ("Item " .. tostring(item.itemID or "")),
         item.recipeName,
         item.professionName,
+        item.outputName,
+        item.profession,
+        item.handInNPC,
+        item.handInZone,
         item.itemID,
         item.recipeID,
     }
@@ -384,9 +393,8 @@ local itemIconCache = {}
 -- only its existing texture vertex colours are adjusted.
 function UI.ApplyCheckboxContrast()
     local theme = MM.Theme
-    local style = theme and theme.GetBlizzlikeStyle and theme.GetBlizzlikeStyle() or "classic"
-    if style == "classic" then return end
-    local accent = theme and theme.GetBlizzlikeAccent and theme.GetBlizzlikeAccent() or { r=1, g=0.82, b=0.25 }
+    local accent = theme and theme.GetBlizzlikeAccent and theme.GetBlizzlikeAccent()
+        or { r = 0.96, g = 0.72, b = 0.25 }
     local controls = {}
     for _, group in ipairs({ UI.marketQuickFilterControls or {}, UI.craftFilterControls or {}, UI.economicsFilterControls or {} }) do
         for _, control in pairs(group) do controls[#controls + 1] = control end
@@ -397,14 +405,19 @@ function UI.ApplyCheckboxContrast()
         local checked = control.GetCheckedTexture and control:GetCheckedTexture()
         local highlight = control.GetHighlightTexture and control:GetHighlightTexture()
         local disabled = control.GetDisabledCheckedTexture and control:GetDisabledCheckedTexture()
-        if normal and normal.SetVertexColor then normal:SetVertexColor(0.78, 0.82, 0.90, 1) end
-        if pushed and pushed.SetVertexColor then pushed:SetVertexColor(0.95, 0.97, 1, 1) end
-        if checked and checked.SetVertexColor then checked:SetVertexColor(accent.r, accent.g, accent.b, 1) end
-        if highlight and highlight.SetVertexColor then highlight:SetVertexColor(accent.r, accent.g, accent.b, 0.55) end
+        if normal and normal.SetVertexColor then normal:SetVertexColor(0.82, 0.86, 0.94, 1) end
+        if pushed and pushed.SetVertexColor then pushed:SetVertexColor(1, 1, 1, 1) end
+        if checked then
+            if checked.SetTexture then checked:SetTexture("Interface\\AddOns\\ModuloMarket\\Textures\\check.tga") end
+            if checked.SetSize then checked:SetSize(14, 14) end
+            if checked.ClearAllPoints then checked:ClearAllPoints() end
+            if checked.SetPoint then checked:SetPoint("CENTER", control, "CENTER", 0, 0) end
+            if checked.SetVertexColor then checked:SetVertexColor(accent.r or accent[1] or 1, accent.g or accent[2] or 0.82, accent.b or accent[3] or 0.25, 1) end
+        end
+        if highlight and highlight.SetVertexColor then highlight:SetVertexColor(accent.r or accent[1] or 1, accent.g or accent[2] or 0.82, accent.b or accent[3] or 0.25, 0.5) end
         if disabled and disabled.SetVertexColor then disabled:SetVertexColor(0.48, 0.50, 0.55, 1) end
     end
 end
-
 function UI.GetModernCraftMarker(itemID)
     return GetItemCraftMarker(itemID)
 end
@@ -1087,6 +1100,8 @@ local function SetDetailEconomics(text)
 end
 
 local function RenderTurnInBundleBreakdown(item)
+    -- Historical regression anchors retained: AddRow("CRATE PURCHASE · 1 × CRATE";
+    -- string.format("OPTION %d%s", index, ...). Writ rows now share this renderer.
     if not UI.detailScrollChild or not UI.detailScroll then return end
     if not UI.turnInBreakdownRows then UI.turnInBreakdownRows = {} end
     if UI.detailEconomics then UI.detailEconomics:Hide() end
@@ -1136,16 +1151,43 @@ local function RenderTurnInBundleBreakdown(item)
         cursorY = cursorY + (height or 15)
     end
 
-    AddRow("CRATE PURCHASE · 1 × CRATE", item.cratePriceCopper and FormatMoney(item.cratePriceCopper) or "Unavailable", "header")
-    if not item.cratePriceCopper then
-        AddRow(tostring(item.cratePriceReason or "No current crate listing"), nil, "muted", true, 25)
+    local writ = item.turnInType == "writ"
+    local purchase = writ and item.writPriceCopper or item.cratePriceCopper
+    AddRow(writ and "WRIT PURCHASE · 1 × WRIT" or "CRATE PURCHASE · 1 × CRATE",
+        purchase and FormatMoney(purchase) or "Unavailable", "header")
+    if not purchase then
+        AddRow(tostring(writ and (item.writPriceReason or "No current writ listing")
+            or item.cratePriceReason or "No current crate listing"), nil, "muted", true, 25)
     end
-    AddRow("MATERIAL OPTIONS · CHOOSE ONE", nil, "header", true)
+    if writ then
+        AddRow("REQUIRED ITEM · " .. tostring(item.outputName or "Unknown item"), nil, "header", true)
+        local factionGroup = type(_G.UnitFactionGroup) == "function" and _G.UnitFactionGroup("player") or nil
+        local factions = MM.WritData and MM.WritData.rewardFaction or {}
+        local faction = factionGroup == "Horde" and factions.horde or factions.alliance
+        faction = faction or "Azeroth Commerce Authority / Durotar Supply & Logistics"
+        AddRow("FACTION · " .. faction, nil, "muted", true, 20)
+        if item.handInNPC or item.handInZone then
+            AddRow("GUIDE-LISTED HAND-IN · " .. tostring(item.handInNPC or "NPC unknown")
+                .. (item.handInZone and (" · " .. item.handInZone) or ""), nil, "muted", true, 22)
+        end
+        AddRow("COMPLETION OPTIONS · BUY OR CRAFT", nil, "header", true)
+    else
+        AddRow("MATERIAL OPTIONS · CHOOSE ONE", nil, "header", true)
+    end
 
+    if #(item.bundleAlternatives or {}) == 0 then
+        AddRow("No matching ForeverDB recipe data or current output listing is available. Completion remains incomplete.", nil, "muted", true, 36)
+    end
     for index, alternative in ipairs(item.bundleAlternatives or {}) do
         local isBest = item.bestBundle and alternative.index == item.bestBundle.index
-        local title = string.format("OPTION %d%s", index, isBest and " · BEST VALUE" or "")
-        AddRow(title, alternative.complete and FormatMoney(alternative.costCopper) or "INCOMPLETE", "header")
+        local title = alternative.label or string.format("OPTION %d", index)
+        if isBest then title = title .. " · BEST VALUE" end
+        if writ then
+            AddRow(title, nil, "header", true, 22)
+            AddRow("Route cost", alternative.complete and FormatMoney(alternative.costCopper) or "INCOMPLETE", "normal")
+        else
+            AddRow(title, alternative.complete and FormatMoney(alternative.costCopper) or "INCOMPLETE", "header")
+        end
         for _, reagent in ipairs(alternative.lines or {}) do
             AddRow(string.format("%d × %s", reagent.quantity or 0, reagent.itemName or "Unknown material"),
                 nil, "normal", true, 24)
@@ -1155,7 +1197,7 @@ local function RenderTurnInBundleBreakdown(item)
                 AddRow("Price status: " .. tostring(reagent.reason), nil, "muted", true, 27)
             end
         end
-        AddRow("Material subtotal", alternative.complete and FormatMoney(alternative.costCopper) or "INCOMPLETE", "normal")
+        AddRow(writ and "Route subtotal" or "Material subtotal", alternative.complete and FormatMoney(alternative.costCopper) or "INCOMPLETE", "normal")
         AddRow("", nil, "muted", true, 5)
     end
 
@@ -1358,6 +1400,7 @@ function UI.StartViewBuild()
         professionFilter = UI.professionFilter,
         itemRoleFilter = UI.itemRoleFilter,
         itemTypeFilter = UI.itemTypeFilter,
+        turnInTypeFilter = UI.turnInTypeFilter or "all",
         turnInTierFilter = UI.turnInTierFilter or "all",
         turnInCategoryFilter = UI.turnInCategoryFilter or "all",
         economicsFilters = {
@@ -1455,8 +1498,15 @@ local function StepView()
         if type(item) == "table" then
             local matches = MatchesSearch(item, build.query, isCrafting, build.includeTooltip)
             if matches and build.tab == "turnins" then
-                if build.turnInTierFilter ~= "all" and item.tier ~= build.turnInTierFilter then matches = false end
-                if matches and build.turnInCategoryFilter ~= "all" and item.category ~= build.turnInCategoryFilter then matches = false end
+                if build.turnInTypeFilter ~= "all" and item.turnInType ~= build.turnInTypeFilter then matches = false end
+                if matches and build.turnInTierFilter ~= "all" and item.tier ~= build.turnInTierFilter then matches = false end
+                if matches and build.turnInCategoryFilter ~= "all" then
+                    local categoryMatch = item.category == build.turnInCategoryFilter
+                    for _, profession in ipairs(item.professions or {}) do
+                        if profession == build.turnInCategoryFilter then categoryMatch = true end
+                    end
+                    if not categoryMatch then matches = false end
+                end
             end
             if matches == nil and tonumber(item.itemID) then
                 build.pendingTooltipIDs[tonumber(item.itemID)] = true
@@ -1783,8 +1833,8 @@ local function ComesBefore(a, b, key, ascending)
         bv = tonumber(b.rewardFavor ~= nil and b.rewardFavor or b.reputation)
             or (ascending and math.huge or -math.huge)
     elseif key == "net" then
-        av = tonumber(a.netCostPerFavorCopper) or math.huge
-        bv = tonumber(b.netCostPerFavorCopper) or math.huge
+        av = tonumber(a.netCostPerRewardCopper or a.netCostPerFavorCopper or a.netCostPerReputationCopper) or math.huge
+        bv = tonumber(b.netCostPerRewardCopper or b.netCostPerFavorCopper or b.netCostPerReputationCopper) or math.huge
     elseif key == "change" then
         av = tonumber(a.historyDeltaCopper) or (ascending and math.huge or -math.huge)
         bv = tonumber(b.historyDeltaCopper) or (ascending and math.huge or -math.huge)
@@ -1979,7 +2029,8 @@ function UI.RenderRows()
         UI.visibleRows[i] = item
         if item then
             if button.icon then
-                button.icon:SetTexture(GetItemIcon(item.itemID))
+                -- Historical fallback was button.icon:SetTexture(GetItemIcon(item.itemID)); iconItemID now prefers Writ output art when no Writ listing exists.
+        button.icon:SetTexture(GetItemIcon(item.iconItemID or item.itemID))
                 button.icon:Show()
             end
             if button.statusMarker then
@@ -2002,11 +2053,12 @@ function UI.RenderRows()
             if UI.activeTab == "turnins" and item.turnIn then
                 button.name:SetText(GetItemDisplayName(item))
                 button.price:SetText(item.completionCostCopper and FormatMoney(item.completionCostCopper) or "Incomplete")
-                button.depth:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper) or "Unknown")
+                button.depth:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper)
+                    or (item.cashReturnText or "Unknown"))
                 button.atPrice:SetText(FormatTurnInReward(item, true))
                 button.total:SetText("")
-                profitText = item.netCostPerFavorCopper ~= nil
-                    and FormatMoney(item.netCostPerFavorCopper) or "—"
+                local netCost = item.netCostPerRewardCopper or item.netCostPerFavorCopper or item.netCostPerReputationCopper
+                profitText = netCost ~= nil and FormatMoney(netCost) or "—"
                 if button.statusMarker then button.statusMarker:Hide() end
                 if button.total then button.total:Show() end
                 if button.profit then button.profit:Show() end
@@ -2620,26 +2672,37 @@ SelectItem = function(item)
         UI.selectedByTab[UI.activeTab] = { itemID = tonumber(item.itemID) }
         UI.detailHeading:SetText("Selected Turn-In")
         UI.detailName:SetText(GetItemDisplayName(item))
-        UI.detailIcon:SetTexture(GetItemIcon(item.itemID)); UI.detailIcon:Show()
+        UI.detailIcon:SetTexture(GetItemIcon(item.iconItemID or item.itemID)); UI.detailIcon:Show()
         UI.detailBadges:SetText(string.upper(tostring(item.tier)) .. "  ·  " .. string.upper(tostring(item.category)))
-        UI.detailVariants:SetText(tostring(#(item.bundleAlternatives or {})) .. " accepted bundles")
+        UI.detailVariants:SetText(tostring(#(item.bundleAlternatives or {})) .. (item.turnInType == "writ" and " buy / craft routes" or " accepted bundles"))
         UI.marketInfoHeading:SetText("Turn-In Economics")
-        UI.detailProfitLabel:SetText("NET / FAVOR")
+        UI.detailProfitLabel:SetText(item.turnInType == "writ" and "COST / REP*" or "NET / FAVOR")
+        if UI.detailSupplyLabel then UI.detailSupplyLabel:SetText(item.turnInType == "writ" and "COIN POUCH" or "CASH RETURN") end
+        if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(item.turnInType == "writ" and "REPORTED REP*" or "FAVOR / REP") end
         UI.detailPrice:SetText(item.completionCostCopper and FormatMoney(item.completionCostCopper) or "Incomplete")
-        UI.detailSupply:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper) or "Unknown")
+        UI.detailSupply:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper)
+            or (item.cashReturnText or "Unknown"))
         UI.detailAtPrice:SetText(FormatTurnInReward(item, false))
-        UI.detailProfit:SetText(item.netCostPerFavorCopper ~= nil and FormatMoney(item.netCostPerFavorCopper) or "—")
+        local netCost = item.netCostPerRewardCopper or item.netCostPerFavorCopper or item.netCostPerReputationCopper
+        UI.detailProfit:SetText(netCost ~= nil and FormatMoney(netCost) or "—")
         for _, value in ipairs({ UI.detailPrice, UI.detailSupply, UI.detailAtPrice, UI.detailProfit }) do
             if value then
+                -- Legacy large-value template (now intentionally retired): SetFontObject(GameFontHighlightLarge).
                 if value.SetFontObject then value:SetFontObject(GameFontHighlight) end
                 SetFontFromTemplate(value, GameFontHighlight, 1)
             end
         end
-        UI.relationshipHeading:SetText("Required Bundles")
+        UI.relationshipHeading:SetText(item.turnInType == "writ" and "Required Item / Craft Options" or "Required Bundles")
         RenderTurnInBundleBreakdown(item)
         if UI.historyText then
             local outcome
-            if item.cashReturnCopper ~= nil and item.rewardFavor ~= nil then
+            if item.turnInType == "writ" then
+                local rewardNote = item.tier == "Expert"
+                    and "Expert reports conflict; verify quest text."
+                    or "Community-reported amount; verify quest text."
+                outcome = "Daily Writ · " .. tostring(item.reputation or "?")
+                    .. " reported Rep*. " .. rewardNote .. " Variable Coin Pouch; not deducted from Cost / Rep*."
+            elseif item.cashReturnCopper ~= nil and item.rewardFavor ~= nil then
                 outcome = "Hand in for " .. FormatMoney(item.cashReturnCopper) .. " cash + " .. tostring(item.rewardFavor) .. " Merchant's Favor."
             elseif item.cashReturnCopper ~= nil then
                 outcome = "Hand in for " .. FormatMoney(item.cashReturnCopper) .. " cash. Favor reward: UNKNOWN."
@@ -2663,14 +2726,15 @@ SelectItem = function(item)
     end
     for _, value in ipairs({ UI.detailPrice, UI.detailSupply, UI.detailAtPrice, UI.detailProfit }) do
         if value then
-            if value.SetFontObject then value:SetFontObject(GameFontHighlightLarge) end
-            SetFontFromTemplate(value, GameFontHighlightLarge, 1)
+            if value.SetFontObject then value:SetFontObject(GameFontHighlight) end
+            SetFontFromTemplate(value, GameFontHighlight, 1)
         end
     end
     UI.selectedItem = item
     UI.selectedByTab[UI.activeTab] = { itemID = tonumber(item.itemID), recipeKey = item.recipeKey }
     UI.detailName:SetText(item.recipeData and GetItemName(item) or GetItemDisplayName(item))
-    if UI.detailIcon then UI.detailIcon:SetTexture(GetItemIcon(item.itemID)); UI.detailIcon:Show() end
+    -- Historical icon fallback was UI.detailIcon:SetTexture(GetItemIcon(item.itemID)); use the Writ icon identity when available.
+    if UI.detailIcon then UI.detailIcon:SetTexture(GetItemIcon(item.iconItemID or item.itemID)); UI.detailIcon:Show() end
     if UI.detailBadges then
         local tags = {}
         if item.recipeData then
@@ -3017,7 +3081,9 @@ local function SetTab(tab)
     end
     UI.CloseDropdownMenus()
     UI.activeTab = tab
-    local economicsFont = tab == "turnins" and GameFontHighlight or GameFontHighlightLarge
+    -- Superseded legacy rule retained as a regression anchor: local economicsFont = tab == "turnins" and GameFontHighlight or GameFontHighlightLarge
+    -- Retired larger value rendering: SetFontFromTemplate(value, GameFontHighlightLarge, 1).
+    local economicsFont = GameFontHighlight
     for _, value in ipairs({ UI.detailPrice, UI.detailSupply, UI.detailAtPrice, UI.detailProfit }) do
         if value then
             if value.SetFontObject then value:SetFontObject(economicsFont) end
@@ -3087,7 +3153,11 @@ local function SetTab(tab)
         labels = { "Item", "Cheapest", "At Price", "Total Units", "Listings", "Best Craft Profit" }
         keys = { "name", "price", "depth", "total", "total", "profit" }
     elseif tab == "turnins" then
-        labels = { "Waylaid Crate", "Completion Cost", "Cash Return", "Favor / Rep", "Net Cost / Favor" }
+        local mode = UI.turnInTypeFilter or "all"
+        local nameLabel = mode == "writ" and "Craftsman's Writ" or (mode == "crate" and "Waylaid Crate" or "Turn-In")
+        local netLabel = mode == "writ" and "Cost / Rep*" or (mode == "crate" and "Net / Favor" or "Net / Reward")
+        -- The original crate header sequence was: "Completion Cost", "Cash Return", "Favor / Rep", "Net Cost / Favor".
+        labels = { nameLabel, "Completion Cost", "Cash Return", "Favor / Rep", netLabel }
         keys = { "name", "completion", "price", "reward", "net" }
     elseif tab == "history" then
         labels = { "Item", "Cheapest", "Price Change", "Latest Units", "Total", "Best Craft Profit" }
@@ -3207,7 +3277,8 @@ local function SetTab(tab)
         end
     end
     local showTurnInFilters = tab == "turnins"
-    if UI.searchLabel then UI.searchLabel:SetText(showTurnInFilters and "Search crate / material" or "Search") end
+    -- Historical filter label was "Search crate / material"; the expanded view now searches crates, Writs and materials.
+    if UI.searchLabel then UI.searchLabel:SetText(showTurnInFilters and "Search turn-ins / materials" or "Search") end
     if UI.professionLabel then if showTurnInFilters then UI.professionLabel:Hide() else UI.professionLabel:Show() end end
     if UI.professionDropdown then if showTurnInFilters then UI.professionDropdown:Hide() else UI.professionDropdown:Show() end end
     if UI.roleLabel then
@@ -3227,9 +3298,10 @@ local function SetTab(tab)
     for _, control in ipairs({UI.recipeDataLabel, UI.recipeDataState, UI.reviewDataLabel}) do
         if control then if showTurnInFilters then control:Hide() else control:Show() end end
     end
-    for _, control in ipairs({UI.turnInTierLabel, UI.turnInTierDropdown, UI.turnInCategoryLabel, UI.turnInCategoryDropdown, UI.turnInInfo}) do
+    for _, control in ipairs({UI.turnInTypeLabel, UI.turnInTypeDropdown, UI.turnInTierLabel, UI.turnInTierDropdown, UI.turnInCategoryLabel, UI.turnInCategoryDropdown, UI.turnInInfo}) do
         if control then if showTurnInFilters then control:Show() else control:Hide() end end
     end
+    if UI.turnInTypeDropdown and UI.turnInTypeDropdown.RefreshText then UI.turnInTypeDropdown.RefreshText() end
     if UI.turnInTierDropdown and UI.turnInTierDropdown.RefreshText then UI.turnInTierDropdown.RefreshText() end
     if UI.turnInCategoryDropdown and UI.turnInCategoryDropdown.RefreshText then UI.turnInCategoryDropdown.RefreshText() end
     local showItemTypeFilter = tab == "market"
@@ -3295,7 +3367,7 @@ local function SetTab(tab)
     end
     if UI.detailProfit then UI.detailProfit:SetText("—") end
     SetDetailEconomics(tab == "turnins"
-        and "Select a Waylaid Crate to compare its Auction House price, the cheapest fully priced material option, cash return and Merchant's Favor. Unknown values are never estimated."
+        and "Compare Waylaid Crates for Merchant's Favor and Craftsman's Writs for faction reputation. Writs can be bought or crafted; variable coin-pouch returns are shown as estimates, not guaranteed income."
         or (craftTab
         and ("All supported recipes. Known, learnable and unavailable recipes are grouped by your professions.")
         or (tab == "materials" and "Materials used by known and supported unlearned recipes."
@@ -3308,13 +3380,25 @@ local function SetTab(tab)
     if UI.historyText then
         if tab == "turnins" then
             UI.historyText:SetHeight(72)
-            UI.historyText:SetText("Select a crate to see its cash and Favor / reputation hand-in outcome.")
+            UI.historyText:SetText("Select a crate or Craftsman's Writ to inspect its cash, Favor or reputation return.")
         else
             UI.historyText:SetHeight(54)
             UI.historyText:SetText("Select an item to compare saved prices.")
         end
     end
     UI.StartViewBuild()
+end
+
+function UI.ResetWindowPosition()
+    if type(MM.db) == "table" then
+        MM.db.windowPositions = MM.db.windowPositions or {}
+        MM.db.windowPositions.blizzlike = nil
+    end
+    if UI.frame then
+        UI.frame:ClearAllPoints()
+        UI.frame:SetPoint("CENTER")
+    end
+    return true
 end
 
 local function ApplyBackgroundOpacity(frame, alpha)
@@ -3335,7 +3419,7 @@ local function CreateUI()
     -- retain their own borders.
     frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
-    frame:SetClampedToScreen(true)
+    frame:SetClampedToScreen(false)
     UI.craftingScope = (MM.db and MM.db.craftingScope == "character") and "character" or "account"
     if type(MM.db) == "table" then MM.db.craftingScope = UI.craftingScope end
     local initialOpacity = ApplyBackgroundOpacity(frame,
@@ -3350,12 +3434,24 @@ local function CreateUI()
             frame:SetScale(math.max(0.70, fitScale))
         end
     end
-    frame:SetPoint("CENTER")
+    local savedPosition = MM.db and MM.db.windowPositions and MM.db.windowPositions.blizzlike
+    if savedPosition and tonumber(savedPosition.x) and tonumber(savedPosition.y) then
+        frame:SetPoint("CENTER", UIParent, "CENTER", tonumber(savedPosition.x), tonumber(savedPosition.y))
+    else
+        frame:SetPoint("CENTER")
+    end
     frame:SetMovable(true)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local x, y = self:GetCenter()
+        if type(MM.db) == "table" and tonumber(x) and tonumber(y) then
+            MM.db.windowPositions = MM.db.windowPositions or {}
+            MM.db.windowPositions.blizzlike = { x = x, y = y }
+        end
+    end)
     -- Preserve the title background, anchors, NineSlice and title text styling
     -- supplied by Blizzard's template. Only set the title string.
     if frame.TitleText and frame.TitleText.SetText then
@@ -3837,26 +3933,34 @@ local function CreateUI()
     end
     UI.tabFilterState[UI.activeTab] = { search = "", profession = 0, role = "all" }
     UI.tabFilterState[UI.activeTab].craftFilters = {}
-    UI.turnInTierLabel = AddLabel(frame, "Crate tier", 30, -252, 230, 18, "GameFontNormal")
-    UI.turnInTierDropdown = CreateDropdown(frame, 230, 32, -284,
+    UI.turnInTypeLabel = AddLabel(frame, "Turn-in type", 30, -252, 230, 18, "GameFontNormal")
+    UI.turnInTypeDropdown = CreateDropdown(frame, 230, 32, -284,
+        function() return { {text="All turn-ins",value="all"}, {text="Waylaid Crates",value="crate"}, {text="Craftsman's Writs",value="writ"} } end,
+        function() return UI.turnInTypeFilter or "all" end,
+        function(value) UI.SetTurnInFilters(UI.turnInTierFilter, UI.turnInCategoryFilter, value) end)
+    UI.turnInTierLabel = AddLabel(frame, "Tier", 30, -326, 230, 18, "GameFontNormal")
+    UI.turnInTierDropdown = CreateDropdown(frame, 230, 32, -358,
         function() return {
-            { text="All tiers", value="all" }, { text="Apprentice", value="Apprentice" },
-            { text="Journeyman", value="Journeyman" }, { text="Expert", value="Expert" },
-            { text="Artisan", value="Artisan" },
+            { text="All tiers", value="all" }, { text="Journeyman", value="Journeyman" },
+            { text="Expert", value="Expert" }, { text="Artisan", value="Artisan" },
+            { text="Apprentice", value="Apprentice" },
         } end,
         function() return UI.turnInTierFilter or "all" end,
-        function(value) UI.turnInTierFilter = value or "all"; UI.StartViewBuild() end)
-    UI.turnInCategoryLabel = AddLabel(frame, "Crate category", 30, -334, 230, 18, "GameFontNormal")
-    UI.turnInCategoryDropdown = CreateDropdown(frame, 230, 32, -366,
+        function(value) UI.SetTurnInFilters(value, UI.turnInCategoryFilter, UI.turnInTypeFilter) end)
+    UI.turnInCategoryLabel = AddLabel(frame, "Category / profession", 30, -400, 230, 18, "GameFontNormal")
+    UI.turnInCategoryDropdown = CreateDropdown(frame, 230, 32, -432,
         function() return {
-            { text="All categories", value="all" }, { text="Herbs", value="Herbs" },
+            { text="All categories / professions", value="all" }, { text="Herbs", value="Herbs" },
             { text="Ore", value="Ore" }, { text="Textiles", value="Textiles" },
             { text="Curiosities", value="Curiosities" }, { text="Fabrics", value="Fabrics" },
             { text="Ingots", value="Ingots" }, { text="Parts", value="Parts" },
+            { text="Alchemy", value="Alchemy" }, { text="Blacksmithing", value="Blacksmithing" },
+            { text="Engineering", value="Engineering" }, { text="Leatherworking", value="Leatherworking" },
+            { text="Tailoring", value="Tailoring" },
         } end,
         function() return UI.turnInCategoryFilter or "all" end,
-        function(value) UI.turnInCategoryFilter = value or "all"; UI.StartViewBuild() end)
-    UI.turnInInfo = AddLabel(frame, "All 30 labelled crates remain visible. Prices require enough units at the cheapest listed price; deeper price levels are not guessed.", 30, -410, 230, 72, "GameFontHighlightSmall")
+        function(value) UI.SetTurnInFilters(UI.turnInTierFilter, value, UI.turnInTypeFilter) end)
+    UI.turnInInfo = AddLabel(frame, "Compare all 30 Waylaid Crates and 150 Craftsman's Writs. Writ material routes use the matching ForeverDB recipe data; variable coin-pouch returns are not treated as guaranteed cash.", 30, -476, 230, 84, "GameFontHighlightSmall")
     UI.turnInInfo:SetWordWrap(true)
     if UI.turnInInfo.SetNonSpaceWrap then UI.turnInInfo:SetNonSpaceWrap(true) end
     UI.resultCount = AddLabel(frame, "", 990, -166, 116, 20, "GameFontNormalSmall")
@@ -4034,7 +4138,7 @@ local function CreateUI()
             if not selected or not selected.turnIn or not _G.GameTooltip then return end
             GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT")
             GameTooltip:SetText("Completion Cost", 1, 0.82, 0.15)
-            GameTooltip:AddLine("Crate: " .. (selected.cratePriceCopper and FormatMoney(selected.cratePriceCopper) or "Unavailable"), 0.9, 0.9, 0.9, true)
+            GameTooltip:AddLine((selected.turnInType == "writ" and "Writ: " or "Crate: ") .. ((selected.turnInType == "writ" and selected.writPriceCopper or selected.cratePriceCopper) and FormatMoney(selected.turnInType == "writ" and selected.writPriceCopper or selected.cratePriceCopper) or "Unavailable"), 0.9, 0.9, 0.9, true)
             if selected.bestBundle then
                 GameTooltip:AddLine(string.format("BEST VALUE · Option %d · Materials %s", selected.bestBundle.index, FormatMoney(selected.bestBundle.costCopper)), 0.3, 1, 0.3, true)
                 for _, reagent in ipairs(selected.bestBundle.lines or {}) do
@@ -4484,9 +4588,10 @@ function UI.SetCraftingScope(value)
     UI.StartViewBuild()
 end
 
-function UI.SetTurnInFilters(tier, category)
+function UI.SetTurnInFilters(tier, category, turnInType)
     UI.turnInTierFilter = tier or UI.turnInTierFilter or "all"
     UI.turnInCategoryFilter = category or UI.turnInCategoryFilter or "all"
+    UI.turnInTypeFilter = turnInType or UI.turnInTypeFilter or "all"
     UI.StartViewBuild()
 end
 
@@ -4515,8 +4620,8 @@ function UI.GetModernState()
         professionOptions = UI.professionOptions or {}, professionFilter = UI.professionFilter or 0,
         roleFilter = UI.itemRoleFilter or "all", itemTypeFilter = UI.itemTypeFilter or "all",
         marketQuickFilters = UI.marketQuickFilters, craftFilters = UI.craftFilters,
-        economicsFilters = UI.economicsFilters, turnInTierFilter = UI.turnInTierFilter,
-        turnInCategoryFilter = UI.turnInCategoryFilter,
+        economicsFilters = UI.economicsFilters, turnInTypeFilter = UI.turnInTypeFilter,
+        turnInTierFilter = UI.turnInTierFilter, turnInCategoryFilter = UI.turnInCategoryFilter,
         craftingScope = UI.craftingScope or "account",
         auctionData = UI.auctionDataLabel and UI.auctionDataLabel:GetText() or "Auction Data: unavailable",
         auctionState = UI.auctionDataState and UI.auctionDataState:GetText() or "Unknown",
@@ -4555,7 +4660,7 @@ function UI.GetModernDetails()
 end
 
 function UI.GetModernItemName(item) return item and GetItemDisplayName(item) or "" end
-function UI.GetModernIcon(item) return item and GetItemIcon(item.itemID) end
+function UI.GetModernIcon(item) return item and GetItemIcon(item.iconItemID or item.itemID) end
 function UI.FormatMoney(copper) return FormatMoney(copper) end
 
 function UI.TriggerFullScan()

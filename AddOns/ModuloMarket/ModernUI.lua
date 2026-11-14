@@ -217,9 +217,9 @@ local function MakeCheck(parent, text, x, y, key, getter, setter)
         end
     end
     check:SetScript("OnClick", function(self)
-        self.checked = not self.checked
+        local nextValue = self.getter() ~= true
+        self.setter(self.key, nextValue)
         self:Refresh()
-        self.setter(self.key, self.checked)
     end)
     check:SetScript("OnEnter", function(self)
         Paint(self.box, "controlHighlight")
@@ -240,10 +240,12 @@ local function GetRowCells(item, state)
     local price, middle, quantity, profit = "—", "—", "—", "—"
     if tab == "turnins" and item.turnIn then
         price = item.completionCostCopper and UI.FormatMoney(item.completionCostCopper) or "Incomplete"
-        middle = item.cashReturnCopper ~= nil and UI.FormatMoney(item.cashReturnCopper) or "Unknown"
+        middle = item.cashReturnCopper ~= nil and UI.FormatMoney(item.cashReturnCopper)
+            or (item.cashReturnText or "Unknown")
         quantity = item.rewardFavor ~= nil and (tostring(item.rewardFavor) .. " F")
-            or (item.reputation ~= nil and (tostring(item.reputation) .. " Rep") or "?")
-        profit = item.netCostPerFavorCopper ~= nil and UI.FormatMoney(item.netCostPerFavorCopper) or "—"
+            or (item.reputation ~= nil and (tostring(item.reputation) .. (item.turnInType == "writ" and " Rep*" or " Rep")) or "?")
+        local netCost = item.netCostPerRewardCopper or item.netCostPerFavorCopper or item.netCostPerReputationCopper
+        profit = netCost ~= nil and UI.FormatMoney(netCost) or "—"
     elseif tab == "crafts" then
         price = item.salePriceCopper and UI.FormatMoney(item.salePriceCopper) or "—"
         middle = item.materialCostCopper and UI.FormatMoney(item.materialCostCopper) or "—"
@@ -346,7 +348,8 @@ function Modern.RefreshInspector()
     Modern.labelAtPrice:SetText(d.atPriceLabel or "AT PRICE")
     Modern.labelProfit:SetText(d.profitLabel or "BEST CRAFT PROFIT")
     if state.tab == "turnins" then
-        Modern.relationshipTitle:SetText("REQUIRED BUNDLES")
+        Modern.relationshipTitle:SetText(state.selected and state.selected.turnInType == "writ"
+            and "REQUIRED ITEM / CRAFT OPTIONS" or "REQUIRED BUNDLES")
         Modern.relationshipText:Hide()
         Modern.RenderBundleBreakdown(state.selected)
         Modern.bundleScroll:Show()
@@ -385,12 +388,21 @@ local HEADER_MAP = {
     economics = { {"ITEM","name"},{"CHEAPEST","price"},{"CRAFT COST","materials"},{"PRICE CHANGE","change"},{"TOTAL UNITS","total"} },
     crafts = { {"RECIPE","name"},{"SALE / UNIT","price"},{"MATERIAL COST","materials"},{"AT PRICE","depth"},{"PROFIT / CRAFT","profit"} },
     materials = { {"ITEM","name"},{"CHEAPEST","price"},{"AT PRICE","depth"},{"TOTAL UNITS","total"},{"BEST CRAFT PROFIT","profit"} },
-    turnins = { {"WAYLAID CRATE","name"},{"COMPLETION COST","completion"},{"CASH RETURN","price"},{"FAVOR / REP","reward"},{"NET COST / FAVOR","net"} },
+    turnins = { {"TURN-IN","name"},{"COMPLETION COST","completion"},{"CASH RETURN","price"},{"FAVOR / REP","reward"},{"NET / REWARD","net"} },
     history = { {"ITEM","name"},{"CHEAPEST","price"},{"PRICE CHANGE","change"},{"LATEST UNITS","total"},{"BEST CRAFT PROFIT","profit"} },
 }
 
 function Modern.RefreshHeaders(tab)
     local specs = HEADER_MAP[tab] or HEADER_MAP.market
+    if tab == "turnins" then
+        local mode = UI.GetModernState().turnInTypeFilter or "all"
+        specs = {
+            { mode == "writ" and "CRAFTSMAN'S WRIT" or (mode == "crate" and "WAYLAID CRATE" or "TURN-IN"), "name" },
+            { "COMPLETION COST", "completion" }, { mode == "writ" and "COIN POUCH" or "CASH RETURN", "price" },
+            { mode == "writ" and "REPORTED REP*" or "FAVOR / REP", "reward" },
+            { mode == "writ" and "COST / REP*" or (mode == "crate" and "NET / FAVOR" or "NET / REWARD"), "net" },
+        }
+    end
     for i, header in ipairs(Modern.headers or {}) do
         local spec = specs[i] or {"", ""}
         header.label:SetText(spec[1])
@@ -423,6 +435,8 @@ UpdateFilterVisibility = function(tab)
     for _, check in ipairs(Modern.quickChecks or {}) do show(check, market); show(check.label, market) end
     for _, check in ipairs(Modern.craftChecks or {}) do show(check, crafts); show(check.label, crafts) end
     for _, check in ipairs(Modern.economicsChecks or {}) do show(check, economics); show(check.label, economics) end
+    show(Modern.turnInTypeDropdown, turnins)
+    show(Modern.turnInTypeDropdown and Modern.turnInTypeDropdown.sectionLabel, turnins)
     show(Modern.turnInTierDropdown, turnins)
     show(Modern.turnInTierDropdown and Modern.turnInTierDropdown.sectionLabel, turnins)
     show(Modern.turnInCategoryDropdown, turnins)
@@ -454,14 +468,34 @@ function Modern.RenderBundleBreakdown(item)
         cursor = cursor + (height or 16)
     end
     if not item or not item.turnIn then
-        AddLine("Select a crate to inspect its material options.", "textMuted", 30)
+        AddLine("Select a crate or writ to inspect its completion options.", "textMuted", 30)
     else
-        AddLine("CRATE PURCHASE · 1 × CRATE", "textAccent")
-        AddLine(item.cratePriceCopper and ("Price  " .. UI.FormatMoney(item.cratePriceCopper)) or "Price unavailable", item.cratePriceCopper and "textPrimary" or "textMuted")
-        AddLine("MATERIAL OPTIONS · CHOOSE ONE", "textAccent")
+        local writ = item.turnInType == "writ"
+        AddLine(writ and "WRIT PURCHASE · 1 × WRIT" or "CRATE PURCHASE · 1 × CRATE", "textAccent")
+        local purchase = writ and item.writPriceCopper or item.cratePriceCopper
+        AddLine(purchase and ("Price  " .. UI.FormatMoney(purchase)) or "Price unavailable", purchase and "textPrimary" or "textMuted")
+        if writ then
+            AddLine("CRAFT OR BUY " .. tostring(item.outputName or "REQUIRED ITEM"), "textAccent")
+            local factionGroup = type(_G.UnitFactionGroup) == "function" and _G.UnitFactionGroup("player") or nil
+            local factions = MM.WritData and MM.WritData.rewardFaction or {}
+            local faction = factionGroup == "Horde" and factions.horde or factions.alliance
+            faction = faction or "Azeroth Commerce Authority / Durotar Supply & Logistics"
+            AddLine("FACTION · " .. faction, "textMuted")
+            if item.handInNPC or item.handInZone then
+                AddLine("GUIDE HAND-IN · " .. tostring(item.handInNPC or "NPC unknown")
+                    .. (item.handInZone and (" · " .. item.handInZone) or ""), "textMuted")
+            end
+        else
+            AddLine("MATERIAL OPTIONS · CHOOSE ONE", "textAccent")
+        end
+        if #(item.bundleAlternatives or {}) == 0 then
+            AddLine("No matching ForeverDB recipe data or current output listing is available. Completion remains incomplete.", "textMuted", 38)
+        end
         for index, alternative in ipairs(item.bundleAlternatives or {}) do
             local best = item.bestBundle and alternative.index == item.bestBundle.index
-            AddLine(string.format("OPTION %d%s", index, best and " · BEST VALUE" or ""), best and "accent" or "textAccent")
+            local routeTitle = alternative.label or string.format("OPTION %d", index)
+            if best then routeTitle = routeTitle .. " · BEST VALUE" end
+            AddLine(routeTitle, best and "accent" or "textAccent")
             for _, reagent in ipairs(alternative.lines or {}) do
                 AddLine(string.format("%d × %s", tonumber(reagent.quantity) or 0, tostring(reagent.itemName or "Unknown material")), "textPrimary", 17)
                 local unit = reagent.unitPriceCopper and UI.FormatMoney(reagent.unitPriceCopper) or "unknown"
@@ -471,7 +505,7 @@ function Modern.RenderBundleBreakdown(item)
                     AddLine("Price: " .. tostring(reagent.reason), "textMuted", 28)
                 end
             end
-            AddLine("Material subtotal  " .. (alternative.complete and UI.FormatMoney(alternative.costCopper) or "INCOMPLETE"), "textPrimary")
+            AddLine((writ and "Route subtotal  " or "Material subtotal  ") .. (alternative.complete and UI.FormatMoney(alternative.costCopper) or "INCOMPLETE"), "textPrimary")
             AddLine("", "textMuted", 6)
         end
     end
@@ -485,15 +519,27 @@ local function CreateUI()
     local frame = CreateFrame("Frame", "ModuloMarketModernFrame", UIParent)
     Modern.frame = frame
     frame:SetSize(1520, 900)
-    frame:SetPoint("CENTER")
+    local savedPosition = MM.db and MM.db.windowPositions and MM.db.windowPositions.modern
+    if savedPosition and tonumber(savedPosition.x) and tonumber(savedPosition.y) then
+        frame:SetPoint("CENTER", UIParent, "CENTER", tonumber(savedPosition.x), tonumber(savedPosition.y))
+    else
+        frame:SetPoint("CENTER")
+    end
     frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
-    frame:SetClampedToScreen(true)
+    frame:SetClampedToScreen(false)
     frame:SetMovable(true)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local x, y = self:GetCenter()
+        if type(MM.db) == "table" and tonumber(x) and tonumber(y) then
+            MM.db.windowPositions = MM.db.windowPositions or {}
+            MM.db.windowPositions.modern = { x = x, y = y }
+        end
+    end)
     local sw, sh = GetScreenWidth and GetScreenWidth() or 1920, GetScreenHeight and GetScreenHeight() or 1080
     local fit = math.min(1, (sw - 36) / 1520, (sh - 36) / 900)
     frame:SetScale(math.max(0.68, fit))
@@ -652,19 +698,25 @@ local function CreateUI()
         MakeCheck(left, "Crafting reagents", 12, -420, "material", function() return UI.GetModernState().economicsFilters.material end, UI.SetEconomicsFilter),
         MakeCheck(left, "Other market items", 12, -448, "other", function() return UI.GetModernState().economicsFilters.other end, UI.SetEconomicsFilter),
     }
-    Modern.turnInTierDropdown = CreateDropdown(left, "CRATE TIER", -364, leftWidth,
+    Modern.turnInTypeDropdown = CreateDropdown(left, "TURN-IN TYPE", -364, leftWidth,
+        function() return { {text="All turn-ins",value="all"},{text="Waylaid Crates",value="crate"},{text="Craftsman's Writs",value="writ"} } end,
+        function() return UI.GetModernState().turnInTypeFilter or "all" end,
+        function(value) UI.SetTurnInFilters(UI.GetModernState().turnInTierFilter, UI.GetModernState().turnInCategoryFilter, value) end)
+    Modern.turnInTierDropdown = CreateDropdown(left, "TIER", -436, leftWidth,
         function() return {
             {text="All tiers",value="all"},{text="Apprentice",value="Apprentice"},
             {text="Journeyman",value="Journeyman"},{text="Expert",value="Expert"},{text="Artisan",value="Artisan"},
         } end, function() return UI.GetModernState().turnInTierFilter or "all" end,
-        function(value) UI.SetTurnInFilters(value, UI.GetModernState().turnInCategoryFilter) end)
-    Modern.turnInCategoryDropdown = CreateDropdown(left, "CRATE CATEGORY", -436, leftWidth,
+        function(value) UI.SetTurnInFilters(value, UI.GetModernState().turnInCategoryFilter, UI.GetModernState().turnInTypeFilter) end)
+    Modern.turnInCategoryDropdown = CreateDropdown(left, "CATEGORY / PROFESSION", -508, leftWidth,
         function() return {
-            {text="All categories",value="all"},{text="Herbs",value="Herbs"},{text="Ore",value="Ore"},
+            {text="All categories / professions",value="all"},{text="Herbs",value="Herbs"},{text="Ore",value="Ore"},
             {text="Textiles",value="Textiles"},{text="Curiosities",value="Curiosities"},
             {text="Fabrics",value="Fabrics"},{text="Ingots",value="Ingots"},{text="Parts",value="Parts"},
+            {text="Alchemy",value="Alchemy"},{text="Blacksmithing",value="Blacksmithing"},
+            {text="Engineering",value="Engineering"},{text="Leatherworking",value="Leatherworking"},{text="Tailoring",value="Tailoring"},
         } end, function() return UI.GetModernState().turnInCategoryFilter or "all" end,
-        function(value) UI.SetTurnInFilters(UI.GetModernState().turnInTierFilter, value) end)
+        function(value) UI.SetTurnInFilters(UI.GetModernState().turnInTierFilter, value, UI.GetModernState().turnInTypeFilter) end)
     Modern.craftingScopeDropdown = CreateDropdown(left, "CRAFTING SCOPE", -508, leftWidth,
         function() return {
             {text="Account Crafting",value="account"},{text="Character Crafting",value="character"},
@@ -924,6 +976,18 @@ end
 function Modern.Toggle()
     local frame = CreateUI()
     if frame:IsShown() then Modern.Hide() else Modern.Show() end
+end
+
+function Modern.ResetWindowPosition()
+    if type(MM.db) == "table" then
+        MM.db.windowPositions = MM.db.windowPositions or {}
+        MM.db.windowPositions.modern = nil
+    end
+    if Modern.frame then
+        Modern.frame:ClearAllPoints()
+        Modern.frame:SetPoint("CENTER")
+    end
+    return true
 end
 
 function Modern.IsShown()

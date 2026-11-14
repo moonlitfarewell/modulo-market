@@ -346,18 +346,47 @@ local function RegisterSettingsPanel()
     if settingsPanel then return end
     settingsPanel = CreateFrame("Frame")
     settingsPanel.name = "Modulo Market"
-    MakeLabel(settingsPanel, "Modulo Market Settings", 18, -18, 620, "GameFontNormalLarge")
-    MakeLabel(settingsPanel, "Choose which Modulo Market window to open. Both appearances use the same market data and calculations.", 18, -48, 760, "GameFontHighlight")
-    MakeButton(settingsPanel, "Open Modulo Market (/mm)", 18, -88, 220, OpenMarket)
-    MakeLabel(settingsPanel, "Advanced tools", 18, -548, 540, "GameFontNormalLarge")
-    MakeLabel(settingsPanel, "Open the separate Browse Scan snapshot and diagnostic window. It is intentionally not part of either main market layout.", 18, -576, 760, "GameFontHighlight")
-    MakeButton(settingsPanel, "Open Browse Scan / Snapshot Debug", 18, -612, 280, function()
+    local settingsScroll = CreateFrame("ScrollFrame", "ModuloMarketSettingsScrollFrame", settingsPanel, "UIPanelScrollFrameTemplate")
+    settingsScroll:SetPoint("TOPLEFT", settingsPanel, "TOPLEFT", 4, -4)
+    settingsScroll:SetPoint("BOTTOMRIGHT", settingsPanel, "BOTTOMRIGHT", -28, 4)
+    local settingsContent = CreateFrame("Frame", nil, settingsScroll)
+    settingsContent:SetSize(780, 760)
+    settingsScroll:SetScrollChild(settingsContent)
+    local settingsBar = _G.ModuloMarketSettingsScrollFrameScrollBar
+    if settingsBar then
+        settingsBar:ClearAllPoints()
+        settingsBar:SetPoint("TOPRIGHT", settingsScroll, "TOPRIGHT", -1, -14)
+        settingsBar:SetPoint("BOTTOMRIGHT", settingsScroll, "BOTTOMRIGHT", -1, 14)
+        settingsBar:SetWidth(12)
+    end
+    settingsScroll:EnableMouseWheel(true)
+    settingsScroll:SetScript("OnMouseWheel", function(self, delta)
+        local current = self:GetVerticalScroll() or 0
+        local maximum = math.max(0, settingsContent:GetHeight() - self:GetHeight())
+        self:SetVerticalScroll(math.max(0, math.min(maximum, current - delta * 42)))
+    end)
+    settingsScroll:SetVerticalScroll(0)
+    MakeLabel(settingsContent, "Modulo Market Settings", 18, -18, 620, "GameFontNormalLarge")
+    MakeLabel(settingsContent, "Choose which Modulo Market window to open. Both appearances use the same market data and calculations.", 18, -48, 760, "GameFontHighlight")
+    MakeButton(settingsContent, "Open Modulo Market (/mm)", 18, -88, 220, OpenMarket)
+    MakeLabel(settingsContent, "Advanced tools", 18, -548, 540, "GameFontNormalLarge")
+    MakeLabel(settingsContent, "Open the separate Browse Scan snapshot and diagnostic window. It is intentionally not part of either main market layout.", 18, -576, 760, "GameFontHighlight")
+    MakeButton(settingsContent, "Open Browse Scan / Snapshot Debug", 18, -612, 280, function()
         if MM.Scanner and MM.Scanner.Toggle then MM.Scanner.Toggle() end
+    end)
+    MakeLabel(settingsContent, "Window positioning", 18, -652, 540, "GameFontNormalLarge")
+    MakeLabel(settingsContent, "Both market windows can be dragged beyond the visible game viewport. If a window is lost off-screen, reset its position here.", 18, -680, 760, "GameFontHighlight")
+    MakeButton(settingsContent, "Reset Modulo Market window position", 18, -712, 280, function()
+        if Theme.GetTheme() == "modern" then
+            if MM.ModernUI and MM.ModernUI.ResetWindowPosition then MM.ModernUI.ResetWindowPosition() end
+        else
+            if MM.MarketUI and MM.MarketUI.ResetWindowPosition then MM.MarketUI.ResetWindowPosition() end
+        end
     end)
 
     local refreshAppearance
     local appearanceButton
-    appearanceButton, refreshAppearance = BuildDropdown(settingsPanel, "Market appearance", 18, -150, 260, {
+    appearanceButton, refreshAppearance = BuildDropdown(settingsContent, "Market appearance", 18, -150, 260, {
         { label = "Blizz-like window", value = "blizzlike" },
         { label = "Modern window", value = "modern" },
     }, Theme.GetTheme, function(value)
@@ -367,11 +396,11 @@ local function RegisterSettingsPanel()
     end)
     Theme.appearanceDropdownRefresh = refreshAppearance
 
-    local blizzHeading = MakeLabel(settingsPanel, "Blizz-like window styles", 18, -218, 540, "GameFontNormalLarge")
-    local blizzDescription = MakeLabel(settingsPanel, "These retain the established WoW-style Modulo Market window and layout.", 18, -246, 700, "GameFontHighlight")
+    local blizzHeading = MakeLabel(settingsContent, "Blizz-like window styles", 18, -218, 540, "GameFontNormalLarge")
+    local blizzDescription = MakeLabel(settingsContent, "These retain the established WoW-style Modulo Market window and layout.", 18, -246, 700, "GameFontHighlight")
     local refreshBlizzlike
     local blizzlikeButton
-    blizzlikeButton, refreshBlizzlike = BuildDropdown(settingsPanel, "Blizz-like appearance", 18, -290, 260, {
+    blizzlikeButton, refreshBlizzlike = BuildDropdown(settingsContent, "Blizz-like appearance", 18, -290, 260, {
         { label = "Classic gold", value = "classic" },
         { label = "Dark grey", value = "dark" },
         { label = "Class colour", value = "class" },
@@ -382,19 +411,19 @@ local function RegisterSettingsPanel()
         Theme.RefreshSettingsVisibility()
     end)
     Theme.blizzlikeDropdownRefresh = refreshBlizzlike
-    local blizzSwatch = settingsPanel:CreateTexture(nil, "ARTWORK")
+    local blizzSwatch = settingsContent:CreateTexture(nil, "ARTWORK")
     blizzSwatch:SetSize(26, 26)
-    blizzSwatch:SetPoint("TOPLEFT", settingsPanel, "TOPLEFT", 296, -322)
+    blizzSwatch:SetPoint("TOPLEFT", settingsContent, "TOPLEFT", 296, -322)
     Theme.blizzlikeSwatch = blizzSwatch
-    local blizzCustomButton = MakeButton(settingsPanel, "Choose custom colour…", 332, -322, 190,
+    local blizzCustomButton = MakeButton(settingsContent, "Choose custom colour…", 332, -322, 190,
         function() OpenColorPicker(blizzSwatch, "blizzlike") end)
     Theme.blizzlikeCustomButton = blizzCustomButton
 
-    local modernHeading = MakeLabel(settingsPanel, "Modern window colours", 18, -390, 540, "GameFontNormalLarge")
-    local modernDescription = MakeLabel(settingsPanel, "Modern is a separate dashboard-style window with its own controls, borders and layout.", 18, -418, 760, "GameFontHighlight")
+    local modernHeading = MakeLabel(settingsContent, "Modern window colours", 18, -390, 540, "GameFontNormalLarge")
+    local modernDescription = MakeLabel(settingsContent, "Modern is a separate dashboard-style window with its own controls, borders and layout.", 18, -418, 760, "GameFontHighlight")
     local refreshModern
     local modernButton
-    modernButton, refreshModern = BuildDropdown(settingsPanel, "Modern colour palette", 18, -462, 260, {
+    modernButton, refreshModern = BuildDropdown(settingsContent, "Modern colour palette", 18, -462, 260, {
         { label = "Dark (grey tone)", value = "dark" },
         { label = "Class colour", value = "class" },
         { label = "Custom colour", value = "custom" },
@@ -404,11 +433,11 @@ local function RegisterSettingsPanel()
         Theme.RefreshSettingsVisibility()
     end)
     Theme.modernDropdownRefresh = refreshModern
-    local modernSwatch = settingsPanel:CreateTexture(nil, "ARTWORK")
+    local modernSwatch = settingsContent:CreateTexture(nil, "ARTWORK")
     modernSwatch:SetSize(26, 26)
-    modernSwatch:SetPoint("TOPLEFT", settingsPanel, "TOPLEFT", 296, -494)
+    modernSwatch:SetPoint("TOPLEFT", settingsContent, "TOPLEFT", 296, -494)
     Theme.modernSwatch = modernSwatch
-    local modernCustomButton = MakeButton(settingsPanel, "Choose custom colour…", 332, -494, 190,
+    local modernCustomButton = MakeButton(settingsContent, "Choose custom colour…", 332, -494, 190,
         function() OpenColorPicker(modernSwatch, "modern") end)
     Theme.modernCustomButton = modernCustomButton
 
