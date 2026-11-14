@@ -379,6 +379,36 @@ end
 
 -- Resolve real client item artwork; never substitute decorative icons for data identities.
 local itemIconCache = {}
+-- Keep native Blizzard checkboxes readable in the non-classic Blizz-like
+-- palettes. The template remains responsible for its geometry and click state;
+-- only its existing texture vertex colours are adjusted.
+function UI.ApplyCheckboxContrast()
+    local theme = MM.Theme
+    local style = theme and theme.GetBlizzlikeStyle and theme.GetBlizzlikeStyle() or "classic"
+    if style == "classic" then return end
+    local accent = theme and theme.GetBlizzlikeAccent and theme.GetBlizzlikeAccent() or { r=1, g=0.82, b=0.25 }
+    local controls = {}
+    for _, group in ipairs({ UI.marketQuickFilterControls or {}, UI.craftFilterControls or {}, UI.economicsFilterControls or {} }) do
+        for _, control in pairs(group) do controls[#controls + 1] = control end
+    end
+    for _, control in ipairs(controls) do
+        local normal = control.GetNormalTexture and control:GetNormalTexture()
+        local pushed = control.GetPushedTexture and control:GetPushedTexture()
+        local checked = control.GetCheckedTexture and control:GetCheckedTexture()
+        local highlight = control.GetHighlightTexture and control:GetHighlightTexture()
+        local disabled = control.GetDisabledCheckedTexture and control:GetDisabledCheckedTexture()
+        if normal and normal.SetVertexColor then normal:SetVertexColor(0.78, 0.82, 0.90, 1) end
+        if pushed and pushed.SetVertexColor then pushed:SetVertexColor(0.95, 0.97, 1, 1) end
+        if checked and checked.SetVertexColor then checked:SetVertexColor(accent.r, accent.g, accent.b, 1) end
+        if highlight and highlight.SetVertexColor then highlight:SetVertexColor(accent.r, accent.g, accent.b, 0.55) end
+        if disabled and disabled.SetVertexColor then disabled:SetVertexColor(0.48, 0.50, 0.55, 1) end
+    end
+end
+
+function UI.GetModernCraftMarker(itemID)
+    return GetItemCraftMarker(itemID)
+end
+
 local function GetItemIcon(itemID)
     itemID = tonumber(itemID)
     if not itemID then return "Interface\\Icons\\INV_Misc_QuestionMark" end
@@ -4243,6 +4273,7 @@ local function CreateUI()
     -- Newly created controls default to visible. Apply the active tab once all
     -- tab-specific controls exist so inactive filter groups never overlap on first open.
     SetTab(UI.activeTab or "market")
+    UI.ApplyCheckboxContrast()
 
     -- Do not post-process template or addon anchors. Native title/frame geometry
     -- remains untouched and every content region keeps its authored coordinates.

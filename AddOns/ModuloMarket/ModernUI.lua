@@ -94,6 +94,26 @@ local function FlatButton(parent, text, width, height, callback)
     return button
 end
 
+local function AddButtonIcon(button, texturePath, size, side)
+    if not button or not texturePath then return nil end
+    local icon = button:CreateTexture(nil, "ARTWORK")
+    icon:SetTexture(texturePath)
+    icon:SetSize(size or 16, size or 16)
+    if side == "RIGHT" then
+        icon:SetPoint("RIGHT", button, "RIGHT", -8, 0)
+    else
+        icon:SetPoint("LEFT", button, "LEFT", 8, 0)
+        if button.label then
+            button.label:ClearAllPoints()
+            button.label:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+            button.label:SetPoint("RIGHT", button, "RIGHT", -8, 0)
+            button.label:SetJustifyH("LEFT")
+        end
+    end
+    button.iconTexture = icon
+    return icon
+end
+
 local function SetTextColor(fs, role)
     if not fs then return end
     local color = C(role)
@@ -121,9 +141,9 @@ local function CreateDropdown(parent, labelText, y, width, optionsProvider, gett
     local function Refresh()
         local selected = getter()
         local options = optionsProvider() or {}
-        button.label:SetText("▾  " .. tostring(selected or "All"))
+        button.label:SetText(tostring(selected or "All"))
         for _, option in ipairs(options) do
-            if option.value == selected then button.label:SetText("▾  " .. tostring(option.text)); break end
+            if option.value == selected then button.label:SetText(tostring(option.text)); break end
         end
     end
     local function Rebuild()
@@ -145,6 +165,7 @@ local function CreateDropdown(parent, labelText, y, width, optionsProvider, gett
             Rebuild(); popup:ClearAllPoints(); popup:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 0, -3); popup:Show()
         end
     end)
+    AddButtonIcon(button, "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up", 14, "RIGHT")
     Refresh()
     button.Refresh = Refresh
     button.sectionLabel = sectionLabel
@@ -159,6 +180,15 @@ local function MakeCheck(parent, text, x, y, key, getter, setter)
     check.box:SetPoint("LEFT", check, "LEFT", 0, 0)
     check.box:SetSize(17, 17)
     Paint(check.box, "control")
+    check.outline = {}
+    for i = 1, 4 do
+        check.outline[i] = check:CreateTexture(nil, "OVERLAY")
+        Paint(check.outline[i], "borderStrong", {0.62, 0.68, 0.78, 1})
+    end
+    check.outline[1]:SetPoint("TOPLEFT", check.box, "TOPLEFT"); check.outline[1]:SetPoint("TOPRIGHT", check.box, "TOPRIGHT"); check.outline[1]:SetHeight(1)
+    check.outline[2]:SetPoint("BOTTOMLEFT", check.box, "BOTTOMLEFT"); check.outline[2]:SetPoint("BOTTOMRIGHT", check.box, "BOTTOMRIGHT"); check.outline[2]:SetHeight(1)
+    check.outline[3]:SetPoint("TOPLEFT", check.box, "TOPLEFT"); check.outline[3]:SetPoint("BOTTOMLEFT", check.box, "BOTTOMLEFT"); check.outline[3]:SetWidth(1)
+    check.outline[4]:SetPoint("TOPRIGHT", check.box, "TOPRIGHT"); check.outline[4]:SetPoint("BOTTOMRIGHT", check.box, "BOTTOMRIGHT"); check.outline[4]:SetWidth(1)
     check.mark = check:CreateTexture(nil, "OVERLAY")
     check.mark:SetPoint("TOPLEFT", check.box, "TOPLEFT", 3, -3)
     check.mark:SetPoint("BOTTOMRIGHT", check.box, "BOTTOMRIGHT", -3, 3)
@@ -169,15 +199,26 @@ local function MakeCheck(parent, text, x, y, key, getter, setter)
     check.setter = setter
     function check:Refresh()
         self.checked = self.getter() == true
-        if self.checked then self.mark:Show() else self.mark:Hide() end
+        if self.checked then
+            Paint(self.box, "controlHighlight")
+            for _, edge in ipairs(self.outline) do Paint(edge, "accent") end
+            self.mark:Show()
+        else
+            Paint(self.box, "control")
+            for _, edge in ipairs(self.outline) do Paint(edge, "borderStrong", {0.62, 0.68, 0.78, 1}) end
+            self.mark:Hide()
+        end
     end
     check:SetScript("OnClick", function(self)
         self.checked = not self.checked
         self:Refresh()
         self.setter(self.key, self.checked)
     end)
-    check:SetScript("OnEnter", function(self) Paint(self.box, "controlHighlight") end)
-    check:SetScript("OnLeave", function(self) Paint(self.box, "control") end)
+    check:SetScript("OnEnter", function(self)
+        Paint(self.box, "controlHighlight")
+        for _, edge in ipairs(self.outline) do Paint(edge, "accent") end
+    end)
+    check:SetScript("OnLeave", function(self) self:Refresh() end)
     check:Refresh()
     return check
 end
@@ -225,6 +266,11 @@ local function RefreshRowText(row, item, index, state)
     if not item then row:Hide(); row.item = nil; return end
     row.item = item
     if row.icon and UI.GetModernIcon then row.icon:SetTexture(UI.GetModernIcon(item)); row.icon:Show() end
+    if row.statusMarker and state.tab ~= "crafts" and UI.GetModernCraftMarker then
+        local r, g, b, a = UI.GetModernCraftMarker(item.itemID)
+        row.statusMarker:SetColorTexture(r or 1, g or 1, b or 1, a or 1)
+        row.statusMarker:Show()
+    elseif row.statusMarker then row.statusMarker:Hide() end
     row:SetPoint("TOPLEFT", Modern.scrollChild, "TOPLEFT", 0, -((index - 1) * 27))
     local name, price, middle, quantity, profit = GetRowCells(item, state)
     row.name:SetText(name)
@@ -291,11 +337,16 @@ function Modern.RefreshInspector()
     Modern.labelSupply:SetText(d.supplyLabel or "TOTAL LISTED")
     Modern.labelAtPrice:SetText(d.atPriceLabel or "AT PRICE")
     Modern.labelProfit:SetText(d.profitLabel or "BEST CRAFT PROFIT")
-    Modern.relationshipTitle:SetText(string.upper(d.relationshipHeading or "RELATIONSHIPS"))
-    if state.tab == "turnins" and #d.bundleLines > 0 then
-        Modern.relationshipText:SetText(table.concat(d.bundleLines, "\n"))
+    if state.tab == "turnins" then
+        Modern.relationshipTitle:SetText("REQUIRED BUNDLES")
+        Modern.relationshipText:Hide()
+        Modern.RenderBundleBreakdown(state.selected)
+        Modern.bundleScroll:Show()
     else
+        Modern.relationshipTitle:SetText(string.upper(d.relationshipHeading or "RELATIONSHIPS"))
+        Modern.bundleScroll:Hide()
         Modern.relationshipText:SetText(d.relationshipText or "No additional relationship details.")
+        Modern.relationshipText:Show()
     end
     Modern.historyTitle:SetText(string.upper(d.historyHeading or "MARKET HISTORY"))
     Modern.historyText:SetText(d.historyText or "")
@@ -364,7 +415,55 @@ UpdateFilterVisibility = function(tab)
     show(Modern.turnInCategoryDropdown and Modern.turnInCategoryDropdown.sectionLabel, turnins)
     show(Modern.craftingScopeDropdown, not turnins)
     show(Modern.craftingScopeDropdown and Modern.craftingScopeDropdown.sectionLabel, not turnins)
-    if Modern.filterHint then show(Modern.filterHint, not market and not crafts and not economics and not turnins) end
+end
+
+function Modern.RenderBundleBreakdown(item)
+    if not Modern.bundleScroll or not Modern.bundleChild then return end
+    local cursor, used = 0, 0
+    local function AddLine(text, role, height)
+        used = used + 1
+        local fs = Modern.bundleLines[used]
+        if not fs then
+            fs = Modern.bundleChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            Modern.bundleLines[used] = fs
+        end
+        fs:ClearAllPoints()
+        fs:SetPoint("TOPLEFT", Modern.bundleChild, "TOPLEFT", 4, -cursor)
+        fs:SetWidth(Modern.bundleChild:GetWidth() - 8)
+        fs:SetHeight(height or 16)
+        fs:SetJustifyH("LEFT")
+        fs:SetJustifyV("TOP")
+        fs:SetWordWrap((height or 16) > 16)
+        fs:SetText(text or "")
+        SetTextColor(fs, role or "textPrimary")
+        fs:Show()
+        cursor = cursor + (height or 16)
+    end
+    if not item or not item.turnIn then
+        AddLine("Select a crate to inspect its material options.", "textMuted", 30)
+    else
+        AddLine("CRATE PURCHASE · 1 × CRATE", "textAccent")
+        AddLine(item.cratePriceCopper and ("Price  " .. UI.FormatMoney(item.cratePriceCopper)) or "Price unavailable", item.cratePriceCopper and "textPrimary" or "textMuted")
+        AddLine("MATERIAL OPTIONS · CHOOSE ONE", "textAccent")
+        for index, alternative in ipairs(item.bundleAlternatives or {}) do
+            local best = item.bestBundle and alternative.index == item.bestBundle.index
+            AddLine(string.format("OPTION %d%s", index, best and " · BEST VALUE" or ""), best and "accent" or "textAccent")
+            for _, reagent in ipairs(alternative.lines or {}) do
+                AddLine(string.format("%d × %s", tonumber(reagent.quantity) or 0, tostring(reagent.itemName or "Unknown material")), "textPrimary", 17)
+                local unit = reagent.unitPriceCopper and UI.FormatMoney(reagent.unitPriceCopper) or "unknown"
+                local line = reagent.lineCostCopper and UI.FormatMoney(reagent.lineCostCopper) or "unavailable"
+                AddLine("Unit " .. unit .. " / ea  ·  Line " .. line, reagent.lineCostCopper and "textMuted" or "textMuted", 16)
+                if not reagent.lineCostCopper and reagent.reason then
+                    AddLine("Price: " .. tostring(reagent.reason), "textMuted", 28)
+                end
+            end
+            AddLine("Material subtotal  " .. (alternative.complete and UI.FormatMoney(alternative.costCopper) or "INCOMPLETE"), "textPrimary")
+            AddLine("", "textMuted", 6)
+        end
+    end
+    for i = used + 1, #Modern.bundleLines do Modern.bundleLines[i]:Hide() end
+    Modern.bundleChild:SetHeight(math.max(1, cursor + 2))
+    Modern.bundleScroll:SetVerticalScroll(0)
 end
 
 local function CreateUI()
@@ -408,11 +507,13 @@ local function CreateUI()
 
     Modern.metadata = Label(frame, "Loading market data…", 28, -62, 420, 22, "GameFontHighlightSmall", "textMuted")
     Modern.scanState = Label(frame, "Scan: Idle", 470, -62, 210, 22, "GameFontHighlightSmall", "accent")
-    local update = FlatButton(frame, "↻  Update Full Market", 210, 32, function() UI.TriggerFullScan() end)
+    local update = FlatButton(frame, "Update Full Market", 210, 32, function() UI.TriggerFullScan() end)
     update:SetPoint("TOPLEFT", frame, "TOPLEFT", 28, -86)
+    AddButtonIcon(update, "Interface\\Buttons\\UI-RefreshButton", 17, "LEFT")
     Modern.updateButton = update
-    local browse = FlatButton(frame, "⌕  Browse Scan", 150, 32, function() UI.TriggerBrowseScan() end)
+    local browse = FlatButton(frame, "Browse Scan", 150, 32, function() UI.TriggerBrowseScan() end)
     browse:SetPoint("TOPLEFT", frame, "TOPLEFT", 250, -86)
+    AddButtonIcon(browse, "Interface\\Common\\UI-Searchbox-Icon", 16, "LEFT")
     Modern.browseButton = browse
     local closeAction = FlatButton(frame, "Close", 90, 32, function() Modern.Hide() end)
     closeAction:SetPoint("TOPLEFT", frame, "TOPLEFT", 414, -86)
@@ -533,7 +634,9 @@ local function CreateUI()
         function(value) UI.SetCraftingScope(value) end)
     Label(left, "DATA", 16, -578, 260, 18, "GameFontNormalSmall", "textAccent")
     Modern.dataText = Label(left, "Auction and recipe data status", 16, -602, 264, 46, "GameFontDisableSmall", "textMuted")
-    Modern.filterHint = Label(left, "Filters use the same market catalogue and calculations as the Blizz-like window.", 16, -652, 264, 70, "GameFontDisableSmall", "textMuted")
+    -- The old explanatory hint extended below this panel at compact scales.
+    -- Data status is sufficient here; omit the redundant footer text.
+    Modern.filterHint = nil
 
     -- Modern table: separate virtual row pool, but the same source rows and selection model.
     local tableHeader = center:CreateTexture(nil, "ARTWORK")
@@ -580,7 +683,12 @@ local function CreateUI()
         row.shade = row:CreateTexture(nil, "BACKGROUND")
         row.shade:SetAllPoints(); Paint(row.shade, "surfaceAlt")
         row.edge = row:CreateTexture(nil, "ARTWORK")
-        row.edge:SetPoint("TOPLEFT"); row.edge:SetPoint("BOTTOMLEFT"); row.edge:SetWidth(3); Paint(row.edge, "accent")
+        row.edge:SetPoint("TOPLEFT", row, "TOPLEFT", 3, 0); row.edge:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 3, 0); row.edge:SetWidth(2); Paint(row.edge, "accent")
+        row.statusMarker = row:CreateTexture(nil, "ARTWORK")
+        row.statusMarker:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+        row.statusMarker:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
+        row.statusMarker:SetWidth(3)
+        row.statusMarker:Hide()
         row.icon = row:CreateTexture(nil, "ARTWORK")
         row.icon:SetSize(20, 20); row.icon:SetPoint("LEFT", row, "LEFT", 8, 0)
         row.name = Label(row, "", 34, -5, 270, 22, "GameFontHighlight")
@@ -620,6 +728,20 @@ local function CreateUI()
     local relationshipCard = Panel(right, "RELATIONSHIPS", 10, -328, rightWidth - 20, 170)
     Modern.relationshipCard = relationshipCard; Modern.relationshipTitle = relationshipCard.titleText
     Modern.relationshipText = Label(relationshipCard, "", 12, -48, rightWidth - 44, 112, "GameFontHighlightSmall")
+    Modern.bundleScroll = CreateFrame("ScrollFrame", "ModuloMarketModernBundleScroll", relationshipCard, "UIPanelScrollFrameTemplate")
+    Modern.bundleScroll:SetPoint("TOPLEFT", relationshipCard, "TOPLEFT", 10, -42)
+    Modern.bundleScroll:SetPoint("BOTTOMRIGHT", relationshipCard, "BOTTOMRIGHT", -26, 8)
+    Modern.bundleChild = CreateFrame("Frame", nil, Modern.bundleScroll)
+    Modern.bundleChild:SetSize(rightWidth - 48, 1)
+    Modern.bundleScroll:SetScrollChild(Modern.bundleChild)
+    Modern.bundleLines = {}
+    Modern.bundleScroll:SetScript("OnVerticalScroll", function(self, offset) self:SetVerticalScroll(offset) end)
+    if Modern.bundleScroll.EnableMouseWheel then Modern.bundleScroll:EnableMouseWheel(true) end
+    Modern.bundleScroll:SetScript("OnMouseWheel", function(self, delta)
+        local maximum = math.max(0, (Modern.bundleChild:GetHeight() or 1) - (self:GetHeight() or 1))
+        self:SetVerticalScroll(math.max(0, math.min(maximum, (self:GetVerticalScroll() or 0) - delta * 36)))
+    end)
+    Modern.bundleScroll:Hide()
 
     local historyCard = Panel(right, "MARKET HISTORY", 10, -510, rightWidth - 20, 138)
     Modern.historyCard = historyCard; Modern.historyTitle = historyCard.titleText

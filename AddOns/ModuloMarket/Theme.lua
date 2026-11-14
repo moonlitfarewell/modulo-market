@@ -192,6 +192,9 @@ function Theme.ApplyRegistered()
             entry.object:SetTextColor(c[1], c[2], c[3], c[4] or 1)
         end
     end
+    if MM.MarketUI and MM.MarketUI.ApplyCheckboxContrast then
+        MM.MarketUI.ApplyCheckboxContrast()
+    end
 end
 
 function Theme.SetTheme(value)

@@ -59,14 +59,15 @@
     "visual_redesign": "0.8.8_DARK_FOUNDRY_FINISH; PANEL_INSET_SHEEN_AND_SHADOW; HEADER_RAIL_END_CAPS; ACTIVE_INACTIVE_TAB_CONTRAST; TABLE_HEADER_AND_SELECTED_ROW_EMPHASIS; SIX_TABS; NO_BEHAVIOR_OR_GEOMETRY_CHANGE; FOREVER_RUNTIME_NOT_RUN",
     "waylaid_turn_ins": "0.10.0_SOURCE_IMPLEMENTED; 30_LABELLED_CRATES; 96_ONE_OF_MATERIAL_BUNDLE_CHOICES; CRATE_PRICE_INCLUDED; ACTUAL_MARKET_PRICE_AND_CHEAPEST_DEPTH_REQUIRED; CASH_RETURN_FAVOR_REPUTATION_AND_NET_CASH_COST_PER_FAVOR; ONE_TIME_SHIPPING_LABEL_BONUS_EXCLUDED; ARTISAN_REWARDS_UNKNOWN; 0.10.2_REWARD_PRESENTATION_EXCLUSIVE; FOREVER_RUNTIME_NOT_RUN",
     "market_ui_turn_ins": "0.10.4_PER_OPTION_MATERIAL_PRICE_BREAKDOWN; CRATE_PURCHASE_SEPARATE; BEST_VALUE_ONLY_FOR_FULLY_PRICEABLE_OPTION; LINE_LEVEL_UNKNOWN_REASON; SCROLLABLE_REUSABLE_ROWS; 0.10.3_FIXED_INSPECTOR_FONT_AND_IMMEDIATE_SELECTION_REFRESH_PRESERVED; PRICING_ENGINE_AND_MARKET_DEPTH_UNCHANGED; FOREVER_RUNTIME_NOT_RUN",
-    "separate_modern_window": "0.11.1_SOURCE_IMPLEMENTED; INDEPENDENT_MODERN_FRAME_AND_LAYOUT; SHARED_MARKETUI_DATA_STATE_FILTERS_SELECTION_AND_SCANNER_ACTIONS; BLIZZLIKE_EXISTING_WINDOW_PRESERVED; FOUR_BLIZZLIKE_STYLES; MODERN_DARK_CLASS_CUSTOM_PALETTES; SAVEDVARIABLES_MIGRATION; RUNTIME_NOT_RUN"
+    "separate_modern_window": "0.11.1_SOURCE_IMPLEMENTED; INDEPENDENT_MODERN_FRAME_AND_LAYOUT; SHARED_MARKETUI_DATA_STATE_FILTERS_SELECTION_AND_SCANNER_ACTIONS; BLIZZLIKE_EXISTING_WINDOW_PRESERVED; FOUR_BLIZZLIKE_STYLES; MODERN_DARK_CLASS_CUSTOM_PALETTES; SAVEDVARIABLES_MIGRATION; RUNTIME_NOT_RUN",
+    "modern_visual_defect_corrections": "0.11.2_SOURCE_IMPLEMENTED; TEXTURE_BASED_TOOLBAR_AND_DROPDOWN_ICONS; CONTRAST_CHECKBOX_STATES_IN_MODERN_AND_BLIZZLIKE_DARK_PALETTES; MODERN_PROFESSION_STATUS_ROW_MARKERS_RESTORED; MATERIALS_FILTER_HINT_OVERFLOW_REMOVED; STRUCTURED_SCROLLABLE_TURNIN_BUNDLE_BREAKDOWN; RETAIL_RUNTIME_NOT_RUN; FOREVER_RUNTIME_NOT_RUN"
   },
   "category": "Modulo By Wells",
   "dependencies": [
     "Modulo"
   ],
   "developer_tools_version": "Embedded repository importer 0.2.0 used to compile the 70938 runtime; standalone ForeverDB importer 0.2.3 used to inspect, normalize and validate the raw 70938 capture (separate release lifecycle).",
-  "file_count": 229,
+  "file_count": 232,
   "files": [
     ".gitignore",
     "AddOns/ModuloMarket/Core.lua",
@@ -105,6 +106,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.10.4.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.11.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.11.1.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.11.2.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.2.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.1.md",
@@ -174,6 +176,7 @@
     "docs/MODULOMARKET-ALL-ITEMS-BROWSER-0.9.8.md",
     "docs/MODULOMARKET-ALL-ITEMS-COLUMN-FIT-0.9.9.md",
     "docs/MODULOMARKET-INSPECTOR-FONT-SELECTION-0.10.3.md",
+    "docs/MODULOMARKET-MODERN-VISUAL-FIXES-0.11.2.md",
     "docs/MODULOMARKET-PROFESSION-STATUS-AND-ECONOMICS-0.6.9.md",
     "docs/MODULOMARKET-RECIPE-SOURCE-FILTER-0.6.7.md",
     "docs/MODULOMARKET-ROW-STATUS-PRESENTATION-0.6.8.md",
@@ -210,7 +213,7 @@
     "tests/market_ui_0_4_1_harness.lua",
     "tests/market_ui_0_4_2_harness.lua",
     "tests/market_ui_0_5_0_harness.lua",
-    "tests/modern_ui_0_11_1_harness.lua",
+    "tests/modern_ui_0_11_2_harness.lua",
     "tests/profession_capture_0_7_8_harness.lua",
     "tests/profession_data_0_4_0_harness.lua",
     "tests/profession_status_0_6_9_harness.lua",
@@ -222,7 +225,8 @@
     "tests/test_modulomarket_0_10_0_turnins.py",
     "tests/test_modulomarket_0_10_3_turnins_ui.py",
     "tests/test_modulomarket_0_10_4_bundle_breakdown.py",
-    "tests/test_modulomarket_0_11_1_themes.py",
+    "tests/test_modulomarket_0_11_2_themes.py",
+    "tests/test_modulomarket_0_11_2_visual_fixes.py",
     "tests/test_modulomarket_0_5_6_redesign_and_capture_cache.py",
     "tests/test_modulomarket_0_7_0_scope_search_layout.py",
     "tests/test_modulomarket_0_7_3_search_warmup.py",
@@ -287,7 +291,7 @@
     "tests/test_modulomarket_version_reporting_harness_0_5_4.py",
     "tests/test_modulomarket_version_visibility_0_5_4.py",
     "tests/theme_0_11_0_harness.lua",
-    "tests/theme_0_11_1_harness.lua",
+    "tests/theme_0_11_2_harness.lua",
     "tests/turnin_0_10_0_harness.lua",
     "tests/version_reporting_0_5_4_harness.lua",
     "tools/foreverdb_importer/.gitignore",
@@ -313,6 +317,11 @@
   "parentUploader": "developer",
   "parent_addon": "Modulo",
   "previousChildBundles": [
+    {
+      "bundle": "ModuloMarket-GitHub-Update-0.11.1.zip",
+      "bytes": 2425279,
+      "sha256": "ca13de95a3e54ce376ee228b567c1d6b0dccb47be50fa26bf11b56ea8e660fd5"
+    },
     {
       "bundle": "ModuloMarket-GitHub-Update-0.11.0.zip",
       "bytes": 2428486,
@@ -504,12 +513,12 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.11.1_SEPARATE_MODERN_WINDOW_SOURCE_IMPLEMENTED; BLIZZLIKE_LAYOUT_AND_FOUR_STYLES_PRESERVED; MODERN_SEPARATE_FRAME_WITH_SHARED_MARKET_STATE; MODERN_DARK_CLASS_CUSTOM_PALETTES; 0.11.0_CUSTOM_PALETTE_MIGRATION_PRESERVED; FOCUSED_TESTS_40_PASS; THEME_HARNESS_18_PASS; MODERN_UI_HARNESS_12_PASS; TURNIN_HARNESS_9_PASS; LUA_SYNTAX_13_PASS; FULL_SUITE_309_PASS_87_UNCHANGED_BASELINE_FAILURES; RETAIL_RUNTIME_NOT_RUN; FOREVER_RUNTIME_NOT_RUN",
+  "runtime_status": "0.11.2_VISUAL_CORRECTIONS_SOURCE_IMPLEMENTED; FOCUSED_TESTS_47_PASS; THEME_HARNESS_19_PASS; MODERN_UI_HARNESS_24_PASS; TURNIN_HARNESS_9_PASS; LUA_SYNTAX_13_PASS; FULL_SUITE_316_PASS_87_UNCHANGED_BASELINE_FAILURES; RETAIL_RUNTIME_NOT_RUN; FOREVER_RUNTIME_NOT_RUN; GITHUB_PUSH_NOT_RUN",
   "saved_variables": [
     "ModuloMarketDB"
   ],
-  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.11.0.zip",
-  "supersedesChildBytes": 2428486,
-  "supersedesChildSha256": "eb27937484ce78da22fdc3033a3bc9d88fa552abaa047a656e0e07551c9ed36c",
-  "version": "0.11.1"
+  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.11.1.zip",
+  "supersedesChildBytes": 2425279,
+  "supersedesChildSha256": "ca13de95a3e54ce376ee228b567c1d6b0dccb47be50fa26bf11b56ea8e660fd5",
+  "version": "0.11.2"
 }
