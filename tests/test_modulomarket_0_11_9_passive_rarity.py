@@ -12,20 +12,20 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0119_versions_are_aligned():
-    assert 'MM.version = "0.11.9"' in CORE
-    assert "## Version: 0.11.9" in TOC
-    assert 'version = "0.11.9"' in DATA
-    assert 'version = "0.11.9"' in WRITS
-    assert MANIFEST["version"] == "0.11.9"
+    assert 'MM.version = "0.12.0"' in CORE
+    assert "## Version: 0.12.0" in TOC
+    assert 'version = "0.12.0"' in DATA
+    assert 'version = "0.12.0"' in WRITS
+    assert MANIFEST["version"] == "0.12.0"
 
 
 def test_rarity_lookup_never_requests_item_data():
     block = MARKET.split("local itemQualityCache = {}", 1)[1].split("local function GetItemDisplayName", 1)[0]
-    assert "GetItemQualityColor" in block
-    assert "GetItemInfo" in block
+    assert "GetItemInfoCompat" in block
+    assert "ITEM_QUALITY_COLORS" in block
     assert "RequestLoadItemDataByID" not in block
     assert "RequestItemQuality" not in MARKET
-    assert "Passive lookup only" in block
+    assert "Uncached item quality is not guessed or requested" in block
 
 
 def test_item_data_completion_only_refreshes_active_presentation():

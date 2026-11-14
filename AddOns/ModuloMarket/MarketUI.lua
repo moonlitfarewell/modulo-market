@@ -85,6 +85,23 @@ local function Now()
     return type(_G.GetTime) == "function" and _G.GetTime() or 0
 end
 
+-- ProfessionMaster's LibMasterAddons compatibility layer resolves the Classic
+-- GetItemInfo contract through C_Item.GetItemInfo on Forever when the global is
+-- absent. Keep the same dependency-free fallback locally.
+local function GetItemInfoCompat(itemID)
+    local fn = _G.GetItemInfo
+    if type(fn) ~= "function" then
+        local api = _G.C_Item
+        fn = type(api) == "table" and api.GetItemInfo or nil
+    end
+    if type(fn) == "function" then return fn(itemID) end
+end
+
+local function GetItemLinkDisplayName(itemLink)
+    if type(itemLink) ~= "string" then return nil end
+    return itemLink:match("|h%[(.-)%]|h")
+end
+
 local function FormatMoney(copper)
     copper = math.floor(tonumber(copper) or 0)
     local sign = ""
@@ -136,7 +153,10 @@ local function GetTooltipSearchText(itemID)
     end
     local hasCacheAPI = type(api) == "table" and type(api.IsItemDataCachedByID) == "function"
     local loaded = hasCacheAPI and isCached
-        or (not hasCacheAPI and type(_G.GetItemInfo) == "function" and _G.GetItemInfo(itemID) ~= nil)
+        or (not hasCacheAPI and (function()
+            local ok, name = pcall(GetItemInfoCompat, itemID)
+            return ok and name ~= nil
+        end)())
     if not loaded then
         if not UI.tooltipSearchRequested[itemID] and (UI.tooltipSearchRequestsThisFrame or 0) < 10 then
             UI.tooltipSearchRequested[itemID] = true
@@ -210,10 +230,8 @@ local function GetTooltipSearchText(itemID)
         if #lines == 0 then
             searchTooltip:ClearLines()
             local link
-            if type(_G.GetItemInfo) == "function" then
-                local _, itemLink = _G.GetItemInfo(itemID)
-                link = itemLink
-            end
+            local ok, _, itemLink = pcall(GetItemInfoCompat, itemID)
+            if ok then link = itemLink end
             if link and type(searchTooltip.SetHyperlink) == "function" then
                 pcall(searchTooltip.SetHyperlink, searchTooltip, link)
                 lines = ReadLegacyLines()
@@ -268,6 +286,7 @@ local function MatchesSearch(item, query, isCrafting, includeTooltip)
     elseif type(item.variants) == "table" then
         for _, variant in ipairs(item.variants) do
             fields[#fields + 1] = variant.itemName
+            fields[#fields + 1] = GetItemLinkDisplayName(variant.itemLink)
             fields[#fields + 1] = variant.itemID
         end
     end
@@ -327,15 +346,28 @@ end
 
 GetItemName = function(item)
     local name = type(item) == "table" and (type(item.itemName) == "string" and item.itemName or nil) or nil
-    if name and name ~= "" then return name end
+    if name and name ~= "" and not name:match("^Item #") then return name end
     local itemID = type(item) == "table" and tonumber(item.iconItemID or item.outputItemID or item.itemID) or nil
-    -- GetItemInfo is the authoritative compatibility path on the Forever
-    -- 1.60.1 client. A separate cache probe must not suppress this lookup.
-    if itemID and type(_G.GetItemInfo) == "function" then
-        local ok, cachedName = pcall(_G.GetItemInfo, itemID)
+    -- A Replicate row may have a usable item hyperlink even when the client
+    -- name cache is not populated. Prefer that display name before the ID fallback.
+    if type(item) == "table" then
+        local linkedName = GetItemLinkDisplayName(item.itemLink)
+            or (type(item.bestVariant) == "table" and GetItemLinkDisplayName(item.bestVariant.itemLink))
+        if not linkedName and type(item.variants) == "table" then
+            for _, variant in ipairs(item.variants) do
+                linkedName = type(variant) == "table" and GetItemLinkDisplayName(variant.itemLink) or nil
+                if linkedName then break end
+            end
+        end
+        if linkedName and linkedName ~= "" then return linkedName end
+    end
+    -- Match ProfessionMaster's compatibility approach: Forever may expose the
+    -- Classic return tuple through C_Item.GetItemInfo rather than _G.GetItemInfo.
+    if itemID then
+        local ok, cachedName = pcall(GetItemInfoCompat, itemID)
         if ok and type(cachedName) == "string" and cachedName ~= "" then return cachedName end
     end
-    return "Item #" .. tostring(itemID or (type(item) == "table" and item.itemID) or "?")
+    return name or ("Item #" .. tostring(itemID or (type(item) == "table" and item.itemID) or "?"))
 end
 
 local itemQualityCache = {}
@@ -345,13 +377,27 @@ local function GetItemQualityHex(itemID)
     local cached = itemQualityCache[itemID]
     if cached then return cached end
     local quality
-    if type(_G.GetItemInfo) == "function" then
-        local ok, _, _, itemQuality = pcall(_G.GetItemInfo, itemID)
-        if ok then quality = tonumber(itemQuality) end
+    local ok, _, _, itemQuality = pcall(GetItemInfoCompat, itemID)
+    if ok then quality = tonumber(itemQuality) end
+
+    -- Follow ProfessionMaster: use Blizzard's quality table and its canonical
+    -- hex value. This remains a passive cache read; it never requests item data.
+    local colors = _G.ITEM_QUALITY_COLORS
+    local color = quality ~= nil and type(colors) == "table" and colors[quality] or nil
+    if type(color) == "table" and type(color.hex) == "string" then
+        local hex = color.hex:match("|cff(%x%x%x%x%x%x)")
+            or color.hex:match("^#?(%x%x%x%x%x%x)$")
+        if hex then
+            itemQualityCache[itemID] = hex:lower()
+            return itemQualityCache[itemID]
+        end
     end
+
+    -- Compatibility fallback for clients that expose the colour function but
+    -- not ITEM_QUALITY_COLORS.
     if quality ~= nil and type(_G.GetItemQualityColor) == "function" then
-        local ok, r, g, b = pcall(_G.GetItemQualityColor, quality)
-        if ok and tonumber(r) and tonumber(g) and tonumber(b) then
+        local colorOK, r, g, b = pcall(_G.GetItemQualityColor, quality)
+        if colorOK and tonumber(r) and tonumber(g) and tonumber(b) then
             local function channel(value)
                 return math.max(0, math.min(255, math.floor((tonumber(value) or 0) * 255 + 0.5)))
             end
@@ -360,9 +406,7 @@ local function GetItemQualityHex(itemID)
             return hex
         end
     end
-    -- Passive lookup only: never request item data from the render path.
-    -- If another client/addon operation later loads this item, the item-data
-    -- event invalidates this cache and refreshes only the active presentation.
+    -- Uncached item quality is not guessed or requested. White is neutral.
     return "ffffffff"
 end
 
@@ -458,8 +502,8 @@ local function GetItemIcon(itemID)
         local ok, value = pcall(api.GetItemIconByID, itemID)
         if ok and value then icon = value end
     end
-    if not icon and type(_G.GetItemInfo) == "function" then
-        local ok, _, _, _, _, _, _, _, _, texture = pcall(_G.GetItemInfo, itemID)
+    if not icon then
+        local ok, _, _, _, _, _, _, _, _, texture = pcall(GetItemInfoCompat, itemID)
         if ok and texture then icon = texture end
     end
     if not icon and type(api) == "table" and type(api.RequestLoadItemDataByID) == "function" then
@@ -497,13 +541,10 @@ local function ReadVendorInfo(itemID)
         end
     end
 
-    local fn = _G.GetItemInfo
-    if type(fn) == "function" then
-        local ok, itemName, itemLink, quality, itemLevel, requiredLevel, itemClass,
-            itemSubClass, maxStack, equipLocation, texture, sellPrice, classID = pcall(fn, itemID)
-        if ok and CacheVendorInfo(itemID, sellPrice, classID) then
-            return tonumber(sellPrice), tonumber(classID)
-        end
+    local ok, itemName, itemLink, quality, itemLevel, requiredLevel, itemClass,
+        itemSubClass, maxStack, equipLocation, texture, sellPrice, classID = pcall(GetItemInfoCompat, itemID)
+    if ok and CacheVendorInfo(itemID, sellPrice, classID) then
+        return tonumber(sellPrice), tonumber(classID)
     end
     return nil, nil
 end
@@ -527,8 +568,7 @@ local function GetVendorInfo(itemID, requestLoad)
         else
             -- Legacy GetItemInfo also initiates an item-cache request on clients
             -- that do not expose C_Item.RequestLoadItemDataByID.
-            local fn = _G.GetItemInfo
-            if type(fn) == "function" then pcall(fn, itemID) end
+            pcall(GetItemInfoCompat, itemID)
         end
     end
     return nil, nil
@@ -673,8 +713,8 @@ local function GetMaterialCatalog()
         local id = tonumber(entry.itemID)
         if id and not seen[id] then
             local name = entry.itemName
-            if (not name or name == "") and type(_G.GetItemInfo) == "function" then
-                local ok, itemName = pcall(_G.GetItemInfo, id)
+            if (not name or name == "") then
+                local ok, itemName = pcall(GetItemInfoCompat, id)
                 if ok and type(itemName) == "string" then name = itemName end
             end
             result[#result + 1] = {
@@ -721,15 +761,12 @@ local function GetItemClassID(itemID, requestLoad)
         end
     end
 
-    local fn = _G.GetItemInfo
-    if type(fn) == "function" then
-        local ok, itemName, itemLink, quality, itemLevel, requiredLevel, itemClass,
-            itemSubClass, maxStack, equipLocation, texture, sellPrice, classID = pcall(fn, itemID)
-        classID = ok and tonumber(classID) or nil
-        if classID ~= nil then
-            UI.itemClassCache[itemID] = classID
-            return classID
-        end
+    local ok, itemName, itemLink, quality, itemLevel, requiredLevel, itemClass,
+        itemSubClass, maxStack, equipLocation, texture, sellPrice, classID = pcall(GetItemInfoCompat, itemID)
+    classID = ok and tonumber(classID) or nil
+    if classID ~= nil then
+        UI.itemClassCache[itemID] = classID
+        return classID
     end
 
     if requestLoad and not UI.itemClassRequested[itemID]
@@ -758,8 +795,8 @@ local function StepItemClassWarmup()
                 if type(api) == "table" and type(api.RequestLoadItemDataByID) == "function" then
                     local ok, accepted = pcall(api.RequestLoadItemDataByID, itemID)
                     requestOK = ok and accepted ~= false
-                elseif type(_G.GetItemInfo) == "function" then
-                    requestOK = pcall(_G.GetItemInfo, itemID)
+                else
+                    requestOK = pcall(GetItemInfoCompat, itemID)
                 end
                 if requestOK then
                     UI.itemClassRequested[itemID] = true
@@ -1460,7 +1497,7 @@ end
 -- Text entry is intentionally debounced. Tooltip lookup is relatively expensive
 -- on the target client, so rebuilding the full catalogue for every typed character
 -- creates unnecessary work and can starve the visible UI.
-local SEARCH_DEBOUNCE_SECONDS = 0.35
+local SEARCH_DEBOUNCE_SECONDS = 0.5
 local function ScheduleSearchBuild()
     UI.searchGeneration = (UI.searchGeneration or 0) + 1
     UI.viewBuild = nil
@@ -1707,7 +1744,8 @@ local function StepTooltipSearchWarmup()
     -- the event signature expected by this addon.
     local api = _G.C_Item
     for itemID in pairs(warmup.awaiting) do
-        local cached = type(_G.GetItemInfo) == "function" and _G.GetItemInfo(itemID) ~= nil
+        local cacheOK, cachedName = pcall(GetItemInfoCompat, itemID)
+        local cached = cacheOK and cachedName ~= nil
         if not cached and type(api) == "table" and type(api.IsItemDataCachedByID) == "function" then
             local ok, value = pcall(api.IsItemDataCachedByID, itemID)
             cached = ok and value == true
@@ -3478,8 +3516,8 @@ function UI.HandleShiftClick(item)
 
     local plainName = GetItemName(item)
     local itemLink
-    if type(_G.GetItemInfo) == "function" then
-        local ok, _, link = pcall(_G.GetItemInfo, itemID)
+    if itemID then
+        local ok, _, link = pcall(GetItemInfoCompat, itemID)
         if ok and type(link) == "string" and link:find("|Hitem:", 1, true) then
             itemLink = link
         end
@@ -3849,7 +3887,7 @@ local function CreateUI()
         self:ClearFocus()
         UI.StartViewBuild()
     end)
-    AttachFilterTooltip(UI.search, "Search", "Typing searches names, professions, IDs, reagents and tooltip descriptions automatically after a short pause. Press Enter to search immediately.")
+    AttachFilterTooltip(UI.search, "Search", "Typing searches item names, IDs, recipes, professions and variant names after a 0.5 second pause. Press Enter to run the deeper tooltip-description search.")
 
     RefreshProfessionOptions()
     UI.professionDropdown = CreateDropdown(frame, 230, 32, -284,
@@ -4450,9 +4488,9 @@ local function CreateUI()
         local now = Now()
         if UI.searchBuildDueAt and now >= UI.searchBuildDueAt then
             UI.searchBuildDueAt = nil
-            UI.tooltipSearchMode = true
+            UI.tooltipSearchMode = false
             UI.tooltipSearchDiagnostics.searches = UI.tooltipSearchDiagnostics.searches + 1
-            UI.tooltipSearchDiagnostics.lastState = "debounced"
+            UI.tooltipSearchDiagnostics.lastState = "name_search"
             UI.StartViewBuild()
         end
         -- Run the warmup watchdog independently of other work queues so a stale

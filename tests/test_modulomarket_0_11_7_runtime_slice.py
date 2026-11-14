@@ -12,10 +12,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0117_versions_are_aligned():
-    assert 'MM.version = "0.11.9"' in CORE
-    assert "## Version: 0.11.9" in TOC
-    assert 'version = "0.11.9"' in DATA
-    assert MANIFEST["version"] == "0.11.9"
+    assert 'MM.version = "0.12.0"' in CORE
+    assert "## Version: 0.12.0" in TOC
+    assert 'version = "0.12.0"' in DATA
+    assert MANIFEST["version"] == "0.12.0"
 
 
 def test_both_windows_center_on_every_explicit_open():
@@ -34,7 +34,7 @@ def test_quality_colours_use_passive_cache_without_render_time_requests():
     assert "C_Item.RequestLoadItemDataByID" not in quality_block
     assert "itemQualityRequested" not in MARKET
     assert "itemQualityFailed" not in MARKET
-    assert "Passive lookup only" in quality_block
+    assert "Uncached item quality is not guessed or requested" in quality_block
 
 
 def test_item_data_event_refreshes_only_active_presentation():
@@ -47,7 +47,7 @@ def test_item_data_event_refreshes_only_active_presentation():
 
 def test_legacy_item_name_cache_probe_does_not_suppress_getiteminfo():
     block = MARKET.split("GetItemName = function(item)", 1)[1].split("local itemQualityCache", 1)[0]
-    assert "pcall(_G.GetItemInfo, itemID)" in block
+    assert "pcall(GetItemInfoCompat, itemID)" in block
     assert "IsItemDataCachedByID" not in block
 
 

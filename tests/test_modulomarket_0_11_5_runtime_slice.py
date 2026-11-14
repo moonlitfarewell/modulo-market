@@ -14,9 +14,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_are_0_11_7():
-    assert 'MM.version = "0.11.9"' in CORE
-    assert "## Version: 0.11.9" in TOC
-    assert MANIFEST["version"] == "0.11.9"
+    assert 'MM.version = "0.12.0"' in CORE
+    assert "## Version: 0.12.0" in TOC
+    assert MANIFEST["version"] == "0.12.0"
 
 
 def test_history_uses_exactly_the_latest_three_snapshots():
@@ -135,6 +135,6 @@ def test_artisan_crate_rewards_follow_user_supplied_favor_and_cash_schedule():
 
 def test_snapshot_search_uses_cached_client_name_when_snapshot_name_is_missing():
     assert "GetItemName = function(item)" in MARKET
-    assert "pcall(_G.GetItemInfo, itemID)" in MARKET
+    assert "pcall(GetItemInfoCompat, itemID)" in MARKET
     assert "GetItemName(item)," in MARKET
     assert "GetTooltipSearchText(item.itemID)" in MARKET

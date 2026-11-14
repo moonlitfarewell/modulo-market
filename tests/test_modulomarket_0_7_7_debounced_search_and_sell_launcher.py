@@ -14,13 +14,15 @@ def test_release_versions_agree():
     assert MANIFEST["version"] == "0.9.8"
 
 
-def test_typing_automatically_submits_tooltip_search_after_short_debounce():
-    assert 'local SEARCH_DEBOUNCE_SECONDS = 0.35' in UI
-    assert 'UI.tooltipSearchMode = true' in UI
-    assert 'UI.tooltipSearchDiagnostics.lastState = "debounced"' in UI
-    assert 'UI.search:SetScript("OnEnterPressed"' in UI
-    assert 'UI.tooltipSearchDiagnostics.lastState = "submitted"' in UI
-    assert 'reagents and tooltip descriptions automatically after a short pause' in UI
+def test_typing_runs_name_search_after_trailing_debounce_and_enter_opts_into_tooltips():
+    assert 'local SEARCH_DEBOUNCE_SECONDS = 0.5' in UI
+    on_update = UI.split('frame:SetScript("OnUpdate"', 1)[1].split('end)', 1)[0]
+    assert 'UI.tooltipSearchMode = false' in on_update
+    assert 'UI.tooltipSearchDiagnostics.lastState = "name_search"' in on_update
+    enter = UI.split('UI.search:SetScript("OnEnterPressed"', 1)[1].split('AttachFilterTooltip(UI.search', 1)[0]
+    assert 'UI.tooltipSearchMode = true' in enter
+    assert 'UI.tooltipSearchDiagnostics.lastState = "submitted"' in enter
+    assert 'Press Enter to run the deeper tooltip-description search' in UI
 
 
 def test_stale_search_generation_is_discarded():
