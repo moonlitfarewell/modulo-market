@@ -239,6 +239,10 @@ local function GetTooltipSearchText(itemID)
     return normalized
 end
 
+-- Forward declaration: MatchesSearch is defined before GetItemName below.
+-- Without this local binding Lua resolves GetItemName as a global (nil).
+local GetItemName
+
 local function MatchesSearch(item, query, isCrafting, includeTooltip)
     if query == "" then return true end
     if string.match(query, "^%d+$") then
@@ -321,7 +325,7 @@ local function GetMarketPrice(itemID)
     return UI.catalogByID and UI.catalogByID[tonumber(itemID)] or nil
 end
 
-local function GetItemName(item)
+GetItemName = function(item)
     local name = type(item) == "table" and (type(item.itemName) == "string" and item.itemName or nil) or nil
     if name and name ~= "" then return name end
     local itemID = type(item) == "table" and tonumber(item.iconItemID or item.outputItemID or item.itemID) or nil

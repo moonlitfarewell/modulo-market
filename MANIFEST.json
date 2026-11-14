@@ -75,7 +75,7 @@
     "Modulo"
   ],
   "developer_tools_version": "Embedded repository importer 0.2.0 used to compile the 70938 runtime; standalone ForeverDB importer 0.2.3 used to inspect, normalize and validate the raw 70938 capture (separate release lifecycle).",
-  "file_count": 254,
+  "file_count": 256,
   "files": [
     ".gitignore",
     "AddOns/ModuloMarket/Core.lua",
@@ -126,6 +126,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.11.4.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.11.6.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.11.7.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.11.8.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.2.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.1.md",
@@ -256,6 +257,7 @@
     "tests/test_modulomarket_0_11_4_runtime_slice.py",
     "tests/test_modulomarket_0_11_5_runtime_slice.py",
     "tests/test_modulomarket_0_11_7_runtime_slice.py",
+    "tests/test_modulomarket_0_11_8_search_scope.py",
     "tests/test_modulomarket_0_5_6_redesign_and_capture_cache.py",
     "tests/test_modulomarket_0_7_0_scope_search_layout.py",
     "tests/test_modulomarket_0_7_3_search_warmup.py",
@@ -558,12 +560,12 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.11.7_SOURCE_IMPLEMENTED; BOTH_WINDOWS_CENTER_ON_EACH_OPEN; ASYNC_ITEM_QUALITY_REQUESTS; NATIVE_CHATFRAMEUTIL_SHIFT_CLICK; MODERN_CONTENT_MEASURED_COLUMNS_ALL_TABS; SEARCH_CACHE_FALLBACK_AND_PROGRESS; SELECTED_ITEM_INNER_INSPECTOR_LABEL; ARTISAN_RAW_20_FAVOR_10S_PROCESSED_40_FAVOR_20S; THREE_SNAPSHOT_HISTORY_PRESERVED; LEARNING_MARKERS_PRESERVED; NATIVE_HOVER_TOOLTIPS_PRESERVED; FOCUSED_TESTS_90_PASS; LUA_SYNTAX_14_OF_14; MODERN_UI_HARNESS_34_PASS; CRATE_HARNESS_9_PASS; WRIT_HARNESS_11_PASS_145_OF_150_RECIPE_MATCHES; SCAN_HARNESS_8_PASS; FULL_SUITE_359_PASS_87_FAIL_SAME_87_BASELINE_IDS_ZERO_NEW_FAILURES; FOREVER_RUNTIME_NOT_RUN; RETAIL_RUNTIME_NOT_RUN; SPIRE_SNAPSHOT_MEMBERSHIP_UNKNOWN_NO_MODULOMARKET_SAVEDVARIABLES_IN_SUPPLIED_WTF",
+  "runtime_status": "0.11.8_SEARCH_GETITEMNAME_FORWARD_DECLARATION_FIX; BUGGRABBER_CONFIRMED_MARKETUI_LINE_249_NIL_CALL_FOR_TEXT_QUERY_SPIRE; FOCUSED_REGRESSION_PENDING; FOREVER_RUNTIME_NOT_RUN; RETAIL_RUNTIME_NOT_RUN",
   "saved_variables": [
     "ModuloMarketDB"
   ],
   "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.11.5.zip",
   "supersedesChildBytes": 2481734,
   "supersedesChildSha256": "1bb4568df5fc8424773df36256e534922b0edeae9aa2dfd227181a8543c4b023",
-  "version": "0.11.7"
+  "version": "0.11.8"
 }

@@ -12,10 +12,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0117_versions_are_aligned():
-    assert 'MM.version = "0.11.7"' in CORE
-    assert "## Version: 0.11.7" in TOC
-    assert 'version = "0.11.7"' in DATA
-    assert MANIFEST["version"] == "0.11.7"
+    assert 'MM.version = "0.11.8"' in CORE
+    assert "## Version: 0.11.8" in TOC
+    assert 'version = "0.11.8"' in DATA
+    assert MANIFEST["version"] == "0.11.8"
 
 
 def test_both_windows_center_on_every_explicit_open():
@@ -38,7 +38,7 @@ def test_quality_requests_are_async_and_refresh_both_presentations():
 
 
 def test_legacy_item_name_cache_probe_does_not_suppress_getiteminfo():
-    block = MARKET.split("local function GetItemName(item)", 1)[1].split("local itemQualityCache", 1)[0]
+    block = MARKET.split("GetItemName = function(item)", 1)[1].split("local itemQualityCache", 1)[0]
     assert "pcall(_G.GetItemInfo, itemID)" in block
     assert "IsItemDataCachedByID" not in block
 

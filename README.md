@@ -1,6 +1,6 @@
-# Modulo Market 0.11.7
+# Modulo Market 0.11.8
 
-**Current player milestone:** 0.11.7 centres both windows whenever `/mm` opens them, restores asynchronous WoW item-rarity colours on visible rows, and uses Blizzard's `ChatFrameUtil.InsertLink` dispatcher for native item hyperlink/chat and Auction House search behaviour. Modern numeric columns are measured from visible row values and headers, right-aligned, and leave the remaining width to the left-aligned Item/Recipe column. Search now reads the legacy client item cache even when the separate C_Item cache probe says data is not cached, and Modern exposes filtering/tooltip-warmup progress instead of appearing stuck at `0 / 0`. The inspector's outer heading is **Inspected Item** and its inner item card is **Selected Item**.
+**Current player milestone:** 0.11.8 fixes a Lua lexical-scope defect in text search that caused `GetItemName` to resolve as a nil global when a non-empty text query was filtered. The captured Forever client error for query `spire` identifies this exact call site. The 0.11.7 features remain. 0.11.8 centres both windows whenever `/mm` opens them, restores asynchronous WoW item-rarity colours on visible rows, and uses Blizzard's `ChatFrameUtil.InsertLink` dispatcher for native item hyperlink/chat and Auction House search behaviour. Modern numeric columns are measured from visible row values and headers, right-aligned, and leave the remaining width to the left-aligned Item/Recipe column. Search now reads the legacy client item cache even when the separate C_Item cache probe says data is not cached, and Modern exposes filtering/tooltip-warmup progress instead of appearing stuck at `0 / 0`. The inspector's outer heading is **Inspected Item** and its inner item card is **Selected Item**.
 
 Artisan Waylaid Crate rewards use the supplied category schedule: raw-material Artisan crates (Herbs, Ore, Textiles, Curiosities) return 20 Merchant's Favor and 10 Silver; processed-material Artisan crates (Fabrics, Ingots, Parts) return 40 Merchant's Favor and 20 Silver. This is 50 copper per Favor. Reputation remains unfilled because the supplied schedule did not specify a reputation amount.
 
@@ -14,6 +14,10 @@ The three-snapshot Market History, learning-state edge markers, native hover too
 - The 0.11.3 Scan Market → Confirm Scan → Cancel workflow and settings-based Browse Scan diagnostics remain.
 - No optional addon dependency was added.
 
+
+## 0.11.8 — search nil-call crash fix
+
+The 0.11.7 search filter called `GetItemName` from `MatchesSearch` before the later `local function GetItemName` declaration entered lexical scope. Lua therefore treated the earlier reference as a global lookup. A non-empty text query such as `spire` raised `attempt to call a nil value` during incremental filtering. `GetItemName` is now forward-declared before `MatchesSearch` and assigned later into that local. The saved profile's BugGrabber stack and locals directly match this call path. No SavedVariables schema or search boundary changed. Offline regression coverage asserts the local binding order; Forever runtime acceptance remains NOT RUN.
 
 ## 0.11.7 — centered windows, native links, Modern column fit and Artisan payouts
 
