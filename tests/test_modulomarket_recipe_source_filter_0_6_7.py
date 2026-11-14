@@ -58,9 +58,9 @@ def test_skinning_core_leather_tiers_are_mapped():
 
 
 def test_recipe_row_colours_match_requested_statuses():
-    assert 'status == "known" and "|cff8ee6a2"' in UI
-    assert 'status == "unlearnable" and "|cffff6666"' in UI
-    assert 'status == "learnable" and "|cffffd77a"' in UI
+    assert 'status == "known" then return 0.25, 0.88, 0.42, 1' in UI
+    assert 'status == "unlearnable" or status == "unknown" then return 0.95, 0.27, 0.24, 1' in UI
+    assert 'status == "learnable" then return 1, 0.82, 0.24, 1' in UI
 
 
 def test_release_versions_agree():

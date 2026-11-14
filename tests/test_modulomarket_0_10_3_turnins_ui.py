@@ -11,14 +11,14 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.11.5"' in CORE
-    assert "## Version: 0.11.5" in TOC
-    assert 'version = "0.11.5"' in DATA
-    assert MANIFEST["version"] == "0.11.5"
+    assert 'MM.version = "0.11.6"' in CORE
+    assert "## Version: 0.11.6" in TOC
+    assert 'version = "0.11.6"' in DATA
+    assert MANIFEST["version"] == "0.11.6"
 
 
 def test_turnins_uses_five_columns_and_combined_reward_sort():
-    assert '"Turn-In Item", "Cost", "Gross", "Rep / Favor", "Net / Reward"' in UI
+    assert '"Turn-In Item", "Cost", "Gross", "REP / FAV", "Net / Reward"' in UI
     assert '"name", "completion", "price", "reward", "net"' in UI
     assert 'elseif key == "reward" then' in UI
     assert 'button.total:SetText("")' in UI

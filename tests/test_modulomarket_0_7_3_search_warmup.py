@@ -41,9 +41,8 @@ def test_search_debounce_and_stale_build_cancellation_remain():
     assert 'UI.searchBuildDueAt = Now() + SEARCH_DEBOUNCE_SECONDS' in UI
 
 def test_unknown_and_not_learnable_are_both_red_in_rows_and_inspector():
-    assert 'status == "unlearnable" and "|cffff6666"' in UI
-    assert 'status == "unknown" and "|cffff6666"' in UI
-    assert 'state == "unlearnable" and "|cffff6666NOT LEARNABLE|r" or "|cffff6666UNKNOWN|r"' in UI
+    assert 'status == "unlearnable" or status == "unknown" then return 0.95, 0.27, 0.24, 1' in UI
+    assert 'status == "learnable" then return 1, 0.82, 0.24, 1' in UI
 
 def test_tooltip_effect_search_and_async_item_loading_remain():
     assert 'GetTooltipSearchText(item.itemID)' in UI

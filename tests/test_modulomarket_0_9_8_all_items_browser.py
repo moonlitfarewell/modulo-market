@@ -45,10 +45,10 @@ def test_existing_sort_and_scroll_behaviour_is_preserved():
 def test_item_quality_colours_names_and_craft_status_uses_row_marker():
     assert "GetItemQualityHex" in UI
     assert "_G.GetItemQualityColor" in UI
-    assert 'return "|c" .. GetItemQualityHex(item and item.itemID) .. GetItemName(item) .. "|r"' in UI
+    assert 'return "|c" .. GetItemQualityHex(itemID) .. GetItemName(item) .. "|r"' in UI
     assert "local function GetItemCraftMarker(itemID)" in UI
     assert "row.statusMarker:SetWidth(3)" in UI
-    assert "button.statusMarker:SetColorTexture(GetItemCraftMarker(item.itemID))" in UI
+    assert "button.statusMarker:SetColorTexture(GetRowCraftMarker(item))" in UI
     assert "hasLearnable then return 1, 0.82, 0.24, 1" in UI
     assert "hasUnlearnableOrUnknown then return 0.95, 0.27, 0.24, 1" in UI
     assert "hasKnown then return 0.25, 0.88, 0.42, 1" in UI

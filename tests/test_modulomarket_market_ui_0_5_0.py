@@ -90,11 +90,11 @@ def test_050_low_supply_is_role_adjusted_and_distinguishes_units_from_listings()
     assert "item.auctionCountKnown and tostring(item.auctionCount or 0)" in UI
 
 
-def test_050_history_shows_change_and_four_point_graph():
+def test_050_history_shows_change_and_three_point_graph():
     assert "return found[1] - found[2]" in UI
     assert 'keys = { "name", "price", "change", "total", "total", "profit" }' in UI
     assert "UI.historyGraph" in UI
-    assert "for i = 1, 4 do" in UI
+    assert "for i = 1, 3 do" in UI
     assert "bar:SetColorTexture(0.22, 0.72, 0.38, 0.95)" in UI
     assert "bar:SetColorTexture(0.78, 0.25, 0.22, 0.95)" in UI
 

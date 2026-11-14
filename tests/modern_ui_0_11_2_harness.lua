@@ -104,6 +104,10 @@ _G.ModuloMarket = {
         GetModernItemName = function(value) return value.name end,
         GetModernIcon = function() return "test-icon" end,
         GetModernCraftMarker = function() return 0.25, 0.88, 0.42, 1 end,
+        GetRowCraftMarker = function() return 0.25, 0.88, 0.42, 1 end,
+        GetItemDisplayName = function(value) return value.name end,
+        ShowMarketItemTooltip = function() end,
+        HandleShiftClick = function() return false end,
         FormatMoney = function(value) return tostring(value) .. "c" end,
         SetTab = function(value) state.tab = value; state.viewRevision = state.viewRevision + 1 end,
         SetSearch = function(value) searchText = value end,
@@ -148,7 +152,8 @@ assert(M.scroll:GetScript("OnMouseWheel") ~= nil)
 M.scroll:GetScript("OnMouseWheel")(M.scroll, -1)
 M.tabs.crafts:GetScript("OnClick")(M.tabs.crafts)
 assert(state.tab == "crafts")
-assert(not M.rows[1].statusMarker.shown)
+assert(M.rows[1].statusMarker.shown)
+assert(M.rows[1].statusMarker.color[1] == 0.25 and M.rows[1].statusMarker.color[2] == 0.88)
 M.rows[1]:GetScript("OnClick")(M.rows[1])
 assert(selected == item)
 state.tab = "market"; M.RenderRows()

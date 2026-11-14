@@ -43,4 +43,4 @@ def test_market_history_graph_is_compacted_without_removing_history():
     assert 'UI.detailFooter:SetPoint("TOPLEFT", frame, "TOPLEFT", 1136, -602)' in UI
     assert 'UI.historyGraph:SetSize(236, 104)' in UI
     assert 'UI.historyText = AddLabel(UI.detailFooter, "", 6, -32, 268, 54' in UI
-    assert 'for i = 1, 4 do' in UI
+    assert 'for i = 1, 3 do' in UI

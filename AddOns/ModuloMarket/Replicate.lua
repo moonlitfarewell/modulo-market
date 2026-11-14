@@ -462,7 +462,7 @@ local function SaveHistoryPoint(snapshot)
     end
     local history = MM.db.marketHistory
     history[#history + 1] = point
-    while #history > 4 do table.remove(history, 1) end
+    while #history > 3 do table.remove(history, 1) end
 end
 
 local function Finish(scan)

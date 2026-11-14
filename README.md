@@ -1,12 +1,10 @@
-# Modulo Market 0.11.5
+# Modulo Market 0.11.6
 
-**Current player milestone:** This slice tightens the market navigation and Turn-Ins experience. Market History is strictly limited to the rolling last 72 hours (up to four completed snapshots inside that window). Both tab rails now use compact fixed geometry. Waylaid Crate rows carry an explicit `crate` type, fixing the empty type-filter result. The Category / Profession dropdown now presents only crate categories or Writ professions according to Turn-In Type. The Turn-Ins columns are now Turn-In Item, Cost, Gross, Rep / Favor and Net / Reward; reward values display `Fav` and `Rep`, with the Writ inspector using `Reputation` and no visible reported marker. The Modern title is centred without the M mark, and the redundant toolbar Close button is removed while the standard title-bar X remains.
+**Current player milestone:** 0.11.6 restores learning-state row markers across every tab in both presentations, applies client item-quality colours to item names, and changes Market History to the latest three completed Full Market snapshots. Native item tooltips are restored on hover. Shift-click now inserts the real WoW item hyperlink into an active chat edit box, or fills the native Auction House Browse field when chat is not active. Snapshot search falls back to client-cached item names when the saved row name is absent. Both inspectors use the **Inspected Item** title and Blizz-like gains its own bordered item card; Turn-In column reads **REP / FAV**.
 
-Shift-clicking an item row's icon or name in either presentation fills and focuses the native Classic Auction House Browse search field when the Auction House is open. It does not submit the search or intercept chat item-link insertion. A new white circular refresh TGA replaces the previous icon.
+Artisan Waylaid Crate Favor and cash remain **UNKNOWN**: the current public Forever sources still do not publish these rewards. No Expert-tier or inferred payout is substituted. Search remains a search of the saved snapshot, not an implicit live AH query. The user's screenshot includes a Full Market client footer showing 0.11.4; that screenshot is useful defect evidence but is not acceptance evidence for 0.11.6.
 
-Writ reputation data remains community-sourced in the underlying records and audit provenance; this UI slice removes the visible asterisk / "reported" label at the user's request, but does not upgrade the evidence to FOREVER OBSERVED or FOREVER VERIFIED. Five Writ recipe outputs remain incomplete; variable Coin Pouch returns remain excluded from calculations.
-
-Forever runtime acceptance for 0.11.5 is **NOT RUN**. Retail runtime is **NOT RUN**. See `MODULOMARKET-RUNTIME-AUDIT-0.11.5.md` and `docs/MODULOMARKET-TURNINS-AND-AH-SEARCH-0.11.5.md`.
+Forever runtime acceptance for 0.11.6 is **NOT RUN**. Retail runtime is **NOT RUN**. See `MODULOMARKET-RUNTIME-AUDIT-0.11.6.md` and `docs/MODULOMARKET-ITEM-STATUS-QUALITY-HISTORY-INSPECTOR-0.11.6.md`.
 
 ## Preserved capabilities
 
@@ -15,6 +13,11 @@ Forever runtime acceptance for 0.11.5 is **NOT RUN**. Retail runtime is **NOT RU
 - Writ buy/craft routes, 150-entry catalogue, unknown-reward handling, variable Coin Pouch treatment and fail-closed market-depth rules remain.
 - The 0.11.3 Scan Market → Confirm Scan → Cancel workflow and settings-based Browse Scan diagnostics remain.
 - No optional addon dependency was added.
+
+
+## 0.11.6 — item status, quality, history and inspection
+
+Restored learning-state row markers on Crafts and Turn-Ins, applied client item-quality colours to every tab, changed history to three latest snapshots, restored native hover tooltips, corrected Shift-click to use native chat link insertion or native Auction House Browse fill, improved snapshot name fallback, and aligned the Blizz-like inspector card/title with Modern. Artisan Waylaid Crate payouts remain explicitly UNKNOWN because current public sources do not confirm them. See `docs/MODULOMARKET-ITEM-STATUS-QUALITY-HISTORY-INSPECTOR-0.11.6.md`.
 
 ## 0.11.4 — movable windows and Craftsman's Writs
 

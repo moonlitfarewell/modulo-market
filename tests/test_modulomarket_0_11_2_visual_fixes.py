@@ -13,10 +13,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0_11_2_release_versions_align():
-    assert 'MM.version = "0.11.5"' in CORE
-    assert "## Version: 0.11.5" in TOC
-    assert 'version = "0.11.5"' in DATA
-    assert MANIFEST["version"] == "0.11.5"
+    assert 'MM.version = "0.11.6"' in CORE
+    assert "## Version: 0.11.6" in TOC
+    assert 'version = "0.11.6"' in DATA
+    assert MANIFEST["version"] == "0.11.6"
 
 
 def test_modern_toolbar_and_dropdowns_use_real_textures_not_unsupported_glyphs():
@@ -39,8 +39,8 @@ def test_modern_and_blizzlike_checkbox_states_have_visible_contrast():
 
 
 def test_modern_restores_existing_profession_status_row_markers():
-    assert "function UI.GetModernCraftMarker(itemID)" in MARKET
-    assert "UI.GetModernCraftMarker(item.itemID)" in MODERN
+    assert "function GetRowCraftMarker(item)" in MARKET
+    assert "UI.GetRowCraftMarker(item)" in MODERN
     assert "row.statusMarker:SetColorTexture" in MODERN
     assert 'row.statusMarker:SetWidth(3)' in MODERN
 

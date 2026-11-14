@@ -9,16 +9,17 @@ CORE = (ADDON / "Core.lua").read_text(encoding="utf-8")
 TOC = (ADDON / "ModuloMarket.toc").read_text(encoding="utf-8")
 DATA = (ADDON / "TurnInData.lua").read_text(encoding="utf-8")
 MARKET = (ADDON / "MarketUI.lua").read_text(encoding="utf-8")
+REPLICATE = (ADDON / "Replicate.lua").read_text(encoding="utf-8")
 MODERN = (ADDON / "ModernUI.lua").read_text(encoding="utf-8")
 THEME = (ADDON / "Theme.lua").read_text(encoding="utf-8")
 MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0_11_3_release_metadata_aligns():
-    assert 'MM.version = "0.11.5"' in CORE
-    assert "## Version: 0.11.5" in TOC
-    assert 'version = "0.11.5"' in DATA
-    assert MANIFEST["version"] == "0.11.5"
+    assert 'MM.version = "0.11.6"' in CORE
+    assert "## Version: 0.11.6" in TOC
+    assert 'version = "0.11.6"' in DATA
+    assert MANIFEST["version"] == "0.11.6"
 
 
 def test_single_scan_button_progresses_through_prepare_confirm_and_cancel():
@@ -50,9 +51,12 @@ def test_modern_search_checkbox_and_dropdown_use_custom_affordances():
     assert 'labelText == "PROFESSION" and "All professions"' in MODERN
 
 
-def test_history_is_limited_to_three_days_and_modern_chart_is_bounded():
-    assert 'now - 3 * 86400' in MARKET
-    assert 'if cutoff and stamp > 0 and stamp >= cutoff' in MARKET
+def test_history_is_limited_to_three_latest_snapshots_and_modern_chart_is_bounded():
+    assert 'local firstSnapshot = math.max(1, #history - 2)' in MARKET
+    assert 'while #history > 3 do table.remove(history, 1) end' in REPLICATE
+    assert 'for i = 1, 3 do' in MODERN
+    assert '3 * 86400' not in MARKET
+    assert 'if stamp > 0 and found and tonumber(found.price)' in MARKET
     assert 'math.min(18, (tonumber(source.height) or 4) * 0.22)' in MODERN
     assert 'label:SetPoint("BOTTOM", bar, "TOP", 0, 2)' in MODERN
 

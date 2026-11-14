@@ -49,7 +49,7 @@ def test_craft_material_cost_column_is_wider_and_reagent_tooltip_is_preserved():
 def test_panel_titles_and_result_count_live_in_their_header_strips():
     assert 'UI.filterHeading = AddLabel(frame, "Filters — All Items", 30, -166' in UI
     assert 'UI.centerHeading = AddLabel(frame, "All Items", 302, -166' in UI
-    assert 'UI.detailHeading = AddLabel(frame, "Selected item", 1142, -166, 268' in UI
+    assert 'UI.detailHeading = AddLabel(frame, "Inspected Item", 1142, -166, 268' in UI
     assert 'UI.resultCount = AddLabel(frame, "", 990, -166' in UI
     assert "UI.centerHeading:SetText" in UI
 

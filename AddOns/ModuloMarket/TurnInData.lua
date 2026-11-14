@@ -5,12 +5,14 @@ if not MM then return end
 -- generic unlabelled Waylaid Crate is only used to reveal a label and is not
 -- added as a second purchase requirement for a known crate type.
 MM.TurnInData = {
-    version = "0.11.5",
+    version = "0.11.6",
     provider = "User-supplied Polestar Codex item index; Wowhead Forever, WowSeer and Forever Hub item/reward references",
     categories = { "Herbs", "Ore", "Textiles", "Curiosities", "Fabrics", "Ingots", "Parts" },
     tiers = { "Apprentice", "Journeyman", "Expert", "Artisan" },
     -- Each bundle is an alternative. A player completes a crate with ONE
     -- complete bundle, not all listed alternatives.
+    -- Artisan crate Favor and cash payouts remain UNKNOWN in current public
+    -- Forever guides; do not infer them from Expert values or crate quality.
     crates = {
         { id=248682, name="Waylaid Crate: Apprentice Herbs", tier="Apprentice", category="Herbs", rewardFavor=5, rewardCashCopper=250, reputation=0, bundles={
             {{"Peacebloom",20}},{{"Silverleaf",20}},{{"Earthroot",10}},{{"Mageroyal",10}},{{"Briarthorn",10}},

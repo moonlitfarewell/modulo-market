@@ -15,10 +15,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_and_two_window_load_order_align():
-    assert 'MM.version = "0.11.5"' in CORE
-    assert "## Version: 0.11.5" in TOC
-    assert 'version = "0.11.5"' in DATA
-    assert MANIFEST["version"] == "0.11.5"
+    assert 'MM.version = "0.11.6"' in CORE
+    assert "## Version: 0.11.6" in TOC
+    assert 'version = "0.11.6"' in DATA
+    assert MANIFEST["version"] == "0.11.6"
     assert TOC.index("Core.lua") < TOC.index("Theme.lua") < TOC.index("MarketUI.lua") < TOC.index("ModernUI.lua") < TOC.index("Diagnostics.lua")
 
 
@@ -70,7 +70,7 @@ def test_modern_is_a_separate_window_not_a_recolour_of_legacy_window():
 def test_modern_window_has_independent_chrome_navigation_panels_and_row_pool():
     for token in ["MODULO MARKET", "ALL ITEMS", "ECONOMICS", "CRAFTS", "MATERIALS", "TURN-INS", "HISTORY"]:
         assert token in MODERN
-    for token in ["FILTERS", "SELECTED ITEM", "MARKET INFORMATION", "RELATIONSHIPS", "MARKET HISTORY"]:
+    for token in ["FILTERS", "INSPECTED ITEM", "MARKET INFORMATION", "RELATIONSHIPS", "MARKET HISTORY"]:
         assert token in MODERN
     assert "Modern.rows[i] = row" in MODERN
     assert "function Modern.ApplyTheme()" in MODERN

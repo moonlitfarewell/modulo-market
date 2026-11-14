@@ -13,16 +13,19 @@ ENGINE = (ADDON / "TurnInEngine.lua").read_text(encoding="utf-8")
 MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
-def test_release_versions_are_0_11_5():
-    assert 'MM.version = "0.11.5"' in CORE
-    assert "## Version: 0.11.5" in TOC
-    assert MANIFEST["version"] == "0.11.5"
+def test_release_versions_are_0_11_6():
+    assert 'MM.version = "0.11.6"' in CORE
+    assert "## Version: 0.11.6" in TOC
+    assert MANIFEST["version"] == "0.11.6"
 
 
-def test_history_is_a_fail_closed_rolling_72_hour_window():
-    assert "local cutoff = now > 0 and (now - 3 * 86400) or nil" in MARKET
-    assert "if cutoff and stamp > 0 and stamp >= cutoff and found and tonumber(found.price) then" in MARKET
-    assert "if #points > 4 then table.remove(points, 1) end" in MARKET
+def test_history_uses_exactly_the_latest_three_snapshots():
+    assert "local firstSnapshot = math.max(1, #history - 2)" in MARKET
+    assert "for i = firstSnapshot, #history do" in MARKET
+    assert "while #history > 3 do table.remove(history, 1) end" in (ADDON / "Replicate.lua").read_text(encoding="utf-8")
+    assert "for i = 1, 3 do" in MARKET
+    assert "for i = 1, 3 do" in MODERN
+    assert "3 * 86400" not in MARKET
 
 
 def test_turnin_crates_are_explicitly_typed_and_writs_keep_their_type():
@@ -40,10 +43,10 @@ def test_category_filter_options_follow_turnin_type_and_reset_invalid_selection(
 
 
 def test_turnin_column_names_and_reward_abbreviations_are_consistent():
-    expected = ["Turn-In Item", "Cost", "Gross", "Rep / Favor", "Net / Reward"]
+    expected = ["Turn-In Item", "Cost", "Gross", "REP / FAV", "Net / Reward"]
     for label in expected:
         assert label in MARKET
-    for label in ["TURN-IN ITEM", "COST", "GROSS", "REP / FAVOR", "NET / REWARD"]:
+    for label in ["TURN-IN ITEM", "COST", "GROSS", "REP / FAV", "NET / REWARD"]:
         assert label in MODERN
     assert 'compact and " Fav" or " Favor"' in ENGINE
     assert 'compact and " Rep" or " Reputation"' in ENGINE
@@ -75,14 +78,16 @@ def test_tab_geometry_is_fixed_and_compact():
     assert "button:SetSize(tabWidth, 38)" in MODERN
 
 
-def test_shift_click_fills_native_auction_search_without_chat_link_hook():
-    assert "function UI.FillAuctionHouseSearch(item)" in MARKET
+def test_shift_click_uses_native_chat_link_or_auction_browse_fallback():
+    assert "function UI.HandleShiftClick(item)" in MARKET
+    assert "_G.ChatEdit_GetActiveWindow" in MARKET
+    assert "_G.ChatEdit_InsertLink" in MARKET
     assert "_G.AuctionFrame" in MARKET and "_G.BrowseName" in MARKET
-    assert "browseName:SetText(name)" in MARKET
+    assert "browseName:SetText(plainName)" in MARKET
     assert "browseName:SetFocus()" in MARKET
-    assert "UI.FillAuctionHouseSearch(selected)" in MARKET
-    assert "UI.FillAuctionHouseSearch(self.item)" in MODERN
-    assert "ChatEdit_InsertLink(" not in MARKET
+    assert "UI.HandleShiftClick(selected)" in MARKET
+    assert "UI.HandleShiftClick(self.item)" in MODERN
+    assert 'return "|c" .. GetItemQualityHex(itemID) .. GetItemName(item) .. "|r"' in MARKET
 
 
 def test_refresh_icon_is_a_custom_white_rgba_tga():
@@ -94,3 +99,41 @@ def test_refresh_icon_is_a_custom_white_rgba_tga():
         opaque = [color for _, color in (colors or []) if color[3] > 200]
         assert sum(count for count, color in (colors or []) if color[3] > 200) > 250
         assert opaque and all(min(color[:3]) >= 245 for color in opaque)
+
+
+def test_item_tooltips_are_native_and_have_no_shift_click_instruction():
+    assert "UI.ShowMarketItemTooltip = ShowMarketItemTooltip" in MARKET
+    assert "GameTooltip.SetItemByID" in MARKET
+    assert "Shift-click to fill the Auction House search field" not in MARKET + MODERN
+    assert "UI.ShowMarketItemTooltip(self, self.item" in MODERN
+
+
+def test_all_tabs_keep_learning_marker_and_item_rarity_name_colour():
+    assert "button.statusMarker:SetColorTexture(GetRowCraftMarker(item))" in MARKET
+    assert "button.statusMarker:Show()" in MARKET
+    assert "button.name:SetText(GetItemDisplayName(item))" in MARKET
+    assert "row.statusMarker and UI.GetRowCraftMarker" in MODERN
+    assert "UI.GetItemDisplayName(item)" in MODERN
+    assert "GetItemQualityHex" in MARKET
+
+
+def test_inspector_is_named_inspected_item_in_both_presentations():
+    assert 'AddInspectorCard(1136, -158, 280, 110)' in MARKET
+    assert 'AddLabel(frame, "Inspected Item"' in MARKET
+    assert 'Panel(frame, "INSPECTED ITEM"' in MODERN
+    assert 'Panel(right, "INSPECTED ITEM"' in MODERN
+
+
+def test_artisan_crate_rewards_remain_unknown_when_not_source_confirmed():
+    data = (ADDON / "TurnInData.lua").read_text(encoding="utf-8")
+    artisan = data[data.index('id=248695'):data.index('    },\n    -- One-time Shipping Label')]
+    assert artisan.count("rewardFavor=nil") == 8
+    assert artisan.count("rewardCashCopper=nil") == 8
+    assert "do not infer them from Expert values" in data
+
+
+def test_snapshot_search_uses_cached_client_name_when_snapshot_name_is_missing():
+    assert "local function GetItemName(item)" in MARKET
+    assert "pcall(_G.GetItemInfo, itemID)" in MARKET
+    assert "GetItemName(item)," in MARKET
+    assert "GetTooltipSearchText(item.itemID)" in MARKET

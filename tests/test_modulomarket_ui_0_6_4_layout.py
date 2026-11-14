@@ -29,7 +29,7 @@ def test_inspector_text_wraps():
     assert 'UI.detailName:SetWordWrap(true)' in UI
     assert 'UI.detailVariants:SetWordWrap(true)' in UI
     assert 'UI.detailEconomics:SetWordWrap(true)' in UI
-    assert ('UI.detailProfitLabel = AddDetailRowLabel("BEST CRAFT PROFIT"' in UI or 'UI.detailProfitLabel = AddDetailRowLabel("NET / FAVOR"' in UI)
+    assert ('UI.detailProfitLabel = AddDetailRowLabel("BEST CRAFT PROFIT"' in UI or 'UI.detailProfitLabel = AddDetailRowLabel("NET / FAV"' in UI)
     assert ('UI.detailProfit = AddDetailRowValue("—", 1274, -376' in UI or 'UI.detailProfit = AddDetailRowValue("—", 1248, -376, 160)' in UI)
     assert 'UI.historyText:SetWordWrap(true)' in UI
 

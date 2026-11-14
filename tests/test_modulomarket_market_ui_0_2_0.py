@@ -64,7 +64,7 @@ def test_tabs_cover_item_economics_all_crafts_materials_low_supply_and_history()
 def test_historical_points_are_bounded_and_indexed_by_item_id():
     assert "local function SaveHistoryPoint(snapshot)" in REPLICATE
     assert "point.items[itemID]" in REPLICATE
-    assert "while #history > 4 do table.remove(history, 1) end" in REPLICATE
+    assert "while #history > 3 do table.remove(history, 1) end" in REPLICATE
     assert "snapshot.items[tonumber(item.itemID)]" in UI
 
 

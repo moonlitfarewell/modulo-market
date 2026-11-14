@@ -246,8 +246,7 @@ local function MatchesSearch(item, query, isCrafting, includeTooltip)
         return tonumber(item.itemID) == numericID or tonumber(item.recipeID) == numericID
     end
     local fields = {
-        (type(item.itemName) == "string" and item.itemName ~= "" and item.itemName)
-            or ("Item " .. tostring(item.itemID or "")),
+        GetItemName(item),
         item.recipeName,
         item.professionName,
         item.outputName,
@@ -323,9 +322,20 @@ local function GetMarketPrice(itemID)
 end
 
 local function GetItemName(item)
-    local name = type(item.itemName) == "string" and item.itemName or nil
-    if not name or name == "" then return "Item #" .. tostring(item.itemID or "?") end
-    return name
+    local name = type(item) == "table" and (type(item.itemName) == "string" and item.itemName or nil) or nil
+    if name and name ~= "" then return name end
+    local itemID = type(item) == "table" and tonumber(item.iconItemID or item.outputItemID or item.itemID) or nil
+    local itemDataCached = true
+    local api = _G.C_Item
+    if itemID and type(api) == "table" and type(api.IsItemDataCachedByID) == "function" then
+        local ok, cached = pcall(api.IsItemDataCachedByID, itemID)
+        itemDataCached = ok and cached == true
+    end
+    if itemID and itemDataCached and type(_G.GetItemInfo) == "function" then
+        local ok, cachedName = pcall(_G.GetItemInfo, itemID)
+        if ok and type(cachedName) == "string" and cachedName ~= "" then return cachedName end
+    end
+    return "Item #" .. tostring(itemID or (type(item) == "table" and item.itemID) or "?")
 end
 
 local itemQualityCache = {}
@@ -355,8 +365,11 @@ local function GetItemQualityHex(itemID)
 end
 
 local function GetItemDisplayName(item)
-    return "|c" .. GetItemQualityHex(item and item.itemID) .. GetItemName(item) .. "|r"
+    local itemID = type(item) == "table" and tonumber(item.iconItemID or item.outputItemID or item.itemID) or nil
+    return "|c" .. GetItemQualityHex(itemID) .. GetItemName(item) .. "|r"
 end
+UI.GetItemDisplayName = GetItemDisplayName
+UI.GetItemName = GetItemName
 
 local function GetItemCraftMarker(itemID)
     local data = MM.ProfessionData
@@ -384,6 +397,18 @@ local function GetItemCraftMarker(itemID)
     if hasUnlearnableOrUnknown then return 0.95, 0.27, 0.24, 1 end -- unavailable/unknown: red
     return 1, 1, 1, 1
 end
+local GetCraftSourceStatus
+local function GetRowCraftMarker(item)
+    if type(item) == "table" and item.craftSourceStatus then
+        local status = GetCraftSourceStatus and GetCraftSourceStatus(item) or "unknown"
+        if status == "known" then return 0.25, 0.88, 0.42, 1 end
+        if status == "learnable" then return 1, 0.82, 0.24, 1 end
+        if status == "unlearnable" or status == "unknown" then return 0.95, 0.27, 0.24, 1 end
+    end
+    local itemID = type(item) == "table" and tonumber(item.outputItemID or item.iconItemID or item.itemID) or nil
+    return GetItemCraftMarker(itemID)
+end
+UI.GetRowCraftMarker = GetRowCraftMarker
 
 -- Resolve real client item artwork; never substitute decorative icons for data identities.
 local itemIconCache = {}
@@ -548,7 +573,7 @@ end
 
 -- Status is evidence, not a display default. Missing or invalid values must
 -- never be promoted to KNOWN by a downstream presentation path.
-local function GetCraftSourceStatus(recipe)
+GetCraftSourceStatus = function(recipe)
     local status = type(recipe) == "table" and recipe.craftSourceStatus or nil
     if status == "known" or status == "learnable"
         or status == "unlearnable" or status == "unknown" then
@@ -2033,12 +2058,8 @@ function UI.RenderRows()
                 button.icon:Show()
             end
             if button.statusMarker then
-                if not isCrafting then
-                    button.statusMarker:SetColorTexture(GetItemCraftMarker(item.itemID))
-                    button.statusMarker:Show()
-                else
-                    button.statusMarker:Hide()
-                end
+                button.statusMarker:SetColorTexture(GetRowCraftMarker(item))
+                button.statusMarker:Show()
             end
             if button.rowShade then
                 if index % 2 == 0 then
@@ -2058,18 +2079,12 @@ function UI.RenderRows()
                 button.total:SetText("")
                 local netCost = item.netCostPerRewardCopper or item.netCostPerFavorCopper or item.netCostPerReputationCopper
                 profitText = netCost ~= nil and FormatMoney(netCost) or "—"
-                if button.statusMarker then button.statusMarker:Hide() end
                 if button.total then button.total:Show() end
                 if button.profit then button.profit:Show() end
             elseif isCrafting then
-                local status = GetCraftSourceStatus(item)
-                local color = status == "known" and "|cff8ee6a2"
-                    or (status == "learnable" and "|cffffd77a"
-                    or (status == "unlearnable" and "|cffff6666"
-                    or (status == "unknown" and "|cffff6666" or "|cffff6666")))
-                -- Known/unlearned is the player-facing distinction. Source
-                -- confidence remains in the data model, not as row prefixes.
-                button.name:SetText(color .. GetItemName(item) .. "|r")
+                -- Learning state is shown by the row-edge marker; item-name
+                -- colour is reserved for the actual WoW item quality.
+                button.name:SetText(GetItemDisplayName(item))
                 button.price:SetText(item.salePriceCopper and FormatMoney(item.salePriceCopper) or "—")
                 -- Keep the table compact even for recipes with many reagents.
                 -- Full reagent detail (icons, quantities and per-line costs) is
@@ -2227,19 +2242,19 @@ function UI.RenderHistory()
     end
     local history = MM.db and MM.db.marketHistory or {}
     local points = {}
-    local now = type(_G.time) == "function" and _G.time() or 0
-    local cutoff = now > 0 and (now - 3 * 86400) or nil
-    for i = 1, #history do
+    -- History is snapshot-count based: retain/render the latest three completed
+    -- full-market scans, regardless of how much wall-clock time elapsed.
+    local firstSnapshot = math.max(1, #history - 2)
+    for i = firstSnapshot, #history do
         local snapshot = history[i]
         local stamp = tonumber(snapshot.timestamp) or 0
         local found = snapshot.items and snapshot.items[tonumber(item.itemID)]
-        if cutoff and stamp > 0 and stamp >= cutoff and found and tonumber(found.price) then
+        if stamp > 0 and found and tonumber(found.price) then
             points[#points + 1] = {
                 price = tonumber(found.price),
                 quantity = tonumber(found.quantity) or 0,
                 timestamp = stamp,
             }
-            if #points > 4 then table.remove(points, 1) end
         end
     end
     if #points == 0 then
@@ -2669,15 +2684,15 @@ SelectItem = function(item)
     if item.turnIn then
         UI.selectedItem = item
         UI.selectedByTab[UI.activeTab] = { itemID = tonumber(item.itemID) }
-        UI.detailHeading:SetText("Selected Turn-In")
+        UI.detailHeading:SetText("Inspected Item")
         UI.detailName:SetText(GetItemDisplayName(item))
         UI.detailIcon:SetTexture(GetItemIcon(item.iconItemID or item.itemID)); UI.detailIcon:Show()
         UI.detailBadges:SetText(string.upper(tostring(item.tier)) .. "  ·  " .. string.upper(tostring(item.category)))
         UI.detailVariants:SetText(tostring(#(item.bundleAlternatives or {})) .. (item.turnInType == "writ" and " buy / craft routes" or " accepted bundles"))
         UI.marketInfoHeading:SetText("Turn-In Economics")
-        UI.detailProfitLabel:SetText(item.turnInType == "writ" and "COST / REP" or "NET / FAVOR")
+        UI.detailProfitLabel:SetText(item.turnInType == "writ" and "COST / REP" or "NET / FAV")
         if UI.detailSupplyLabel then UI.detailSupplyLabel:SetText(item.turnInType == "writ" and "COIN POUCH" or "CASH RETURN") end
-        if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(item.turnInType == "writ" and "REPUTATION" or "FAVOR") end
+        if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(item.turnInType == "writ" and "REPUTATION" or "FAV") end
         UI.detailPrice:SetText(item.completionCostCopper and FormatMoney(item.completionCostCopper) or "Incomplete")
         UI.detailSupply:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper)
             or (item.cashReturnText or "Unknown"))
@@ -2995,7 +3010,7 @@ end
 
 local function ShowMarketItemTooltip(owner, item, showRecipe)
     if not _G.GameTooltip or type(item) ~= "table" then return end
-    local itemID = tonumber(item.itemID)
+    local itemID = tonumber(item.iconItemID or item.outputItemID or item.itemID)
     local recipeID = tonumber(item.recipeID)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     if type(GameTooltip.SetFrameStrata) == "function" then GameTooltip:SetFrameStrata("TOOLTIP") end
@@ -3042,6 +3057,7 @@ local function ShowMarketItemTooltip(owner, item, showRecipe)
     end
     GameTooltip:Show()
 end
+UI.ShowMarketItemTooltip = ShowMarketItemTooltip
 
 local function AttachFilterTooltip(region, title, body)
     if not region or not body then return end
@@ -3151,7 +3167,7 @@ local function SetTab(tab)
     elseif tab == "turnins" then
         local mode = UI.turnInTypeFilter or "all"
         local nameLabel = mode == "writ" and "Craftsman's Writ" or (mode == "crate" and "Waylaid Crate" or "Turn-In")
-        labels = { "Turn-In Item", "Cost", "Gross", "Rep / Favor", "Net / Reward" }
+        labels = { "Turn-In Item", "Cost", "Gross", "REP / FAV", "Net / Reward" }
         keys = { "name", "completion", "price", "reward", "net" }
     elseif tab == "history" then
         labels = { "Item", "Cheapest", "Price Change", "Latest Units", "Total", "Best Craft Profit" }
@@ -3340,7 +3356,7 @@ local function SetTab(tab)
             if showMarketQuickFilters then control.label:Show() else control.label:Hide() end
         end
     end
-    if UI.detailHeading then UI.detailHeading:SetText(tab == "turnins" and "Selected Turn-In" or (craftTab and "Selected Recipe" or "Selected Item")) end
+    if UI.detailHeading then UI.detailHeading:SetText("Inspected Item") end
     if UI.detailName then UI.detailName:SetText("Loading selection…") end
     if UI.detailIcon then UI.detailIcon:Hide() end
     if UI.detailBadges then UI.detailBadges:SetText("") end
@@ -3355,7 +3371,7 @@ local function SetTab(tab)
     end
     if UI.detailPriceLabel then UI.detailPriceLabel:SetText(tab == "turnins" and "COMPLETE COST" or "SALE PRICE / UNIT") end
     if UI.detailSupplyLabel then UI.detailSupplyLabel:SetText(tab == "turnins" and "CASH RETURN" or "TOTAL LISTED") end
-    if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(tab == "turnins" and "REP / FAVOR" or "AT PRICE") end
+    if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(tab == "turnins" and "REP / FAV" or "AT PRICE") end
     if UI.detailProfitLabel then
         UI.detailProfitLabel:SetText(tab == "turnins" and "NET / REWARD" or (craftTab and "PROFIT / CRAFT" or "BEST CRAFT PROFIT"))
     end
@@ -3429,12 +3445,31 @@ function UI.GetTurnInCategoryOptions()
     return GetTurnInCategoryOptions(UI.turnInTypeFilter or "all")
 end
 
--- Shift-click on a market row fills the native Classic Auction House browse
--- field. It deliberately does not call ChatEdit_InsertLink or auto-submit a
--- search, so normal chat item linking and player confirmation remain intact.
-function UI.FillAuctionHouseSearch(item)
-    local name = item and GetItemDisplayName(item) or nil
-    if type(name) ~= "string" or name == "" then return false end
+-- Shift-click follows WoW's native item-link convention when a chat edit box
+-- is active. Otherwise, with the native Classic Auction House open, it fills
+-- the Browse field with a plain item name and leaves submission to the player.
+function UI.HandleShiftClick(item)
+    if type(item) ~= "table" then return false end
+    local itemID = tonumber(item.iconItemID or item.outputItemID or item.itemID)
+    if not itemID then return false end
+    local itemLink
+    if type(_G.GetItemInfo) == "function" then
+        local ok, _, link = pcall(_G.GetItemInfo, itemID)
+        if ok and type(link) == "string" and link ~= "" then itemLink = link end
+    end
+    local plainName = GetItemName(item)
+    itemLink = itemLink or ("|Hitem:" .. tostring(itemID) .. "|h[" .. plainName .. "]|h")
+
+    local activeChat
+    if type(_G.ChatEdit_GetActiveWindow) == "function" then
+        local ok, value = pcall(_G.ChatEdit_GetActiveWindow)
+        if ok then activeChat = value end
+    end
+    if activeChat and type(_G.ChatEdit_InsertLink) == "function" then
+        local ok, inserted = pcall(_G.ChatEdit_InsertLink, itemLink)
+        if ok and inserted ~= false then return true end
+    end
+
     local auctionFrame = _G.AuctionFrame
     if not auctionFrame or type(auctionFrame.IsShown) ~= "function" or not auctionFrame:IsShown() then
         return false
@@ -3443,16 +3478,15 @@ function UI.FillAuctionHouseSearch(item)
     if not browseName then return false end
     if type(browseName.IsShown) == "function" and not browseName:IsShown() then
         local browseTab = _G.AuctionFrameTab1
-        if browseTab and type(browseTab.Click) == "function" then
-            pcall(browseTab.Click, browseTab)
-        end
+        if browseTab and type(browseTab.Click) == "function" then pcall(browseTab.Click, browseTab) end
     end
-    browseName:SetText(name)
+    browseName:SetText(plainName)
     if browseName.SetFocus then browseName:SetFocus() end
     if browseName.HighlightText then browseName:HighlightText() end
-    if SetStatus then SetStatus("Auction House search filled: " .. name .. " · press Search to run it") end
+    if SetStatus then SetStatus("Auction House search filled: " .. plainName .. " · press Search to run it") end
     return true
 end
+UI.FillAuctionHouseSearch = UI.HandleShiftClick
 
 local function CreateUI()
     if UI.frame then return UI.frame end
@@ -4129,10 +4163,6 @@ local function CreateUI()
             if selected then
                 local craftingRow = UI.activeTab == "crafts"
                 ShowMarketItemTooltip(self, selected, craftingRow and selected.recipeID ~= nil)
-                if GameTooltip and GameTooltip.AddLine then
-                    GameTooltip:AddLine("Shift-click to fill the Auction House search field", 0.72, 0.78, 0.88, true)
-                    GameTooltip:Show()
-                end
             end
         end)
         row.nameHit:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
@@ -4140,7 +4170,8 @@ local function CreateUI()
             local selected = UI.visibleRows[slot]
             if selected then
                 if mouseButton == "LeftButton" and _G.IsShiftKeyDown and _G.IsShiftKeyDown() then
-                    UI.FillAuctionHouseSearch(selected)
+                    UI.HandleShiftClick(selected)
+                    return
                 end
                 SelectItem(selected)
             end
@@ -4230,12 +4261,13 @@ local function CreateUI()
         rule:SetSize(width - 4, 1)
         AddBevelBorder(frame, x, top, width, height, "card", "OVERLAY")
     end
+    AddInspectorCard(1136, -158, 280, 110)
     AddInspectorCard(1136, -270, 280, 144)
     AddInspectorCard(1136, -422, 280, 170)
     AddInspectorCard(1136, -602, 280, 206)
 
-    UI.detailHeading = AddLabel(frame, "Selected item", 1142, -166, 268, 24, "GameFontNormalLarge")
-    IncreaseFontSize(UI.detailHeading, 2)
+    UI.detailHeading = AddLabel(frame, "Inspected Item", 1142, -166, 268, 24, "GameFontNormalLarge")
+    IncreaseFontSize(UI.detailHeading, 1)
     UI.detailHeading:SetWordWrap(false)
     AddInsetSurface(frame, 1139, -201, 54, 54, {0.005, 0.005, 0.005, 1})
     AddBevelBorder(frame, 1139, -201, 54, 54, "control", "OVERLAY")
@@ -4265,9 +4297,9 @@ local function CreateUI()
     UI.detailPrice = AddDetailRowValue("—", 1248, -304, 160)
     UI.detailSupplyLabel = AddDetailRowLabel("CASH RETURN", 1142, -328, 102)
     UI.detailSupply = AddDetailRowValue("—", 1248, -328, 160)
-    UI.detailAtPriceLabel = AddDetailRowLabel("FAVOR OR REP", 1142, -352, 102)
+    UI.detailAtPriceLabel = AddDetailRowLabel("REP / FAV", 1142, -352, 102)
     UI.detailAtPrice = AddDetailRowValue("—", 1248, -352, 160)
-    UI.detailProfitLabel = AddDetailRowLabel("NET / FAVOR", 1142, -376, 102)
+    UI.detailProfitLabel = AddDetailRowLabel("NET / FAV", 1142, -376, 102)
     UI.detailProfit = AddDetailRowValue("—", 1248, -376, 160)
 
     UI.relationshipHeading = AddLabel(frame, "Relationships", 1142, -430, 268, 22, "GameFontNormalLarge")
@@ -4336,7 +4368,7 @@ local function CreateUI()
     UI.historyBaseline:SetPoint("BOTTOMRIGHT", UI.historyGraph, "BOTTOMRIGHT", -3, 3)
     UI.historyBaseline:SetHeight(1)
     UI.historyBarLabels = {}
-    for i = 1, 4 do
+    for i = 1, 3 do
         local label = UI.historyGraph:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         IncreaseFontSize(label, 1)
         label:SetWidth(54)

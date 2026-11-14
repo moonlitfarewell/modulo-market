@@ -11,8 +11,8 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text())
 
 
 def test_missing_or_invalid_status_fails_closed():
-    helper = UI.split("local function GetCraftSourceStatus", 1)[1].split(
-        "local function StartEconomicsIndex", 1
+    helper = UI.split("GetCraftSourceStatus = function(recipe)", 1)[1].split(
+        "local function HasExplicitReviewForItem", 1
     )[0]
     assert 'return "unknown"' in helper
     assert 'status == "known"' in helper

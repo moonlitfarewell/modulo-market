@@ -275,14 +275,14 @@ local function RefreshRowText(row, item, index, state)
     if not item then row:Hide(); row.item = nil; return end
     row.item = item
     if row.icon and UI.GetModernIcon then row.icon:SetTexture(UI.GetModernIcon(item)); row.icon:Show() end
-    if row.statusMarker and state.tab ~= "crafts" and UI.GetModernCraftMarker then
-        local r, g, b, a = UI.GetModernCraftMarker(item.itemID)
+    if row.statusMarker and UI.GetRowCraftMarker then
+        local r, g, b, a = UI.GetRowCraftMarker(item)
         row.statusMarker:SetColorTexture(r or 1, g or 1, b or 1, a or 1)
         row.statusMarker:Show()
     elseif row.statusMarker then row.statusMarker:Hide() end
     row:SetPoint("TOPLEFT", Modern.scrollChild, "TOPLEFT", 0, -((index - 1) * 27))
     local name, price, middle, quantity, profit = GetRowCells(item, state)
-    row.name:SetText(name)
+    row.name:SetText(UI.GetItemDisplayName and UI.GetItemDisplayName(item) or name)
     row.price:SetText(price)
     row.middle:SetText(middle)
     row.quantity:SetText(quantity)
@@ -396,7 +396,7 @@ local HEADER_MAP = {
     economics = { {"ITEM","name"},{"CHEAPEST","price"},{"CRAFT COST","materials"},{"PRICE CHANGE","change"},{"TOTAL UNITS","total"} },
     crafts = { {"RECIPE","name"},{"SALE / UNIT","price"},{"MATERIAL COST","materials"},{"AT PRICE","depth"},{"PROFIT / CRAFT","profit"} },
     materials = { {"ITEM","name"},{"CHEAPEST","price"},{"AT PRICE","depth"},{"TOTAL UNITS","total"},{"BEST CRAFT PROFIT","profit"} },
-    turnins = { {"TURN-IN ITEM","name"},{"COST","completion"},{"GROSS","price"},{"REP / FAVOR","reward"},{"NET / REWARD","net"} },
+    turnins = { {"TURN-IN ITEM","name"},{"COST","completion"},{"GROSS","price"},{"REP / FAV","reward"},{"NET / REWARD","net"} },
     history = { {"ITEM","name"},{"CHEAPEST","price"},{"PRICE CHANGE","change"},{"LATEST UNITS","total"},{"BEST CRAFT PROFIT","profit"} },
 }
 
@@ -407,7 +407,7 @@ function Modern.RefreshHeaders(tab)
             { "TURN-IN ITEM", "name" },
             { "COST", "completion" },
             { "GROSS", "price" },
-            { "REP / FAVOR", "reward" },
+            { "REP / FAV", "reward" },
             { "NET / REWARD", "net" },
         }
     end
@@ -628,7 +628,7 @@ local function CreateUI()
     Modern.filtersPanel = left
     local center = Panel(frame, "ALL ITEMS", centerX, bodyTop, centerWidth, bodyHeight)
     Modern.centerPanel = center
-    local right = Panel(frame, "SELECTED ITEM", rightX, bodyTop, rightWidth, bodyHeight)
+    local right = Panel(frame, "INSPECTED ITEM", rightX, bodyTop, rightWidth, bodyHeight)
     Modern.inspector = right
     Modern.centerTitle = center.titleText
     Modern.resultCount = Label(center, "0 / 0", centerWidth - 120, -11, 100, 20, "GameFontHighlightSmall", "textMuted")
@@ -795,17 +795,16 @@ local function CreateUI()
         row:SetScript("OnClick", function(self, mouseButton)
             if self.item then
                 if mouseButton == "LeftButton" and _G.IsShiftKeyDown and _G.IsShiftKeyDown() then
-                    UI.FillAuctionHouseSearch(self.item)
+                    UI.HandleShiftClick(self.item)
+                    return
                 end
                 UI.SelectItem(self.item); Modern.RefreshInspector(); Modern.RenderRows()
             end
         end)
         row:SetScript("OnEnter", function(self)
-            if self.item and GameTooltip then
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                GameTooltip:SetText(GetItemName(self.item))
-                GameTooltip:AddLine("Shift-click to fill the Auction House search field", 0.72, 0.78, 0.88, true)
-                GameTooltip:Show()
+            if self.item and UI.ShowMarketItemTooltip then
+                UI.ShowMarketItemTooltip(self, self.item,
+                    UI.GetModernState().tab == "crafts" and self.item.recipeID ~= nil)
             end
         end)
         row:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -813,7 +812,7 @@ local function CreateUI()
     end
 
     -- Independent inspector cards.
-    local itemCard = Panel(right, "SELECTED ITEM", 10, -46, rightWidth - 20, 106)
+    local itemCard = Panel(right, "INSPECTED ITEM", 10, -46, rightWidth - 20, 106)
     Modern.itemCard = itemCard
     Modern.itemIcon = itemCard:CreateTexture(nil, "ARTWORK")
     Modern.itemIcon:SetSize(52, 52); Modern.itemIcon:SetPoint("TOPLEFT", itemCard, "TOPLEFT", 12, -44)
@@ -853,7 +852,7 @@ local function CreateUI()
     Modern.historyCard = historyCard; Modern.historyTitle = historyCard.titleText
     Modern.historyText = Label(historyCard, "", 12, -46, rightWidth - 44, 54, "GameFontHighlightSmall")
     Modern.historyBars, Modern.historyBarLabels = {}, {}
-    for i = 1, 4 do
+    for i = 1, 3 do
         local bar = historyCard:CreateTexture(nil, "ARTWORK")
         bar:SetPoint("BOTTOMLEFT", historyCard, "BOTTOMLEFT", 18 + (i - 1) * 66, 10)
         bar:SetSize(42, 18); Paint(bar, "historyBar"); bar:Hide()
