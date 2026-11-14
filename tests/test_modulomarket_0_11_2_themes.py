@@ -15,10 +15,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_and_two_window_load_order_align():
-    assert 'MM.version = "0.11.2"' in CORE
-    assert "## Version: 0.11.2" in TOC
-    assert 'version = "0.11.2"' in DATA
-    assert MANIFEST["version"] == "0.11.2"
+    assert 'MM.version = "0.11.3"' in CORE
+    assert "## Version: 0.11.3" in TOC
+    assert 'version = "0.11.3"' in DATA
+    assert MANIFEST["version"] == "0.11.3"
     assert TOC.index("Core.lua") < TOC.index("Theme.lua") < TOC.index("MarketUI.lua") < TOC.index("ModernUI.lua") < TOC.index("Diagnostics.lua")
 
 
@@ -85,7 +85,8 @@ def test_both_presentations_share_existing_market_state_and_scanner_actions():
     assert "function UI.TriggerFullScan()" in UI
     assert "function UI.TriggerBrowseScan()" in UI
     assert "UI.TriggerFullScan()" in MODERN
-    assert "UI.TriggerBrowseScan()" in MODERN
+    assert "UI.TriggerBrowseScan()" not in MODERN
+    assert 'Open Browse Scan / Snapshot Debug' in THEME
     assert "UI.GetModernState()" in MODERN
     assert "Modern.craftingScopeDropdown" in MODERN
     assert "Modern.dataText" in MODERN
@@ -138,7 +139,7 @@ def test_modern_ui_lua_harness():
         [lua, str(ROOT / "tests/modern_ui_0_11_2_harness.lua"), str(ADDON / "ModernUI.lua")],
         check=True, capture_output=True, text=True,
     )
-    assert "24 checks passed" in result.stdout
+    assert "29 checks passed" in result.stdout
 
 
 def test_manifest_inventory_is_exact():

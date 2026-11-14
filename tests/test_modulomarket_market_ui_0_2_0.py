@@ -68,10 +68,10 @@ def test_historical_points_are_bounded_and_indexed_by_item_id():
     assert "snapshot.items[tonumber(item.itemID)]" in UI
 
 
-def test_confirm_and_cancel_controls_remain_present():
-    assert 'UI.confirmButton = AddButton(frame, "Confirm full scan"' in UI
+def test_scan_uses_one_stateful_primary_button_and_pending_cancel():
+    assert 'UI.scanButton = AddButton(frame, "Scan Market"' in UI
     assert 'UI.cancelButton = AddButton(frame, "Cancel"' in UI
-    assert "MM.Replicate.Confirm()" in UI
+    assert 'if state.pendingConfirmation then MM.Replicate.Confirm() else MM.Replicate.Prepare() end' in UI
     assert "MM.Replicate.CancelPrepare()" in UI
 
 

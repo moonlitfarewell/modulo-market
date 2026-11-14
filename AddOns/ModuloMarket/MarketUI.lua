@@ -2176,15 +2176,19 @@ function UI.RenderHistory()
     end
     local history = MM.db and MM.db.marketHistory or {}
     local points = {}
-    for i = math.max(1, #history - 3), #history do
+    local now = type(_G.time) == "function" and _G.time() or 0
+    local cutoff = now > 0 and (now - 3 * 86400) or 0
+    for i = 1, #history do
         local snapshot = history[i]
+        local stamp = tonumber(snapshot.timestamp) or 0
         local found = snapshot.items and snapshot.items[tonumber(item.itemID)]
-        if found and tonumber(found.price) then
+        if found and tonumber(found.price) and (cutoff == 0 or stamp >= cutoff) then
             points[#points + 1] = {
                 price = tonumber(found.price),
                 quantity = tonumber(found.quantity) or 0,
-                timestamp = tonumber(snapshot.timestamp) or 0,
+                timestamp = stamp,
             }
+            if #points > 4 then table.remove(points, 1) end
         end
     end
     if #points == 0 then
@@ -2852,21 +2856,17 @@ function UI.RefreshActions()
             UI.scanStateLabel:SetText("|cff55dd77Scan: Idle|r")
         end
     end
-    if state.pendingConfirmation then
-        UI.confirmButton:Show()
-        UI.cancelButton:Show()
-    else
-        UI.confirmButton:Hide()
-        UI.cancelButton:Hide()
+    if UI.cancelButton then
+        if state.pendingConfirmation then UI.cancelButton:Show() else UI.cancelButton:Hide() end
     end
     if state.active then
         UI.scanButton:SetText("Scanning…")
         UI.scanButton:SetEnabled(false)
     elseif state.pendingConfirmation then
-        UI.scanButton:SetText("Review scan warning")
-        UI.scanButton:SetEnabled(false)
+        UI.scanButton:SetText("Confirm Scan")
+        UI.scanButton:SetEnabled(true)
     elseif state.attemptedThisSession then
-        UI.scanButton:SetText("Scan already used")
+        UI.scanButton:SetText("Scan used this session")
         UI.scanButton:SetEnabled(false)
     elseif remaining > 0 then
         if remaining >= 60 then
@@ -2876,8 +2876,16 @@ function UI.RefreshActions()
         end
         UI.scanButton:SetEnabled(false)
     else
-        UI.scanButton:SetText("Update full market")
+        UI.scanButton:SetText("Scan Market")
         UI.scanButton:SetEnabled(true)
+    end
+    if UI.closeAction then
+        UI.closeAction:ClearAllPoints()
+        UI.closeAction:SetPoint("TOPLEFT", UI.frame, "TOPLEFT",
+            state.pendingConfirmation and 320 or 230, -62)
+    end
+    if MM.ModernUI and MM.ModernUI.RefreshScanActions then
+        MM.ModernUI.RefreshScanActions(state)
     end
 end
 
@@ -3403,25 +3411,28 @@ local function CreateUI()
         versionLabel = versionLabel .. string.format(" · Client %s build %s", clientVersion, tostring(clientBuild))
     end
     UI.versionLabel = AddLabel(frame, versionLabel, 1085, -830, 340, 14, "GameFontDisableSmall")
-    UI.scanButton = AddButton(frame, "Update Full Market", 190, 24, -62, function()
-        if MM.Replicate then MM.Replicate.Prepare() end
+    UI.scanButton = AddButton(frame, "Scan Market", 190, 24, -62, function()
+        local state = MM.Replicate and MM.Replicate.GetState and MM.Replicate.GetState() or {}
+        if MM.Replicate then
+            if state.pendingConfirmation then MM.Replicate.Confirm() else MM.Replicate.Prepare() end
+        end
         UI.RefreshActions()
     end)
-    UI.confirmButton = AddButton(frame, "Confirm full scan", 150, 225, -62, function()
-        if MM.Replicate then MM.Replicate.Confirm() end
-        UI.RefreshActions()
-    end)
-    UI.cancelButton = AddButton(frame, "Cancel", 80, 385, -62, function()
+    UI.cancelButton = AddButton(frame, "Cancel", 80, 230, -62, function()
         if MM.Replicate then MM.Replicate.CancelPrepare() end
         UI.RefreshActions()
     end)
-    UI.confirmButton:Hide()
     UI.cancelButton:Hide()
+    -- Compatibility alias: confirmation is now the same primary scan button.
+    UI.confirmButton = UI.scanButton
+    UI.closeAction = AddButton(frame, "Close", 80, 230, -62, function() frame:Hide() end)
+    -- Retain a hidden programmatic Browse Scan entry point for older integrations;
+    -- the player-facing launcher now lives only in the addon settings page.
     UI.browseButton = AddButton(frame, "Browse Scan", 150, 485, -62, function()
         frame:Hide()
         if MM.Scanner and MM.Scanner.Toggle then MM.Scanner.Toggle() end
     end)
-    AddButton(frame, "Close", 80, 645, -62, function() frame:Hide() end)
+    UI.browseButton:Hide()
 
     UI.opacityLabel = AddLabel(frame, "Window opacity", 1250, -36, 126, 18, "GameFontNormalSmall")
     UI.opacityLabel:SetJustifyH("CENTER")
@@ -4554,9 +4565,12 @@ function UI.TriggerFullScan()
 end
 
 function UI.TriggerBrowseScan()
-    if not UI.browseButton then CreateUI() end
-    local handler = UI.browseButton and UI.browseButton.GetScript and UI.browseButton:GetScript("OnClick")
-    if handler then handler(UI.browseButton) end
+    if MM.Scanner and MM.Scanner.Toggle then MM.Scanner.Toggle() end
+end
+
+function UI.TriggerCancelScan()
+    if MM.Replicate and MM.Replicate.CancelPrepare then MM.Replicate.CancelPrepare() end
+    UI.RefreshActions()
 end
 
 local function IsDefaultBlizzardSellTab(parent)

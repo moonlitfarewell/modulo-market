@@ -13,16 +13,16 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0_11_2_release_versions_align():
-    assert 'MM.version = "0.11.2"' in CORE
-    assert "## Version: 0.11.2" in TOC
-    assert 'version = "0.11.2"' in DATA
-    assert MANIFEST["version"] == "0.11.2"
+    assert 'MM.version = "0.11.3"' in CORE
+    assert "## Version: 0.11.3" in TOC
+    assert 'version = "0.11.3"' in DATA
+    assert MANIFEST["version"] == "0.11.3"
 
 
 def test_modern_toolbar_and_dropdowns_use_real_textures_not_unsupported_glyphs():
-    assert 'UI-RefreshButton' in MODERN
-    assert 'UI-Searchbox-Icon' in MODERN
-    assert 'UI-ScrollBar-ScrollDownButton-Up' in MODERN
+    assert 'refresh.tga' in MODERN
+    assert 'search.tga' in MODERN
+    assert 'chevron-down.tga' in MODERN
     assert '"↻  Update Full Market"' not in MODERN
     assert '"⌕  Browse Scan"' not in MODERN
     assert '"▾  "' not in MODERN
@@ -30,6 +30,7 @@ def test_modern_toolbar_and_dropdowns_use_real_textures_not_unsupported_glyphs()
 
 def test_modern_and_blizzlike_checkbox_states_have_visible_contrast():
     assert "check.outline = {}" in MODERN
+    assert 'check.tga' in MODERN
     assert 'Paint(edge, "borderStrong"' in MODERN
     assert "function UI.ApplyCheckboxContrast()" in MARKET
     assert "GetNormalTexture" in MARKET and "GetCheckedTexture" in MARKET
@@ -73,4 +74,4 @@ def test_theme_harness_and_modern_visual_harness():
         [lua, str(ROOT / "tests/modern_ui_0_11_2_harness.lua"), str(ADDON / "ModernUI.lua")],
         check=True, capture_output=True, text=True,
     )
-    assert "24 checks passed" in modern.stdout
+    assert "29 checks passed" in modern.stdout

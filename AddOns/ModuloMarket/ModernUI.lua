@@ -141,10 +141,14 @@ local function CreateDropdown(parent, labelText, y, width, optionsProvider, gett
     local function Refresh()
         local selected = getter()
         local options = optionsProvider() or {}
-        button.label:SetText(tostring(selected or "All"))
+        local display = options[1] and tostring(options[1].text) or (labelText == "PROFESSION" and "All professions" or "All")
         for _, option in ipairs(options) do
-            if option.value == selected then button.label:SetText(tostring(option.text)); break end
+            if tostring(option.value) == tostring(selected) then
+                display = tostring(option.text)
+                break
+            end
         end
+        button.label:SetText(display)
     end
     local function Rebuild()
         for _, child in ipairs(popup.buttons or {}) do child:Hide() end
@@ -165,7 +169,7 @@ local function CreateDropdown(parent, labelText, y, width, optionsProvider, gett
             Rebuild(); popup:ClearAllPoints(); popup:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 0, -3); popup:Show()
         end
     end)
-    AddButtonIcon(button, "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up", 14, "RIGHT")
+    AddButtonIcon(button, "Interface\\AddOns\\ModuloMarket\\Textures\\chevron-down.tga", 14, "RIGHT")
     Refresh()
     button.Refresh = Refresh
     button.sectionLabel = sectionLabel
@@ -192,7 +196,8 @@ local function MakeCheck(parent, text, x, y, key, getter, setter)
     check.mark = check:CreateTexture(nil, "OVERLAY")
     check.mark:SetPoint("TOPLEFT", check.box, "TOPLEFT", 3, -3)
     check.mark:SetPoint("BOTTOMRIGHT", check.box, "BOTTOMRIGHT", -3, 3)
-    Paint(check.mark, "accent")
+    check.mark:SetTexture("Interface\\AddOns\\ModuloMarket\\Textures\\check.tga")
+    check.mark:SetVertexColor(1, 1, 1, 1)
     check.label = Label(check, text, 26, -3, 238, 20, "GameFontHighlightSmall", "textPrimary")
     check.key = key
     check.getter = getter
@@ -202,6 +207,8 @@ local function MakeCheck(parent, text, x, y, key, getter, setter)
         if self.checked then
             Paint(self.box, "controlHighlight")
             for _, edge in ipairs(self.outline) do Paint(edge, "accent") end
+            local accent = C("accent")
+            self.mark:SetVertexColor(accent[1], accent[2], accent[3], 1)
             self.mark:Show()
         else
             Paint(self.box, "control")
@@ -290,6 +297,7 @@ local UpdateFilterVisibility
 function Modern.RenderRows()
     if not Modern.frame or not Modern.scrollChild then return end
     local state = UI.GetModernState()
+    if Modern.professionDropdown and Modern.professionDropdown.Refresh then Modern.professionDropdown.Refresh() end
     local rows = state.rows or {}
     local offset = Modern.scroll and Modern.scroll.GetVerticalScroll and Modern.scroll:GetVerticalScroll() or 0
     local first = math.floor(offset / 27) + 1
@@ -350,18 +358,24 @@ function Modern.RefreshInspector()
     end
     Modern.historyTitle:SetText(string.upper(d.historyHeading or "MARKET HISTORY"))
     Modern.historyText:SetText(d.historyText or "")
-    local maxHeight = 1
-    for _, bar in ipairs(d.historyBars or {}) do maxHeight = math.max(maxHeight, tonumber(bar.height) or 0) end
+    Modern.historyText:SetHeight(48)
     for i, bar in ipairs(Modern.historyBars) do
         local source = d.historyBars and d.historyBars[i]
+        local label = Modern.historyBarLabels[i]
         if source then
-            bar:SetHeight(math.max(3, (tonumber(source.height) or 3) * 0.72))
+            local height = math.max(4, math.min(18, (tonumber(source.height) or 4) * 0.22))
+            bar:ClearAllPoints()
+            bar:SetPoint("BOTTOMLEFT", Modern.historyCard, "BOTTOMLEFT", 18 + (i - 1) * 66, 9)
+            bar:SetSize(42, height)
             Paint(bar, "historyBar")
             bar:Show()
-            Modern.historyBarLabels[i]:SetText(source.label or "")
-            Modern.historyBarLabels[i]:Show()
+            label:SetText(source.label or "")
+            label:ClearAllPoints()
+            label:SetPoint("BOTTOM", bar, "TOP", 0, 2)
+            label:SetHeight(10)
+            label:Show()
         else
-            bar:Hide(); Modern.historyBarLabels[i]:Hide()
+            bar:Hide(); label:Hide()
         end
     end
 end
@@ -501,22 +515,24 @@ local function CreateUI()
     logo:SetJustifyH("CENTER")
     local title = Label(frame, "MODULO MARKET", 62, -10, 360, 30, "GameFontNormalLarge", "textPrimary")
     Modern.title = title
-    local close = FlatButton(frame, "×", 38, 34, function() Modern.Hide() end)
+    local close = FlatButton(frame, "", 38, 34, function() Modern.Hide() end)
     close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, -8)
+    AddButtonIcon(close, "Interface\\AddOns\\ModuloMarket\\Textures\\close.tga", 16, "LEFT")
     Modern.closeButton = close
 
     Modern.metadata = Label(frame, "Loading market data…", 28, -62, 420, 22, "GameFontHighlightSmall", "textMuted")
     Modern.scanState = Label(frame, "Scan: Idle", 470, -62, 210, 22, "GameFontHighlightSmall", "accent")
-    local update = FlatButton(frame, "Update Full Market", 210, 32, function() UI.TriggerFullScan() end)
+    local update = FlatButton(frame, "Scan Market", 210, 32, function() UI.TriggerFullScan() end)
     update:SetPoint("TOPLEFT", frame, "TOPLEFT", 28, -86)
-    AddButtonIcon(update, "Interface\\Buttons\\UI-RefreshButton", 17, "LEFT")
+    AddButtonIcon(update, "Interface\\AddOns\\ModuloMarket\\Textures\\refresh.tga", 17, "LEFT")
     Modern.updateButton = update
-    local browse = FlatButton(frame, "Browse Scan", 150, 32, function() UI.TriggerBrowseScan() end)
-    browse:SetPoint("TOPLEFT", frame, "TOPLEFT", 250, -86)
-    AddButtonIcon(browse, "Interface\\Common\\UI-Searchbox-Icon", 16, "LEFT")
-    Modern.browseButton = browse
+    local cancel = FlatButton(frame, "Cancel", 92, 32, function() UI.TriggerCancelScan() end)
+    cancel:SetPoint("TOPLEFT", frame, "TOPLEFT", 250, -86)
+    AddButtonIcon(cancel, "Interface\\AddOns\\ModuloMarket\\Textures\\cancel.tga", 14, "LEFT")
+    cancel:Hide()
+    Modern.cancelButton = cancel
     local closeAction = FlatButton(frame, "Close", 90, 32, function() Modern.Hide() end)
-    closeAction:SetPoint("TOPLEFT", frame, "TOPLEFT", 414, -86)
+    closeAction:SetPoint("TOPLEFT", frame, "TOPLEFT", 250, -86)
     Modern.closeAction = closeAction
     local opacityLabel = Label(frame, "WINDOW OPACITY", 1350, -61, 120, 18, "GameFontNormalSmall", "textMuted")
     opacityLabel:SetJustifyH("RIGHT")
@@ -570,11 +586,33 @@ local function CreateUI()
 
     -- Search and core filters reuse the existing MarketUI state/build pipeline.
     Label(left, "SEARCH", 16, -52, 260, 18, "GameFontNormalSmall", "textAccent")
-    local search = CreateFrame("EditBox", nil, left, "InputBoxTemplate")
-    search:SetSize(266, 28); search:SetPoint("TOPLEFT", left, "TOPLEFT", 16, -74)
-    search:SetAutoFocus(false); search:SetMaxLetters(80); search:SetTextInsets(8, 8, 0, 0)
+    local search = CreateFrame("EditBox", nil, left)
+    search:SetSize(266, 30); search:SetPoint("TOPLEFT", left, "TOPLEFT", 16, -74)
+    search:SetAutoFocus(false); search:SetMaxLetters(80); search:SetTextInsets(32, 8, 0, 0)
+    if search.SetFontObject then search:SetFontObject("GameFontHighlight") end
+    if search.SetTextColor then search:SetTextColor(0.91, 0.93, 0.97, 1) end
+    local searchBg = search:CreateTexture(nil, "BACKGROUND")
+    searchBg:SetAllPoints(); Paint(searchBg, "control")
+    search.background = searchBg
+    search.border = Border(search, "borderStrong")
+    local searchIcon = search:CreateTexture(nil, "ARTWORK")
+    searchIcon:SetTexture("Interface\\AddOns\\ModuloMarket\\Textures\\search.tga")
+    searchIcon:SetSize(16, 16); searchIcon:SetPoint("LEFT", search, "LEFT", 9, 0)
+    search.icon = searchIcon
+    local placeholder = Label(search, "Search items…", 32, -7, 220, 18, "GameFontDisableSmall", "textMuted")
+    search.placeholder = placeholder
+    local function RefreshSearchPlaceholder()
+        if search:GetText() == "" and not search:HasFocus() then placeholder:Show() else placeholder:Hide() end
+    end
+    search:SetScript("OnEditFocusGained", function() Paint(searchBg, "controlHighlight"); RefreshSearchPlaceholder() end)
+    search:SetScript("OnEditFocusLost", function() Paint(searchBg, "control"); RefreshSearchPlaceholder() end)
+    search:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     search:SetScript("OnEnterPressed", function(self) UI.SetSearch(self:GetText()); self:ClearFocus() end)
-    search:SetScript("OnTextChanged", function(self, userInput) if userInput then UI.SetSearch(self:GetText()) end end)
+    search:SetScript("OnTextChanged", function(self, userInput)
+        RefreshSearchPlaceholder()
+        if userInput then UI.SetSearch(self:GetText()) end
+    end)
+    RefreshSearchPlaceholder()
     Modern.search = search
     Modern.professionDropdown = CreateDropdown(left, "PROFESSION", -118, leftWidth,
         function() return UI.GetModernState().professionOptions end,
@@ -791,12 +829,54 @@ local function CreateUI()
             Modern.RefreshInspector()
             Modern.RefreshTabs(state.tab)
         end
-        local enabled = UI.scanButton and UI.scanButton.IsEnabled and UI.scanButton:IsEnabled()
-        if enabled then Modern.updateButton:Enable() else Modern.updateButton:Disable() end
+        Modern.RefreshScanActions()
     end)
     frame:Hide()
     AddSpecialFrame("ModuloMarketModernFrame")
     return frame
+end
+
+function Modern.RefreshScanActions(state)
+    if not Modern.updateButton or not Modern.frame then return end
+    state = state or (MM.Replicate and MM.Replicate.GetState and MM.Replicate.GetState()) or {}
+    local remaining = math.max(0, tonumber(state.cooldownRemaining) or 0)
+    local text, enabled
+    if state.active then
+        text, enabled = "Scanning…", false
+    elseif state.pendingConfirmation then
+        text, enabled = "Confirm Scan", true
+    elseif state.attemptedThisSession then
+        text, enabled = "Scan used this session", false
+    elseif remaining > 0 then
+        text = remaining >= 60 and string.format("Scan in %dm", math.ceil(remaining / 60))
+            or string.format("Scan in %ds", math.ceil(remaining))
+        enabled = false
+    else
+        text, enabled = "Scan Market", true
+    end
+    Modern.updateButton.label:SetText(text)
+    if Modern.updateButton.iconTexture then
+        Modern.updateButton.iconTexture:SetTexture(state.pendingConfirmation
+            and "Interface\\AddOns\\ModuloMarket\\Textures\\check.tga"
+            or "Interface\\AddOns\\ModuloMarket\\Textures\\refresh.tga")
+        if enabled then Modern.updateButton.iconTexture:SetVertexColor(1, 1, 1, 1)
+        else Modern.updateButton.iconTexture:SetVertexColor(0.55, 0.58, 0.64, 1) end
+    end
+    if enabled then Modern.updateButton:Enable() else Modern.updateButton:Disable() end
+    if state.pendingConfirmation then Modern.cancelButton:Show() else Modern.cancelButton:Hide() end
+    Modern.closeAction:ClearAllPoints()
+    Modern.closeAction:SetPoint("TOPLEFT", Modern.frame, "TOPLEFT", state.pendingConfirmation and 360 or 250, -86)
+    if state.pendingConfirmation then
+        Modern.scanState:SetText("Scan: Confirmation required")
+    elseif state.active then
+        Modern.scanState:SetText("Scan: Active")
+    elseif state.attemptedThisSession then
+        Modern.scanState:SetText("Scan: Used this session")
+    elseif remaining > 0 then
+        Modern.scanState:SetText("Scan: Cooldown")
+    else
+        Modern.scanState:SetText("Scan: Idle")
+    end
 end
 
 function Modern.ApplyTheme()
@@ -812,6 +892,9 @@ function Modern.ApplyTheme()
             local color = C(role)
             fontString:SetTextColor(color[1], color[2], color[3], color[4] or 1)
         end
+    end
+    for _, group in ipairs({ Modern.quickChecks or {}, Modern.craftChecks or {}, Modern.economicsChecks or {} }) do
+        for _, check in ipairs(group) do if check.Refresh then check:Refresh() end end
     end
     Modern.RefreshTabs(UI.GetModernState().tab)
     Modern.RenderRows()
@@ -830,6 +913,7 @@ function Modern.Show()
     if UI.frame then UI.frame:SetFrameStrata("BACKGROUND"); UI.frame:SetAlpha(0); UI.frame:EnableMouse(false) end
     frame:SetAlpha(tonumber(MM.db and MM.db.backgroundOpacity) or 0.85)
     frame:Show()
+    Modern.RefreshScanActions()
     Modern.Raise()
 end
 

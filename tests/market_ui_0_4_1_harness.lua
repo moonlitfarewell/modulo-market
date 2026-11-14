@@ -183,9 +183,13 @@ assert(ui.status:GetText():find("Preparing market index", 1, true), "indexing pr
 replicateState.pendingConfirmation = true
 ui.RefreshActions()
 assert(ui.confirmButton.shown and ui.cancelButton.shown,
-  "explicit full-scan confirmation and cancel controls must remain available")
+  "the shared primary scan button and pending cancel must remain available")
+assert(ui.scanButton:GetText() == "Confirm Scan" and ui.scanButton.enabled,
+  "the primary scan button must advance to Confirm Scan")
 replicateState.pendingConfirmation = false
 ui.RefreshActions()
+assert(ui.scanButton:GetText() == "Scan Market" and not ui.cancelButton:IsShown(),
+  "cancelling must restore the available Scan Market state")
 
 local frames = 0
 while ui.catalogBuild or ui.viewBuild or ui.rankSort do

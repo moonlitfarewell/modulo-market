@@ -349,6 +349,11 @@ local function RegisterSettingsPanel()
     MakeLabel(settingsPanel, "Modulo Market Settings", 18, -18, 620, "GameFontNormalLarge")
     MakeLabel(settingsPanel, "Choose which Modulo Market window to open. Both appearances use the same market data and calculations.", 18, -48, 760, "GameFontHighlight")
     MakeButton(settingsPanel, "Open Modulo Market (/mm)", 18, -88, 220, OpenMarket)
+    MakeLabel(settingsPanel, "Advanced tools", 18, -548, 540, "GameFontNormalLarge")
+    MakeLabel(settingsPanel, "Open the separate Browse Scan snapshot and diagnostic window. It is intentionally not part of either main market layout.", 18, -576, 760, "GameFontHighlight")
+    MakeButton(settingsPanel, "Open Browse Scan / Snapshot Debug", 18, -612, 280, function()
+        if MM.Scanner and MM.Scanner.Toggle then MM.Scanner.Toggle() end
+    end)
 
     local refreshAppearance
     local appearanceButton

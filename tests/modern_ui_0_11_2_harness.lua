@@ -19,6 +19,9 @@ local function Region(kind)
     function o:SetJustifyV() end
     function o:SetWordWrap() end
     function o:SetTextInsets() end
+    function o:SetFontObject() end
+    function o:HasFocus() return self.focused == true end
+    function o:SetVertexColor(...) self.vertexColor = {...} end
     function o:SetAutoFocus() end
     function o:SetMaxLetters() end
     function o:SetMinMaxValues() end
@@ -81,7 +84,7 @@ local state = {
     economicsFilters = {crafted=false,gathered=false,material=false,other=false},
     turnInTierFilter = "all", turnInCategoryFilter = "all", economicsByItemID = {},
 }
-local selected, sortKey, searchText, prepared, scanTriggered, browseTriggered
+local selected, sortKey, searchText, prepared, scanTriggered
 _G.ModuloMarket = {
     version = "0.11.1", db = { backgroundOpacity = 0.85 },
     Theme = { GetModernColor = function(_, role)
@@ -114,7 +117,7 @@ _G.ModuloMarket = {
         SelectItem = function(value) selected = value; state.selected = value end,
         SortBy = function(key) sortKey = key end,
         TriggerFullScan = function() scanTriggered = true end,
-        TriggerBrowseScan = function() browseTriggered = true end,
+        TriggerCancelScan = function() end,
         scanButton = { IsEnabled = function() return true end },
     },
 }
@@ -128,8 +131,16 @@ assert(M.tabs.market and M.tabs.economics and M.tabs.crafts and M.tabs.materials
 assert(M.rows[1].item == item)
 assert(M.rows[1].statusMarker and M.rows[1].statusMarker.shown)
 assert(M.rows[1].statusMarker.color[1] == 0.25 and M.rows[1].statusMarker.color[2] == 0.88)
-assert(M.updateButton.iconTexture and M.updateButton.iconTexture.texture == "Interface\\Buttons\\UI-RefreshButton")
-assert(M.browseButton.iconTexture and M.browseButton.iconTexture.texture == "Interface\\Common\\UI-Searchbox-Icon")
+assert(M.updateButton.iconTexture and M.updateButton.iconTexture.texture == "Interface\\AddOns\\ModuloMarket\\Textures\\refresh.tga")
+assert(M.search.icon and M.search.icon.texture == "Interface\\AddOns\\ModuloMarket\\Textures\\search.tga")
+assert(M.professionDropdown.label.text == "All professions")
+assert(M.cancelButton and not M.cancelButton.shown)
+assert(M.search.background and M.search.border and M.search.placeholder)
+assert(M.closeButton.iconTexture.texture == "Interface\\AddOns\\ModuloMarket\\Textures\\close.tga")
+assert(M.cancelButton.iconTexture.texture == "Interface\\AddOns\\ModuloMarket\\Textures\\cancel.tga")
+assert(M.professionDropdown.iconTexture.texture == "Interface\\AddOns\\ModuloMarket\\Textures\\chevron-down.tga")
+assert(M.quickChecks[1].mark.texture == "Interface\\AddOns\\ModuloMarket\\Textures\\check.tga")
+assert(M.browseButton == nil)
 assert(M.filterHint == nil)
 assert(M.scroll:GetScript("OnMouseWheel") ~= nil)
 M.scroll:GetScript("OnMouseWheel")(M.scroll, -1)
@@ -145,9 +156,14 @@ assert(sortKey == "price")
 M.search:SetText("mud snapper")
 M.search:GetScript("OnEnterPressed")(M.search)
 assert(searchText == "mud snapper")
+assert(M.updateButton.label.text == "Scan Market")
+M.RefreshScanActions({ pendingConfirmation = true })
+assert(M.updateButton.label.text == "Confirm Scan" and M.cancelButton.shown)
+M.RefreshScanActions({ cooldownRemaining = 60 })
+assert(M.updateButton.label.text == "Scan in 1m" and not M.cancelButton.shown)
+M.RefreshScanActions({})
 M.updateButton:GetScript("OnClick")(M.updateButton)
-M.browseButton:GetScript("OnClick")(M.browseButton)
-assert(scanTriggered and browseTriggered)
+assert(scanTriggered)
 local crate = { turnIn=true, cratePriceCopper=655, bundleAlternatives={
     {index=1,complete=true,costCopper=360,lines={{quantity=10,itemName="Bolt of Mageweave",unitPriceCopper=30,lineCostCopper=300}}},
     {index=2,complete=false,lines={{quantity=5,itemName="Runecloth",unitPriceCopper=nil,lineCostCopper=nil,reason="No current auction listing"}}},
@@ -167,4 +183,4 @@ state.tab = "market"; M.RefreshInspector()
 assert(not M.bundleScroll.shown and M.relationshipText.shown)
 M.Hide()
 assert(not M.frame:IsShown())
-print("modern UI visual regression harness: 24 checks passed")
+print("modern UI visual regression harness: 29 checks passed")
