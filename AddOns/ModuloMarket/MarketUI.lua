@@ -339,18 +339,6 @@ GetItemName = function(item)
 end
 
 local itemQualityCache = {}
-local itemQualityRequested = {}
-local itemQualityFailed = {}
-local function RequestItemQuality(itemID)
-    itemID = tonumber(itemID)
-    if not itemID or itemQualityRequested[itemID] or itemQualityFailed[itemID] then return end
-    local api = _G.C_Item
-    if type(api) ~= "table" or type(api.RequestLoadItemDataByID) ~= "function" then return end
-    itemQualityRequested[itemID] = true
-    local ok, accepted = pcall(api.RequestLoadItemDataByID, itemID)
-    if not ok or accepted == false then itemQualityRequested[itemID] = nil end
-end
-
 local function GetItemQualityHex(itemID)
     itemID = tonumber(itemID)
     if not itemID then return "ffffffff" end
@@ -372,9 +360,9 @@ local function GetItemQualityHex(itemID)
             return hex
         end
     end
-    -- Load quality for visible rows asynchronously. Never guess rarity while
-    -- the client item cache is pending; the item-data event rerenders the row.
-    RequestItemQuality(itemID)
+    -- Passive lookup only: never request item data from the render path.
+    -- If another client/addon operation later loads this item, the item-data
+    -- event invalidates this cache and refreshes only the active presentation.
     return "ffffffff"
 end
 
@@ -2833,10 +2821,7 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
     if not itemID then return end
     -- Item cache completion can also resolve the real icon for virtualized rows.
     itemIconCache[itemID] = nil
-    itemQualityRequested[itemID] = nil
     itemQualityCache[itemID] = nil
-    if success == false then itemQualityFailed[itemID] = true
-    else itemQualityFailed[itemID] = nil end
     UI.itemClassCache[itemID] = nil
     UI.itemClassRequested[itemID] = nil
     UI.itemClassPendingIDs[itemID] = nil
@@ -2861,12 +2846,15 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
             UI.vendorPriceFailed[itemID] = true
         end
     end
-    if UI.selectedItem and tonumber(UI.selectedItem.itemID) == itemID then
+    local modernActive = MM.Theme and MM.Theme.GetTheme
+        and MM.Theme.GetTheme() == "modern"
+    if modernActive then
+        if MM.ModernUI and MM.ModernUI.RenderRows then MM.ModernUI.RenderRows() end
+    elseif UI.selectedItem and tonumber(UI.selectedItem.itemID) == itemID then
         SelectItem(UI.selectedItem)
     else
         UI.RenderRows()
     end
-    if MM.ModernUI and MM.ModernUI.RenderRows then MM.ModernUI.RenderRows() end
 end)
 
 local function NormalizeBuildKey(value)

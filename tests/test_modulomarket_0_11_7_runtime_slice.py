@@ -12,10 +12,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0117_versions_are_aligned():
-    assert 'MM.version = "0.11.8"' in CORE
-    assert "## Version: 0.11.8" in TOC
-    assert 'version = "0.11.8"' in DATA
-    assert MANIFEST["version"] == "0.11.8"
+    assert 'MM.version = "0.11.9"' in CORE
+    assert "## Version: 0.11.9" in TOC
+    assert 'version = "0.11.9"' in DATA
+    assert MANIFEST["version"] == "0.11.9"
 
 
 def test_both_windows_center_on_every_explicit_open():
@@ -26,15 +26,23 @@ def test_both_windows_center_on_every_explicit_open():
     assert "function Modern.Show()" in MODERN
 
 
-def test_quality_requests_are_async_and_refresh_both_presentations():
-    assert "local itemQualityRequested = {}" in MARKET
-    assert "local itemQualityFailed = {}" in MARKET
-    assert "itemQualityFailed[itemID] = true" in MARKET
-    assert "C_Item.RequestLoadItemDataByID" in MARKET
-    assert "itemQualityRequested[itemID] = nil" in MARKET
-    assert "itemQualityCache[itemID] = nil" in MARKET
-    assert "MM.ModernUI.RenderRows()" in MARKET
+def test_quality_colours_use_passive_cache_without_render_time_requests():
     assert "GetItemQualityColor" in MARKET
+    assert "local itemQualityCache = {}" in MARKET
+    assert "RequestItemQuality" not in MARKET
+    quality_block = MARKET.split("local itemQualityCache = {}", 1)[1].split("local function GetItemDisplayName", 1)[0]
+    assert "C_Item.RequestLoadItemDataByID" not in quality_block
+    assert "itemQualityRequested" not in MARKET
+    assert "itemQualityFailed" not in MARKET
+    assert "Passive lookup only" in quality_block
+
+
+def test_item_data_event_refreshes_only_active_presentation():
+    event_block = MARKET.split('vendorInfoEvents:SetScript("OnEvent"', 1)[1].split("end)", 1)[0]
+    assert 'MM.Theme.GetTheme() == "modern"' in event_block
+    assert "MM.ModernUI.RenderRows()" in event_block
+    assert "SelectItem(UI.selectedItem)" in event_block
+    assert event_block.index("if modernActive then") < event_block.index("elseif UI.selectedItem")
 
 
 def test_legacy_item_name_cache_probe_does_not_suppress_getiteminfo():
