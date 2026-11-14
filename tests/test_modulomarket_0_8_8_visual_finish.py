@@ -19,8 +19,8 @@ def test_main_panels_have_inset_finish_without_geometry_changes():
     assert "local lowerRule" not in header
 
 def test_tabs_have_clear_active_and_inactive_visual_states():
-    assert 'button.background:SetColorTexture(0.28, 0.185, 0.060, 1)' in UI
-    assert 'button.background:SetColorTexture(0.022, 0.020, 0.018, 0.99)' in UI
+    assert 'SetThemeTexture(button.background, "tabActive", {0.28, 0.185, 0.060, 1})' in UI
+    assert 'SetThemeTexture(button.background, "tabInactive", {0.022, 0.020, 0.018, 0.99})' in UI
     tab_block = UI.split("local tabSpecs = {", 1)[1].split("local tabX", 1)[0]
     assert tab_block.count('{"') == 0
     for key in ['"market"', '"economics"', '"crafts"', '"materials"', '"low"', '"history"']:
@@ -28,8 +28,8 @@ def test_tabs_have_clear_active_and_inactive_visual_states():
     assert "My Crafts" not in tab_block
 
 def test_table_finish_changes_are_visual_only():
-    assert 'tableHeaderBand:SetColorTexture(0.105, 0.078, 0.038, 0.88)' in UI
-    assert 'row.selectedWash:SetColorTexture(0.48, 0.32, 0.055, 0.43)' in UI
+    assert 'SetThemeTexture(tableHeaderBand, "panelHeader", {0.105, 0.078, 0.038, 0.88})' in UI
+    assert 'SetThemeTexture(row.selectedWash, "selectedWash", {0.48, 0.32, 0.055, 0.43})' in UI
     assert 'row:SetSize(796, UI.rowHeight)' in UI
 
 def test_release_metadata_is_aligned():

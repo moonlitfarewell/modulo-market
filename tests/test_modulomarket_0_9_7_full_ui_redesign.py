@@ -43,7 +43,7 @@ def test_panel_headers_have_one_separator_and_no_metal_end_caps():
     assert "local lowerRule" not in block
     assert 'for _, side in ipairs({"LEFT", "RIGHT"})' not in block
     assert "local rule" in block
-    assert "plate:SetColorTexture(0.085, 0.073, 0.052, 0.78)" in block
+    assert 'SetThemeTexture(plate, "panelHeader", {0.085, 0.073, 0.052, 0.78})' in block
 
 
 def test_button_skin_is_not_red_and_keeps_native_interaction_feedback():

@@ -3,7 +3,7 @@ local MM = _G.ModuloMarket or {}
 _G.ModuloMarket = MM
 
 MM.name = ADDON_NAME or "ModuloMarket"
-MM.version = "0.10.4"
+MM.version = "0.11.0"
 MM.debugPrefix = "|cff66ccffModuloMarket:|r "
 
 local function Print(message)
@@ -57,6 +57,7 @@ loader:RegisterEvent("ADDON_LOADED")
 loader:SetScript("OnEvent", function(_, event, loadedName)
     if event == "ADDON_LOADED" and loadedName == MM.name then
         InitializeDB()
+        if MM.Theme and MM.Theme.Initialize then MM.Theme.Initialize() end
         SLASH_MODULOMARKET1 = "/mm"
         SlashCmdList.MODULOMARKET = function()
             if MM.MarketUI and MM.MarketUI.Toggle then

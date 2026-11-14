@@ -68,6 +68,16 @@ local UI = {
 }
 MM.MarketUI = UI
 
+local function SetThemeTexture(texture, role, fallback)
+    if MM.Theme and MM.Theme.SetTexture then MM.Theme.SetTexture(texture, role, fallback)
+    elseif texture and fallback then texture:SetColorTexture(fallback[1], fallback[2], fallback[3], fallback[4] or 1) end
+end
+
+local function SetThemeFontColor(fontString, role, fallback)
+    if MM.Theme and MM.Theme.SetFontColor then MM.Theme.SetFontColor(fontString, role, fallback)
+    elseif fontString and fallback then fontString:SetTextColor(fallback[1], fallback[2], fallback[3], fallback[4] or 1) end
+end
+
 local SelectItem
 
 local function Now()
@@ -774,7 +784,7 @@ local function AddBevelBorder(parent, x, top, width, height, style, layer)
     local color = palette[style] or palette.panel
     local function edge(px, py, w, h)
         local texture = parent:CreateTexture(nil, layer)
-        texture:SetColorTexture(color[1], color[2], color[3], color[4])
+        SetThemeTexture(texture, "border", color)
         texture:SetPoint("TOPLEFT", parent, "TOPLEFT", px, py)
         texture:SetSize(math.max(1, w), math.max(1, h))
         return texture
@@ -795,11 +805,11 @@ local function ApplyMarketButtonSkin(button, style)
     button.marketFill = button:CreateTexture(nil, "BACKGROUND")
     button.marketFill:SetAllPoints(button)
     if style == "control" then
-        button.marketFill:SetColorTexture(0.035, 0.032, 0.026, 0.96)
+        SetThemeTexture(button.marketFill, "control", {0.035, 0.032, 0.026, 0.96})
     elseif style == "option" then
-        button.marketFill:SetColorTexture(0.050, 0.043, 0.031, 0.96)
+        SetThemeTexture(button.marketFill, "surfaceAlt", {0.050, 0.043, 0.031, 0.96})
     else
-        button.marketFill:SetColorTexture(0.075, 0.060, 0.040, 0.96)
+        SetThemeTexture(button.marketFill, "surfaceRaised", {0.075, 0.060, 0.040, 0.96})
     end
     local normal = type(button.GetNormalTexture) == "function" and button:GetNormalTexture() or nil
     local pushed = type(button.GetPushedTexture) == "function" and button:GetPushedTexture() or nil
@@ -813,7 +823,7 @@ local function ApplyMarketButtonSkin(button, style)
     if disabled and disabled.SetAlpha then disabled:SetAlpha(0) end
     button.marketHighlight = button:CreateTexture(nil, "HIGHLIGHT")
     button.marketHighlight:SetAllPoints(button)
-    button.marketHighlight:SetColorTexture(0.72, 0.60, 0.38, 0.10)
+    SetThemeTexture(button.marketHighlight, "controlHighlight", {0.72, 0.60, 0.38, 0.10})
     button.marketBorder = AddBevelBorder(button, 0, 0, w, h,
         style == "control" and "control" or "button", "OVERLAY")
     local text = type(button.GetFontString) == "function" and button:GetFontString() or nil
@@ -822,13 +832,13 @@ local function ApplyMarketButtonSkin(button, style)
         if ok and fontPath and tonumber(fontSize) then
             pcall(text.SetFont, text, fontPath, tonumber(fontSize) + 1, flags)
         end
-        if text.SetTextColor then text:SetTextColor(1, 0.88, 0.62) end
+        SetThemeFontColor(text, "textAccent", {1, 0.88, 0.62, 1})
     end
 end
 
 local function AddInsetSurface(parent, x, top, width, height, color)
     local surface = parent:CreateTexture(nil, "BACKGROUND")
-    surface:SetColorTexture(color[1], color[2], color[3], color[4])
+    SetThemeTexture(surface, "surfaceRaised", color)
     surface:SetPoint("TOPLEFT", parent, "TOPLEFT", x, top)
     surface:SetSize(width, height)
     return surface
@@ -857,12 +867,12 @@ local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChang
     dropdown.label:SetPoint("RIGHT", dropdown, "RIGHT", -24, 0)
     dropdown.label:SetJustifyH("LEFT")
     dropdown.label:SetWordWrap(false)
-    dropdown.label:SetTextColor(0.96, 0.91, 0.78)
+    SetThemeFontColor(dropdown.label, "textPrimary", {0.96, 0.91, 0.78, 1})
 
     dropdown.arrow = dropdown:CreateTexture(nil, "OVERLAY")
     dropdown.arrow:SetTexture("Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up")
     dropdown.arrow:SetTexCoord(0.2, 0.8, 0.2, 0.8)
-    dropdown.arrow:SetVertexColor(0.95, 0.72, 0.28)
+    dropdown.arrow:SetVertexColor(unpack(MM.Theme and MM.Theme.GetColor("accent", {0.95, 0.72, 0.28, 1}) or {0.95, 0.72, 0.28, 1}))
     dropdown.arrow:SetSize(14, 14)
     dropdown.arrow:SetPoint("RIGHT", dropdown, "RIGHT", -5, 0)
 
@@ -875,24 +885,24 @@ local function CreateDropdown(parent, width, x, y, getOptions, getValue, onChang
     popup:EnableMouse(true)
     popup.background = popup:CreateTexture(nil, "BACKGROUND")
     popup.background:SetAllPoints(popup)
-    popup.background:SetColorTexture(0.025, 0.022, 0.018, 0.98)
+    SetThemeTexture(popup.background, "dropdown", {0.025, 0.022, 0.018, 0.98})
     popup.borderTop = popup:CreateTexture(nil, "BORDER")
-    popup.borderTop:SetColorTexture(0.34, 0.29, 0.20, 0.88)
+    SetThemeTexture(popup.borderTop, "border", {0.34, 0.29, 0.20, 0.88})
     popup.borderTop:SetPoint("TOPLEFT", popup, "TOPLEFT", 0, 0)
     popup.borderTop:SetPoint("TOPRIGHT", popup, "TOPRIGHT", 0, 0)
     popup.borderTop:SetHeight(1)
     popup.borderBottom = popup:CreateTexture(nil, "BORDER")
-    popup.borderBottom:SetColorTexture(0.34, 0.29, 0.20, 0.88)
+    SetThemeTexture(popup.borderBottom, "border", {0.34, 0.29, 0.20, 0.88})
     popup.borderBottom:SetPoint("BOTTOMLEFT", popup, "BOTTOMLEFT", 0, 0)
     popup.borderBottom:SetPoint("BOTTOMRIGHT", popup, "BOTTOMRIGHT", 0, 0)
     popup.borderBottom:SetHeight(1)
     popup.borderLeft = popup:CreateTexture(nil, "BORDER")
-    popup.borderLeft:SetColorTexture(0.34, 0.29, 0.20, 0.88)
+    SetThemeTexture(popup.borderLeft, "border", {0.34, 0.29, 0.20, 0.88})
     popup.borderLeft:SetPoint("TOPLEFT", popup, "TOPLEFT", 0, 0)
     popup.borderLeft:SetPoint("BOTTOMLEFT", popup, "BOTTOMLEFT", 0, 0)
     popup.borderLeft:SetWidth(1)
     popup.borderRight = popup:CreateTexture(nil, "BORDER")
-    popup.borderRight:SetColorTexture(0.34, 0.29, 0.20, 0.88)
+    SetThemeTexture(popup.borderRight, "border", {0.34, 0.29, 0.20, 0.88})
     popup.borderRight:SetPoint("TOPRIGHT", popup, "TOPRIGHT", 0, 0)
     popup.borderRight:SetPoint("BOTTOMRIGHT", popup, "BOTTOMRIGHT", 0, 0)
     popup.borderRight:SetWidth(1)
@@ -1015,6 +1025,8 @@ local function AddLabel(parent, text, x, y, width, height, font)
     label:SetJustifyH("LEFT")
     label:SetJustifyV("TOP")
     label:SetText(text or "")
+    local r, g, b, a = label:GetTextColor()
+    SetThemeFontColor(label, "textPrimary", {r or 1, g or 1, b or 1, a or 1})
     return label
 end
 
@@ -1073,9 +1085,9 @@ local function RenderTurnInBundleBreakdown(item)
         row.left:SetJustifyH("LEFT")
         row.left:SetWordWrap(fullWidth == true)
         row.left:SetText(leftText or "")
-        if style == "header" then row.left:SetTextColor(1, 0.82, 0.05)
-        elseif style == "muted" then row.left:SetTextColor(0.72, 0.72, 0.72)
-        else row.left:SetTextColor(0.92, 0.92, 0.92) end
+        if style == "header" then SetThemeFontColor(row.left, "textAccent", {1, 0.82, 0.05, 1})
+        elseif style == "muted" then SetThemeFontColor(row.left, "textMuted", {0.72, 0.72, 0.72, 1})
+        else SetThemeFontColor(row.left, "textPrimary", {0.92, 0.92, 0.92, 1}) end
         row.left:Show()
         if not fullWidth then
             row.right:ClearAllPoints()
@@ -1085,7 +1097,8 @@ local function RenderTurnInBundleBreakdown(item)
             row.right:SetJustifyH("RIGHT")
             row.right:SetWordWrap(false)
             row.right:SetText(rightText or "")
-            row.right:SetTextColor(style == "header" and 1 or 0.92, style == "header" and 0.82 or 0.92, style == "header" and 0.05 or 0.92)
+            if style == "header" then SetThemeFontColor(row.right, "textAccent", {1, 0.82, 0.05, 1})
+            else SetThemeFontColor(row.right, "textPrimary", {0.92, 0.92, 0.92, 1}) end
             row.right:Show()
         else
             row.right:Hide()
@@ -1948,9 +1961,9 @@ function UI.RenderRows()
             end
             if button.rowShade then
                 if index % 2 == 0 then
-                    button.rowShade:SetColorTexture(0.105, 0.086, 0.052, 0.30)
+                    SetThemeTexture(button.rowShade, "surfaceRaised", {0.105, 0.086, 0.052, 0.30})
                 else
-                    button.rowShade:SetColorTexture(0.018, 0.019, 0.021, 0.26)
+                    SetThemeTexture(button.rowShade, "surface", {0.018, 0.019, 0.021, 0.26})
                 end
                 button.rowShade:Show()
             end
@@ -2195,7 +2208,7 @@ function UI.RenderHistory()
             elseif previous and point.price < previous.price then
                 bar:SetColorTexture(0.78, 0.25, 0.22, 0.95)
             else
-                bar:SetColorTexture(0.72, 0.62, 0.36, 0.95)
+                SetThemeTexture(bar, "historyBar", {0.72, 0.62, 0.36, 0.95})
             end
             bar:Show()
         else
@@ -3003,19 +3016,19 @@ local function SetTab(tab)
         if name == tab then
             button:Disable()
             if button.selectedMark then button.selectedMark:Show() end
-            if button.background then button.background:SetColorTexture(0.28, 0.185, 0.060, 1) end
-            if button.marketTop then button.marketTop:SetColorTexture(0.98, 0.76, 0.30, 1) end
-            if button.marketBottom then button.marketBottom:SetColorTexture(0.34, 0.22, 0.065, 1) end
-            if button.marketLeft then button.marketLeft:SetColorTexture(0.86, 0.64, 0.25, 1) end
-            if button.marketRight then button.marketRight:SetColorTexture(0.34, 0.22, 0.065, 1) end
+            if button.background then SetThemeTexture(button.background, "tabActive", {0.28, 0.185, 0.060, 1}) end
+            if button.marketTop then SetThemeTexture(button.marketTop, "borderStrong", {0.98, 0.76, 0.30, 1}) end
+            if button.marketBottom then SetThemeTexture(button.marketBottom, "border", {0.34, 0.22, 0.065, 1}) end
+            if button.marketLeft then SetThemeTexture(button.marketLeft, "borderStrong", {0.86, 0.64, 0.25, 1}) end
+            if button.marketRight then SetThemeTexture(button.marketRight, "border", {0.34, 0.22, 0.065, 1}) end
         else
             button:Enable()
             if button.selectedMark then button.selectedMark:Hide() end
-            if button.background then button.background:SetColorTexture(0.022, 0.020, 0.018, 0.99) end
-            if button.marketTop then button.marketTop:SetColorTexture(0.48, 0.36, 0.18, 0.92) end
-            if button.marketBottom then button.marketBottom:SetColorTexture(0.12, 0.085, 0.035, 0.98) end
-            if button.marketLeft then button.marketLeft:SetColorTexture(0.44, 0.32, 0.13, 0.82) end
-            if button.marketRight then button.marketRight:SetColorTexture(0.08, 0.06, 0.025, 0.98) end
+            if button.background then SetThemeTexture(button.background, "tabInactive", {0.022, 0.020, 0.018, 0.99}) end
+            if button.marketTop then SetThemeTexture(button.marketTop, "border", {0.48, 0.36, 0.18, 0.92}) end
+            if button.marketBottom then SetThemeTexture(button.marketBottom, "border", {0.12, 0.085, 0.035, 0.98}) end
+            if button.marketLeft then SetThemeTexture(button.marketLeft, "border", {0.44, 0.32, 0.13, 0.82}) end
+            if button.marketRight then SetThemeTexture(button.marketRight, "border", {0.08, 0.06, 0.025, 0.98}) end
         end
     end
 
@@ -3308,6 +3321,7 @@ local function CreateUI()
     -- supplied by Blizzard's template. Only set the title string.
     if frame.TitleText and frame.TitleText.SetText then
         frame.TitleText:SetText("Modulo Market")
+        SetThemeFontColor(frame.TitleText, "textPrimary", {1, 0.82, 0.05, 1})
     end
     frame:Hide()
     _G.UISpecialFrames = _G.UISpecialFrames or {}
@@ -3390,7 +3404,7 @@ local function CreateUI()
     UI.opacitySlider:SetObeyStepOnDrag(true)
     UI.opacitySlider:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
     local opacityTrack = UI.opacitySlider:CreateTexture(nil, "BACKGROUND")
-    opacityTrack:SetColorTexture(0.20, 0.17, 0.13, 0.95)
+    SetThemeTexture(opacityTrack, "border", {0.20, 0.17, 0.13, 0.95})
     opacityTrack:SetPoint("LEFT", UI.opacitySlider, "LEFT", 0, 0)
     opacityTrack:SetPoint("RIGHT", UI.opacitySlider, "RIGHT", 0, 0)
     opacityTrack:SetHeight(6)
@@ -3402,7 +3416,7 @@ local function CreateUI()
     end)
 
     local tabStrip = frame:CreateTexture(nil, "BACKGROUND")
-    tabStrip:SetColorTexture(0.045, 0.035, 0.025, 0.95)
+    SetThemeTexture(tabStrip, "surface", {0.045, 0.035, 0.025, 0.95})
     tabStrip:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -112)
     tabStrip:SetSize(1424, 34)
     AddBevelBorder(frame, 18, -112, 1424, 34, "panel", "BORDER")
@@ -3423,31 +3437,31 @@ local function CreateUI()
         button:SetPoint("TOPLEFT", frame, "TOPLEFT", tabX, -114)
         button.background = button:CreateTexture(nil, "BACKGROUND")
         button.background:SetAllPoints(button)
-        button.background:SetColorTexture(0.035, 0.029, 0.020, 0.98)
+        SetThemeTexture(button.background, "tabInactive", {0.035, 0.029, 0.020, 0.98})
         button.marketTop = button:CreateTexture(nil, "BORDER")
-        button.marketTop:SetColorTexture(0.62, 0.46, 0.20, 0.82)
+        SetThemeTexture(button.marketTop, "border", {0.62, 0.46, 0.20, 0.82})
         button.marketTop:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
         button.marketTop:SetPoint("TOPRIGHT", button, "TOPRIGHT", -1, -1)
         button.marketTop:SetHeight(1)
         button.marketBottom = button:CreateTexture(nil, "BORDER")
-        button.marketBottom:SetColorTexture(0.12, 0.085, 0.035, 0.98)
+        SetThemeTexture(button.marketBottom, "border", {0.12, 0.085, 0.035, 0.98})
         button.marketBottom:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 1, 1)
         button.marketBottom:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
         button.marketBottom:SetHeight(1)
         -- No vertical side strokes: adjacent tabs should read as one clean strip.
         button.highlight = button:CreateTexture(nil, "HIGHLIGHT")
         button.highlight:SetAllPoints(button)
-        button.highlight:SetColorTexture(0.65, 0.48, 0.18, 0.22)
+        SetThemeTexture(button.highlight, "accentWash", {0.65, 0.48, 0.18, 0.22})
         button.selectedMark = button:CreateTexture(nil, "ARTWORK")
         button.selectedMark:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 0, 0)
         button.selectedMark:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
         button.selectedMark:SetHeight(3)
-        button.selectedMark:SetColorTexture(1, 0.72, 0.18, 1)
+        SetThemeTexture(button.selectedMark, "accent", {1, 0.72, 0.18, 1})
         button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         button.label:SetPoint("CENTER")
         button.label:SetText(label)
         IncreaseFontSize(button.label, 1)
-        button.label:SetTextColor(0.96, 0.89, 0.72)
+        SetThemeFontColor(button.label, "textAccent", {0.96, 0.89, 0.72, 1})
         button.tabKey = key
         button:SetScript("OnClick", function() SetTab(key) end)
         if key == "market" then
@@ -3474,7 +3488,7 @@ local function CreateUI()
         UI.tabs[key] = button
         if key == UI.activeTab then
             button.selectedMark:Show()
-            button.background:SetColorTexture(0.22, 0.15, 0.055, 1)
+            SetThemeTexture(button.background, "tabActive", {0.22, 0.15, 0.055, 1})
             button:Disable()
         else
             button.selectedMark:Hide()
@@ -3485,11 +3499,11 @@ local function CreateUI()
     end
 
     local leftPanel = frame:CreateTexture(nil, "BACKGROUND")
-    leftPanel:SetColorTexture(0.035, 0.032, 0.028, 0.92)
+    SetThemeTexture(leftPanel, "surface", {0.035, 0.032, 0.028, 0.92})
     leftPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -158)
     leftPanel:SetSize(260, 650)
     local rightPanel = frame:CreateTexture(nil, "BACKGROUND")
-    rightPanel:SetColorTexture(0.035, 0.032, 0.028, 0.92)
+    SetThemeTexture(rightPanel, "surface", {0.035, 0.032, 0.028, 0.92})
     rightPanel:SetPoint("TOPLEFT", frame, "TOPLEFT", 1126, -158)
     rightPanel:SetSize(300, 650)
     local function AddPanelBorder(x, y, width, height)
@@ -3504,11 +3518,11 @@ local function CreateUI()
     AddPanelInnerEdge(1126, -158, 300, 650)
     local function AddPanelHeader(x, y, width)
         local plate = frame:CreateTexture(nil, "ARTWORK")
-        plate:SetColorTexture(0.085, 0.073, 0.052, 0.78)
+        SetThemeTexture(plate, "panelHeader", {0.085, 0.073, 0.052, 0.78})
         plate:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 1, y - 1)
         plate:SetSize(width - 2, 26)
         local rule = frame:CreateTexture(nil, "ARTWORK")
-        rule:SetColorTexture(0.32, 0.27, 0.18, 0.72)
+        SetThemeTexture(rule, "border", {0.32, 0.27, 0.18, 0.72})
         rule:SetPoint("TOPLEFT", plate, "BOTTOMLEFT", 0, 0)
         rule:SetSize(width - 2, 1)
     end
@@ -3548,16 +3562,16 @@ local function CreateUI()
     UI.centerHeading = AddLabel(frame, "All Items", 302, -166, 500, 24, "GameFontNormalLarge")
     IncreaseFontSize(UI.centerHeading, 2)
     local tableHeaderBand = frame:CreateTexture(nil, "ARTWORK")
-    tableHeaderBand:SetColorTexture(0.105, 0.078, 0.038, 0.88)
+    SetThemeTexture(tableHeaderBand, "panelHeader", {0.105, 0.078, 0.038, 0.88})
     tableHeaderBand:SetPoint("TOPLEFT", frame, "TOPLEFT", 298, -210)
     tableHeaderBand:SetSize(812, 28)
     local tableHeaderTop = frame:CreateTexture(nil, "ARTWORK")
-    tableHeaderTop:SetColorTexture(0.72, 0.53, 0.22, 0.92)
+    SetThemeTexture(tableHeaderTop, "borderStrong", {0.72, 0.53, 0.22, 0.92})
     tableHeaderTop:SetPoint("TOPLEFT", tableHeaderBand, "TOPLEFT", 0, 0)
     tableHeaderTop:SetPoint("TOPRIGHT", tableHeaderBand, "TOPRIGHT", 0, 0)
     tableHeaderTop:SetHeight(1)
     local tableHeaderBottom = frame:CreateTexture(nil, "ARTWORK")
-    tableHeaderBottom:SetColorTexture(0.28, 0.19, 0.07, 0.98)
+    SetThemeTexture(tableHeaderBottom, "border", {0.28, 0.19, 0.07, 0.98})
     tableHeaderBottom:SetPoint("BOTTOMLEFT", tableHeaderBand, "BOTTOMLEFT", 0, 0)
     tableHeaderBottom:SetPoint("BOTTOMRIGHT", tableHeaderBand, "BOTTOMRIGHT", 0, 0)
     tableHeaderBottom:SetHeight(1)
@@ -3745,7 +3759,7 @@ local function CreateUI()
 
     UI.marketQuickFilterControls = {}
     local optionsDivider = frame:CreateTexture(nil, "ARTWORK")
-    optionsDivider:SetColorTexture(0.55, 0.40, 0.16, 0.76)
+    SetThemeTexture(optionsDivider, "border", {0.55, 0.40, 0.16, 0.76})
     optionsDivider:SetPoint("TOPLEFT", frame, "TOPLEFT", 30, -480)
     optionsDivider:SetSize(230, 1)
     UI.marketQuickFilterHeading = AddLabel(frame, "OPTIONS", 30, -490, 230, 18, "GameFontNormalLarge")
@@ -3888,22 +3902,22 @@ local function CreateUI()
         row.selectedWash = row:CreateTexture(nil, "BACKGROUND")
         row.selectedWash:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
         row.selectedWash:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
-        row.selectedWash:SetColorTexture(0.48, 0.32, 0.055, 0.43)
+        SetThemeTexture(row.selectedWash, "selectedWash", {0.48, 0.32, 0.055, 0.43})
         row.selectedWash:Hide()
         row.selectedAccent = row:CreateTexture(nil, "ARTWORK")
-        row.selectedAccent:SetColorTexture(0.96, 0.70, 0.22, 1)
+        SetThemeTexture(row.selectedAccent, "selectedEdge", {0.96, 0.70, 0.22, 1})
         row.selectedAccent:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
         row.selectedAccent:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
         row.selectedAccent:SetWidth(3)
         row.selectedAccent:Hide()
         row.selectedTop = row:CreateTexture(nil, "ARTWORK")
-        row.selectedTop:SetColorTexture(0.86, 0.62, 0.20, 0.82)
+        SetThemeTexture(row.selectedTop, "borderStrong", {0.86, 0.62, 0.20, 0.82})
         row.selectedTop:SetPoint("TOPLEFT", row, "TOPLEFT", 2, 0)
         row.selectedTop:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
         row.selectedTop:SetHeight(1)
         row.selectedTop:Hide()
         row.selectedBottom = row:CreateTexture(nil, "ARTWORK")
-        row.selectedBottom:SetColorTexture(0.50, 0.34, 0.10, 0.80)
+        SetThemeTexture(row.selectedBottom, "border", {0.50, 0.34, 0.10, 0.80})
         row.selectedBottom:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 2, 0)
         row.selectedBottom:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
         row.selectedBottom:SetHeight(1)
@@ -4008,7 +4022,7 @@ local function CreateUI()
     end
 
     local divider = frame:CreateTexture(nil, "ARTWORK")
-    divider:SetColorTexture(0.45, 0.40, 0.30, 0.8)
+    SetThemeTexture(divider, "divider", {0.45, 0.40, 0.30, 0.8})
     divider:SetSize(1, 650)
     divider:SetPoint("TOPLEFT", frame, "TOPLEFT", 1119, -158)
 
@@ -4017,11 +4031,11 @@ local function CreateUI()
     local function AddInspectorCard(x, top, width, height)
         AddInsetSurface(frame, x, top, width, height, {0.010, 0.011, 0.013, 0.98})
         local header = frame:CreateTexture(nil, "ARTWORK")
-        header:SetColorTexture(0.16, 0.115, 0.050, 0.78)
+        SetThemeTexture(header, "panelHeader", {0.16, 0.115, 0.050, 0.78})
         header:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 2, top - 2)
         header:SetSize(width - 4, 24)
         local rule = frame:CreateTexture(nil, "ARTWORK")
-        rule:SetColorTexture(0.78, 0.58, 0.25, 0.84)
+        SetThemeTexture(rule, "borderStrong", {0.78, 0.58, 0.25, 0.84})
         rule:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, 0)
         rule:SetSize(width - 4, 1)
         AddBevelBorder(frame, x, top, width, height, "card", "OVERLAY")
@@ -4127,7 +4141,7 @@ local function CreateUI()
     UI.historyGraph:SetPoint("TOPLEFT", UI.detailFooter, "TOPLEFT", 6, -90)
     UI.historyGraph:SetSize(236, 104)
     UI.historyBaseline = UI.historyGraph:CreateTexture(nil, "BORDER")
-    UI.historyBaseline:SetColorTexture(0.62, 0.48, 0.22, 0.52)
+    SetThemeTexture(UI.historyBaseline, "historyBaseline", {0.62, 0.48, 0.22, 0.52})
     UI.historyBaseline:SetPoint("BOTTOMLEFT", UI.historyGraph, "BOTTOMLEFT", 3, 3)
     UI.historyBaseline:SetPoint("BOTTOMRIGHT", UI.historyGraph, "BOTTOMRIGHT", -3, 3)
     UI.historyBaseline:SetHeight(1)
@@ -4140,7 +4154,7 @@ local function CreateUI()
         UI.historyBarLabels[i] = label
         label:Hide()
         local bar = UI.historyGraph:CreateTexture(nil, "ARTWORK")
-        bar:SetColorTexture(0.72, 0.62, 0.36, 0.95)
+        SetThemeTexture(bar, "historyBar", {0.72, 0.62, 0.36, 0.95})
         UI.historyBars[i] = bar
         bar:Hide()
     end
@@ -4304,6 +4318,10 @@ function UI.Toggle()
         frame:Show()
         UI.Raise()
     end
+end
+
+function UI.ApplyTheme()
+    if MM.Theme and MM.Theme.ApplyRegistered then MM.Theme.ApplyRegistered() end
 end
 
 function UI.Show()

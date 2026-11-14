@@ -15,7 +15,7 @@ def test_control_skin_suppresses_legacy_red_template_art():
 
 def test_dropdowns_keep_custom_dark_fill_and_gold_bevel():
     assert 'ApplyMarketButtonSkin(dropdown, "control")' in UI
-    assert 'button.marketFill:SetColorTexture(0.035, 0.032, 0.026, 0.96)' in UI
+    assert 'SetThemeTexture(button.marketFill, "control", {0.035, 0.032, 0.026, 0.96})' in UI
     assert 'style == "control" and "control" or "button"' in UI
 
 

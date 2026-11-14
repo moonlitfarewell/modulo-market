@@ -26,7 +26,7 @@ def test_real_client_item_icons_are_resolved_and_cached_only_when_known():
 def test_virtualized_rows_have_item_art_and_alternating_surface():
     assert 'row.icon = row:CreateTexture' in UI
     assert 'row.rowShade = row:CreateTexture' in UI
-    assert 'button.rowShade:SetColorTexture' in UI
+    assert 'SetThemeTexture(button.rowShade, "surfaceRaised", {0.105, 0.086, 0.052, 0.30})' in UI and 'SetThemeTexture(button.rowShade, "surface", {0.018, 0.019, 0.021, 0.26})' in UI
     assert 'button.icon:Hide()' in UI
 
 

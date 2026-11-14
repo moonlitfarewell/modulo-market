@@ -23,7 +23,7 @@ def test_window_front_accessibility_and_escape():
 def test_tabs_are_visually_distinct_and_column_widths_prevent_wrapping():
     assert "selectedMark" in UI
     assert "tabStrip" in UI
-    assert "SetColorTexture(1, 0.72, 0.18, 1)" in UI
+    assert 'SetThemeTexture(button.selectedMark, "accent", {1, 0.72, 0.18, 1})' in UI
     assert 'row.name = RowText("LEFT", 27, 182, "LEFT")' in UI
     assert 'row.price = RowText("LEFT", 212, 105, "RIGHT")' in UI
     assert "fs:SetWordWrap(false)" in UI

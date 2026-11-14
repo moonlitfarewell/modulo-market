@@ -1,6 +1,10 @@
+# Modulo Market 0.11.0
+
+**Current player milestone:** Added selectable Blizz-like and Modern visual themes. Blizz-like preserves the established Modulo Market appearance. Modern uses a dark charcoal interface with configurable Dark, Class-colour or Custom accent palettes. The Modulo Market settings page provides an Open Modulo Market (/mm) button, appearance selector and Modern palette controls. The custom accent is persisted in ModuloMarketDB. These are presentation-only settings; market data, calculations, scanning, filters, history and profession behavior remain unchanged. Forever runtime acceptance remains NOT RUN; see `MODULOMARKET-RUNTIME-AUDIT-0.11.0.md` and `docs/MODULOMARKET-THEMES-0.11.0.md`.
+
 # Modulo Market 0.10.4
 
-**Current player milestone:** The Turn-In inspector's Required Bundles panel now renders every accepted one-of material alternative as a separate price breakdown. Each option shows its required quantities, known cheapest unit prices, line costs, material subtotal and explicit incomplete/unknown price reasons; the cheapest fully priceable option is marked BEST VALUE. The crate purchase price remains separate from material subtotals. The prior 0.10.3 fixed inspector font sizing and immediate Turn-In row highlight are preserved. Pricing calculations, market-depth requirements, alternatives, sorting and market data behavior are unchanged. Forever runtime acceptance remains NOT RUN; see `MODULOMARKET-RUNTIME-AUDIT-0.10.4.md` and `docs/MODULOMARKET-TURN-IN-BUNDLE-BREAKDOWN-0.10.4.md`.
+**Historical 0.10.4 milestone:** The Turn-In inspector's Required Bundles panel now renders every accepted one-of material alternative as a separate price breakdown. Each option shows its required quantities, known cheapest unit prices, line costs, material subtotal and explicit incomplete/unknown price reasons; the cheapest fully priceable option is marked BEST VALUE. The crate purchase price remains separate from material subtotals. The prior 0.10.3 fixed inspector font sizing and immediate Turn-In row highlight are preserved. Pricing calculations, market-depth requirements, alternatives, sorting and market data behavior are unchanged. Forever runtime acceptance remains NOT RUN; see `MODULOMARKET-RUNTIME-AUDIT-0.10.4.md` and `docs/MODULOMARKET-TURN-IN-BUNDLE-BREAKDOWN-0.10.4.md`.
 
 # Modulo Market 0.10.1
 

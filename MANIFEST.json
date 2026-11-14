@@ -65,7 +65,7 @@
     "Modulo"
   ],
   "developer_tools_version": "Embedded repository importer 0.2.0 used to compile the 70938 runtime; standalone ForeverDB importer 0.2.3 used to inspect, normalize and validate the raw 70938 capture (separate release lifecycle).",
-  "file_count": 219,
+  "file_count": 224,
   "files": [
     ".gitignore",
     "AddOns/ModuloMarket/Core.lua",
@@ -78,6 +78,7 @@
     "AddOns/ModuloMarket/RecipeEngine.lua",
     "AddOns/ModuloMarket/Replicate.lua",
     "AddOns/ModuloMarket/Scanner.lua",
+    "AddOns/ModuloMarket/Theme.lua",
     "AddOns/ModuloMarket/TurnInData.lua",
     "AddOns/ModuloMarket/TurnInEngine.lua",
     "MANIFEST.json",
@@ -100,6 +101,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.10.2.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.10.3.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.10.4.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.11.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.2.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.1.md",
@@ -173,6 +175,7 @@
     "docs/MODULOMARKET-RECIPE-SOURCE-FILTER-0.6.7.md",
     "docs/MODULOMARKET-ROW-STATUS-PRESENTATION-0.6.8.md",
     "docs/MODULOMARKET-SEARCH-PERFORMANCE-0.7.1.md",
+    "docs/MODULOMARKET-THEMES-0.11.0.md",
     "docs/MODULOMARKET-TOOLTIP-SEARCH-ACCOUNT-SCOPE-AND-ECONOMICS-LAYOUT-0.7.0.md",
     "docs/MODULOMARKET-TOOLTIP-STRATA-0.5.8.md",
     "docs/MODULOMARKET-TURN-IN-BUNDLE-BREAKDOWN-0.10.4.md",
@@ -214,6 +217,7 @@
     "tests/test_modulomarket_0_10_0_turnins.py",
     "tests/test_modulomarket_0_10_3_turnins_ui.py",
     "tests/test_modulomarket_0_10_4_bundle_breakdown.py",
+    "tests/test_modulomarket_0_11_0_themes.py",
     "tests/test_modulomarket_0_5_6_redesign_and_capture_cache.py",
     "tests/test_modulomarket_0_7_0_scope_search_layout.py",
     "tests/test_modulomarket_0_7_3_search_warmup.py",
@@ -277,6 +281,7 @@
     "tests/test_modulomarket_ui_0_6_4_layout.py",
     "tests/test_modulomarket_version_reporting_harness_0_5_4.py",
     "tests/test_modulomarket_version_visibility_0_5_4.py",
+    "tests/theme_0_11_0_harness.lua",
     "tests/turnin_0_10_0_harness.lua",
     "tests/version_reporting_0_5_4_harness.lua",
     "tools/foreverdb_importer/.gitignore",
@@ -302,6 +307,11 @@
   "parentUploader": "developer",
   "parent_addon": "Modulo",
   "previousChildBundles": [
+    {
+      "bundle": "ModuloMarket-GitHub-Update-0.10.4.zip",
+      "bytes": 2415820,
+      "sha256": "6187dedd7294eb73c6492d20acdbde71f1350487d9c62cb0afee7a695e5b0781"
+    },
     {
       "bundle": "ModuloMarket-GitHub-Update-0.10.3.zip",
       "bytes": 2676082,
@@ -487,8 +497,8 @@
   "saved_variables": [
     "ModuloMarketDB"
   ],
-  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.10.3.zip",
-  "supersedesChildBytes": 2676082,
-  "supersedesChildSha256": "446db8e4c17d3549b3348196b787134eba347cfc0ca1a52755bb31c885908e33",
-  "version": "0.10.4"
+  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.10.4.zip",
+  "supersedesChildBytes": 2415820,
+  "supersedesChildSha256": "6187dedd7294eb73c6492d20acdbde71f1350487d9c62cb0afee7a695e5b0781",
+  "version": "0.11.0"
 }
