@@ -11,10 +11,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.12.2"' in CORE
-    assert "## Version: 0.12.2" in TOC
-    assert 'version = "0.12.2"' in DATA
-    assert MANIFEST["version"] == "0.12.2"
+    assert 'MM.version = "0.12.3"' in CORE
+    assert "## Version: 0.12.3" in TOC
+    assert 'version = "0.12.3"' in DATA
+    assert MANIFEST["version"] == "0.12.3"
 
 
 def test_turnins_uses_five_columns_and_combined_reward_sort():

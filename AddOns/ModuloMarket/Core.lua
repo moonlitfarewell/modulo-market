@@ -3,7 +3,7 @@ local MM = _G.ModuloMarket or {}
 _G.ModuloMarket = MM
 
 MM.name = ADDON_NAME or "ModuloMarket"
-MM.version = "0.12.2"
+MM.version = "0.12.3"
 MM.debugPrefix = "|cff66ccffModuloMarket:|r "
 
 local function Print(message)
@@ -118,8 +118,16 @@ loader:SetScript("OnEvent", function(_, event, loadedName)
             if text == "" then Print("No searchable tooltip text was extracted."); return end
             for i = 1, #text, 180 do Print(string.sub(text, i, i + 179)) end
         end
+        SLASH_MODULOMARKETREPLICATEDEBUG1 = "/mmreplicatedebug"
+        SlashCmdList.MODULOMARKETREPLICATEDEBUG = function()
+            if MM.Replicate and MM.Replicate.PrintTargetDiagnostics then
+                MM.Replicate.PrintTargetDiagnostics()
+            else
+                Print("Replicate diagnostics are not ready.")
+            end
+        end
         SLASH_MODULOMARKETVERSION1 = "/mmversion"
         SlashCmdList.MODULOMARKETVERSION = PrintVersion
-        Print("Loaded v" .. MM.version .. " (" .. GetClientBuildLabel() .. "). Type /mm for Market, /mmscan for Browse snapshots, /mmdebug for diagnostics, or /mmsearchdebug for tooltip-search diagnostics, /mmtooltipdebug itemID to inspect extracted tooltip text, /mmcompat for read-only build/API/snapshot compatibility, /mmversion for version details.")
+        Print("Loaded v" .. MM.version .. " (" .. GetClientBuildLabel() .. "). Type /mm for Market, /mmscan for Browse snapshots, /mmdebug for diagnostics, or /mmsearchdebug for tooltip-search diagnostics, /mmtooltipdebug itemID to inspect extracted tooltip text, /mmcompat for read-only build/API/snapshot compatibility, /mmreplicatedebug for Enchantresses' Spire acquisition diagnostics, /mmversion for version details.")
     end
 end)

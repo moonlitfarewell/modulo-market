@@ -9,6 +9,7 @@ local RESPONSE_TIMEOUT = 90
 local SCAN_TIMEOUT = 900
 local MAX_AUCTIONS = 500000
 local REPLICATE_COOLDOWN = 900
+local TARGET_DIAGNOSTIC_ITEM_ID = 287025 -- Enchantresses' Spire
 
 local Replicate = {
     active = false,
@@ -210,6 +211,65 @@ local function NewScan(total, startedAt, startedAtWallTime)
         pricedQuantity = 0,
         totalQuantity = 0,
         petAuctionCount = 0,
+        targetDiagnostic = {
+            itemID = TARGET_DIAGNOSTIC_ITEM_ID,
+            auctionRecords = 0,
+            itemDataQueued = 0,
+            itemDataRequests = 0,
+            itemDataSuccess = 0,
+            itemDataFailure = 0,
+            retryAttempts = 0,
+            aggregatedRecords = 0,
+            samples = {},
+            sampleByIndex = {},
+        },
+    }
+end
+
+local function TargetSample(scan, index)
+    local target = scan and scan.targetDiagnostic
+    if not target then return nil end
+    local sample = target.sampleByIndex[index]
+    if not sample then
+        sample = { index = index }
+        target.sampleByIndex[index] = sample
+        if #target.samples < 30 then target.samples[#target.samples + 1] = sample end
+    end
+    return sample
+end
+
+local function SaveTargetDiagnostics(scan, outcome)
+    if type(MM.db) ~= "table" or type(scan) ~= "table" then return end
+    local target = scan.targetDiagnostic or {}
+    local samples = {}
+    for i = 1, #(target.samples or {}) do
+        local source = target.samples[i]
+        local copy = {}
+        for key, value in pairs(source) do copy[key] = value end
+        samples[i] = copy
+    end
+    MM.db.lastReplicateTargetDiagnostics = {
+        itemID = TARGET_DIAGNOSTIC_ITEM_ID,
+        outcome = tostring(outcome or "unknown"),
+        timestamp = WallTime(),
+        auctionCount = scan.total,
+        processed = scan.processed,
+        aggregateCount = scan.aggregateCount,
+        unresolvedAuctionCount = scan.unresolvedAuctionCount,
+        invalidItemIDCount = scan.invalidItemIDCount,
+        invalidStackCount = scan.invalidStackCount,
+        infoErrorCount = scan.infoErrorCount,
+        linkErrorCount = scan.linkErrorCount,
+        target = {
+            auctionRecords = target.auctionRecords or 0,
+            itemDataQueued = target.itemDataQueued or 0,
+            itemDataRequests = target.itemDataRequests or 0,
+            itemDataSuccess = target.itemDataSuccess or 0,
+            itemDataFailure = target.itemDataFailure or 0,
+            retryAttempts = target.retryAttempts or 0,
+            aggregatedRecords = target.aggregatedRecords or 0,
+            samples = samples,
+        },
     }
 end
 
@@ -296,10 +356,18 @@ local function AggregateRecord(scan, index, info, itemLink)
         scan.unpricedAuctionCount = scan.unpricedAuctionCount + 1
     end
     if itemKey.isPet then scan.petAuctionCount = scan.petAuctionCount + 1 end
+    if itemID == TARGET_DIAGNOSTIC_ITEM_ID then
+        scan.targetDiagnostic.aggregatedRecords = scan.targetDiagnostic.aggregatedRecords + 1
+    end
     return true
 end
 
 local function QueueForItemData(scan, itemID, index)
+    if itemID == TARGET_DIAGNOSTIC_ITEM_ID then
+        scan.targetDiagnostic.itemDataQueued = scan.targetDiagnostic.itemDataQueued + 1
+        local sample = TargetSample(scan, index)
+        if sample then sample.itemDataQueued = true end
+    end
     if scan.itemDataResolved[itemID] == true then
         scan.retryQueue[#scan.retryQueue + 1] = index
         return
@@ -330,6 +398,20 @@ local function ReadAuction(scan, index, isRetry)
     end
 
     local itemID = tonumber(info[17])
+    local targetSample = itemID == TARGET_DIAGNOSTIC_ITEM_ID and TargetSample(scan, index) or nil
+    if targetSample then
+        if not targetSample.seen then
+            scan.targetDiagnostic.auctionRecords = scan.targetDiagnostic.auctionRecords + 1
+            targetSample.seen = true
+        end
+        targetSample.itemID = itemID
+        targetSample.name = type(info[1]) == "string" and info[1] or nil
+        targetSample.stackCount = tonumber(info[3])
+        targetSample.buyoutCopper = tonumber(info[10])
+        targetSample.hasAllInfo = info[18]
+        targetSample.retry = isRetry == true
+        if isRetry then scan.targetDiagnostic.retryAttempts = scan.targetDiagnostic.retryAttempts + 1 end
+    end
     if not itemID or itemID <= 0 then
         scan.invalidItemIDCount = scan.invalidItemIDCount + 1
         MarkUnresolved(scan)
@@ -347,7 +429,18 @@ local function ReadAuction(scan, index, isRetry)
         scan.linkErrorCount = scan.linkErrorCount + 1
         itemLink = nil
     end
-    local itemKey = itemLink and ParseItemLink(itemLink, itemID) or nil
+    local itemKey, parseError
+    if itemLink then
+        itemKey, parseError = ParseItemLink(itemLink, itemID)
+    end
+    if targetSample then
+        targetSample.itemLink = itemLink
+        targetSample.parseError = parseError
+        targetSample.parsedItemID = type(itemKey) == "table" and itemKey.itemID or nil
+        targetSample.itemLevel = type(itemKey) == "table" and itemKey.itemLevel or nil
+        targetSample.needsItemData = NeedsItemData(itemID, info[18], itemLink, itemKey)
+        targetSample.classID = GetItemClassID(itemID)
+    end
 
     if not isRetry and NeedsItemData(itemID, info[18], itemLink, itemKey) then
         QueueForItemData(scan, itemID, index)
@@ -371,6 +464,13 @@ end
 local function QueuePendingRetries(scan, itemID, success)
     local pending = scan.pendingByItemID[itemID]
     scan.itemDataResolved[itemID] = success == true
+    if itemID == TARGET_DIAGNOSTIC_ITEM_ID then
+        if success == true then
+            scan.targetDiagnostic.itemDataSuccess = scan.targetDiagnostic.itemDataSuccess + 1
+        else
+            scan.targetDiagnostic.itemDataFailure = scan.targetDiagnostic.itemDataFailure + 1
+        end
+    end
     if not pending then return end
     scan.pendingByItemID[itemID] = nil
     if not success then
@@ -399,6 +499,9 @@ local function RequestQueuedItemData(scan, itemID)
         return
     end
     scan.pendingLoadCount = scan.pendingLoadCount + 1
+    if itemID == TARGET_DIAGNOSTIC_ITEM_ID then
+        scan.targetDiagnostic.itemDataRequests = scan.targetDiagnostic.itemDataRequests + 1
+    end
     local ok, err = pcall(ITEM_API.RequestLoadItemDataByID, itemID)
     if not ok then
         scan.pendingLoadCount = math.max(0, scan.pendingLoadCount - 1)
@@ -423,6 +526,7 @@ local function Abort(reason)
     Replicate.stage = "idle"
     Replicate.scan = nil
     if scan then
+        SaveTargetDiagnostics(scan, "aborted: " .. tostring(reason))
         SetStatus(string.format(
             "Full Market scan stopped — %s. Previous saved market data is unchanged. Processed %d/%d auctions; %d variants built; %d records unresolved.",
             tostring(reason), scan.processed, scan.total, scan.aggregateCount, scan.unresolvedAuctionCount))
@@ -524,6 +628,7 @@ local function Finish(scan)
 
     -- Transactional last-known-good replacement: only this complete, fully
     -- identified dataset replaces the prior Market snapshot.
+    SaveTargetDiagnostics(scan, "complete")
     SaveHistoryPoint(snapshot)
     MM.db.lastMarketSnapshot = snapshot
     MM.db.lastMarketScanAt = snapshot.timestamp
@@ -747,6 +852,33 @@ function Replicate.GetState()
             or (MM.Scanner and MM.Scanner.replicateProbeAttemptedThisSession == true) or false,
         cooldownRemaining = GetCooldownRemaining(),
     }
+end
+
+function Replicate.PrintTargetDiagnostics()
+    local d = type(MM.db) == "table" and MM.db.lastReplicateTargetDiagnostics or nil
+    if type(d) ~= "table" then
+        if MM.Print then MM.Print("No targeted Replicate diagnostics saved yet. Run one full Market scan with 0.12.3.") end
+        return
+    end
+    local t = d.target or {}
+    if MM.Print then
+        MM.Print(string.format("Replicate target %d: outcome=%s auctions=%d processed=%d variants=%d unresolved=%d",
+            tonumber(d.itemID) or TARGET_DIAGNOSTIC_ITEM_ID, tostring(d.outcome),
+            tonumber(d.auctionCount) or 0, tonumber(d.processed) or 0,
+            tonumber(d.aggregateCount) or 0, tonumber(d.unresolvedAuctionCount) or 0))
+        MM.Print(string.format("Target records=%d queued=%d requests=%d loadOK=%d loadFailed=%d retries=%d aggregated=%d",
+            tonumber(t.auctionRecords) or 0, tonumber(t.itemDataQueued) or 0,
+            tonumber(t.itemDataRequests) or 0, tonumber(t.itemDataSuccess) or 0,
+            tonumber(t.itemDataFailure) or 0, tonumber(t.retryAttempts) or 0,
+            tonumber(t.aggregatedRecords) or 0))
+        for i = 1, #(t.samples or {}) do
+            local row = t.samples[i]
+            MM.Print(string.format("Target row index=%s name=%s hasAllInfo=%s parsedID=%s itemLevel=%s needsLoad=%s parseError=%s link=%s",
+                tostring(row.index), tostring(row.name), tostring(row.hasAllInfo),
+                tostring(row.parsedItemID), tostring(row.itemLevel), tostring(row.needsItemData),
+                tostring(row.parseError), tostring(row.itemLink)))
+        end
+    end
 end
 
 Replicate.frame = CreateFrame("Frame")
