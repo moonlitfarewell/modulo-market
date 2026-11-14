@@ -371,6 +371,21 @@ GetItemName = function(item)
 end
 
 local itemQualityCache = {}
+
+-- WoW |c markup requires eight hex digits: alpha + RGB. Keep this helper's
+-- return contract canonical so every caller can safely prepend only "|c".
+local function NormalizeItemQualityHex(value)
+    if type(value) ~= "string" then return "ffffffff" end
+    local hex = value:match("|c(%x%x%x%x%x%x%x%x)")
+        or value:match("^#?(%x%x%x%x%x%x%x%x)$")
+        or value:match("|cff(%x%x%x%x%x%x)")
+        or value:match("^#?(%x%x%x%x%x%x)$")
+    if not hex then return "ffffffff" end
+    hex = hex:lower()
+    if #hex == 6 then return "ff" .. hex end
+    return hex
+end
+
 local function GetItemQualityHex(itemID)
     itemID = tonumber(itemID)
     if not itemID then return "ffffffff" end
@@ -385,10 +400,9 @@ local function GetItemQualityHex(itemID)
     local colors = _G.ITEM_QUALITY_COLORS
     local color = quality ~= nil and type(colors) == "table" and colors[quality] or nil
     if type(color) == "table" and type(color.hex) == "string" then
-        local hex = color.hex:match("|cff(%x%x%x%x%x%x)")
-            or color.hex:match("^#?(%x%x%x%x%x%x)$")
-        if hex then
-            itemQualityCache[itemID] = hex:lower()
+        local hex = NormalizeItemQualityHex(color.hex)
+        if hex ~= "ffffffff" or color.hex:lower():find("ffffffff", 1, true) then
+            itemQualityCache[itemID] = hex
             return itemQualityCache[itemID]
         end
     end
@@ -401,7 +415,8 @@ local function GetItemQualityHex(itemID)
             local function channel(value)
                 return math.max(0, math.min(255, math.floor((tonumber(value) or 0) * 255 + 0.5)))
             end
-            local hex = string.format("%02x%02x%02x", channel(r), channel(g), channel(b))
+            local rgb = string.format("%02x%02x%02x", channel(r), channel(g), channel(b))
+            local hex = NormalizeItemQualityHex(rgb)
             itemQualityCache[itemID] = hex
             return hex
         end
@@ -412,6 +427,7 @@ end
 
 local function GetItemDisplayName(item)
     local itemID = type(item) == "table" and tonumber(item.iconItemID or item.outputItemID or item.itemID) or nil
+    -- GetItemQualityHex always returns alpha+RGB (8 digits), as required by WoW.
     return "|c" .. GetItemQualityHex(itemID) .. GetItemName(item) .. "|r"
 end
 UI.GetItemDisplayName = GetItemDisplayName
