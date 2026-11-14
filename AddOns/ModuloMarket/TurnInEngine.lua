@@ -4,6 +4,19 @@ if not MM then return end
 local Engine = {}
 MM.TurnInEngine = Engine
 
+-- Favor and reputation are mutually exclusive in the compact reward cell.
+-- Prefer Favor when reported; otherwise show reputation, preserving known zero.
+function Engine.FormatReward(item, compact)
+    if type(item) ~= "table" then return "?" end
+    if item.rewardFavor ~= nil then
+        return tostring(item.rewardFavor) .. (compact and " F" or " Favor")
+    end
+    if item.reputation ~= nil then
+        return tostring(item.reputation) .. (compact and " Rep" or " Reputation")
+    end
+    return "?"
+end
+
 local function NormalizeName(value)
     value = string.lower(tostring(value or ""))
     value = value:gsub("['’]", "")
@@ -89,7 +102,7 @@ function Engine.BuildRows(catalog, catalogByID)
             netCostPerFavorCopper = net and tonumber(crate.rewardFavor) and crate.rewardFavor > 0
                 and (net / crate.rewardFavor) or nil,
             completionStatus = gross and "complete" or (crateCost and "materials-incomplete" or "crate-price-incomplete"),
-            rewardStatus = crate.rewardFavor ~= nil and "reported" or "unknown",
+            rewardStatus = (crate.rewardFavor ~= nil or crate.reputation ~= nil) and "reported" or "unknown",
             variants = {},
         }
         local seen = {}

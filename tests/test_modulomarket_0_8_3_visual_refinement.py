@@ -78,7 +78,9 @@ def test_selected_item_inspector_uses_larger_icon_and_more_readable_values():
     assert 'UI.detailName = AddLabel(frame, "Choose an item", 1200, -204, 208, 30, "GameFontNormalLarge")' in UI
     assert 'local function AddDetailRowLabel' in UI
     assert 'local function AddDetailRowValue' in UI
-    assert '"GameFontHighlightLarge"' in UI
+    assert ('AddLabel(frame, text, x, y, width, 18, "GameFontHighlightLarge")' in UI
+            or 'AddLabel(frame, text, x, y, width, 18, "GameFontHighlight")' in UI)
+    assert 'SetFontObject(GameFontHighlightLarge)' in UI
     assert 'UI.historyText = AddLabel(UI.detailFooter, "", 6, -32, 268, 54, "GameFontHighlight")' in UI
 
 

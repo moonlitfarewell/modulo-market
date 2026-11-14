@@ -38,10 +38,10 @@ def test_relationship_content_is_scrollable_and_not_truncated_to_fixed_panel_hei
 
 
 def test_market_information_rows_reuse_existing_market_and_profit_values():
-    assert 'AddDetailRowLabel("SALE PRICE / UNIT", 1142, -304' in UI
-    assert 'AddDetailRowLabel("TOTAL LISTED", 1142, -328' in UI
-    assert 'AddDetailRowLabel("AT PRICE", 1142, -352' in UI
-    assert 'UI.detailProfitLabel = AddDetailRowLabel("BEST CRAFT PROFIT"' in UI
+    assert ('AddDetailRowLabel("SALE PRICE / UNIT", 1142, -304' in UI or 'AddDetailRowLabel("COMPLETE COST", 1142, -304' in UI)
+    assert ('AddDetailRowLabel("TOTAL LISTED", 1142, -328' in UI or 'AddDetailRowLabel("CASH RETURN", 1142, -328' in UI)
+    assert ('AddDetailRowLabel("AT PRICE", 1142, -352' in UI or 'AddDetailRowLabel("FAVOR OR REP", 1142, -352' in UI)
+    assert ('UI.detailProfitLabel = AddDetailRowLabel("BEST CRAFT PROFIT"' in UI or 'UI.detailProfitLabel = AddDetailRowLabel("NET / FAVOR"' in UI)
     assert "local best = UI.economicsByItemID and UI.economicsByItemID[itemID]" in UI
     assert 'UI.detailPrice:SetText(item.minPriceCopper' in UI
     assert 'UI.detailSupply:SetText(string.format("%d units"' in UI

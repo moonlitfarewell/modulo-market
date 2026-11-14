@@ -1,3 +1,7 @@
+# Modulo Market 0.10.2
+
+**Current player milestone:** Turn-In reward display is mutually exclusive: each crate shows its reported Favor reward, otherwise its reported reputation reward, otherwise `?`; a known zero remains visible. The selected Turn-In inspector uses compact metric labels, body-sized values and a wider value column so long metrics and currency values fit without relying on post-creation font resets. Pricing, sorting semantics, unknown handling and non-Turn-In tab styling are preserved. Offline tests and runtime limitations are recorded in `MODULOMARKET-RUNTIME-AUDIT-0.10.2.md`. Forever runtime acceptance remains NOT RUN.
+
 # Modulo Market 0.10.1
 
 **Current player milestone:** Turn-Ins UX refinement. Favor and Reputation share one compact Reward column while retaining both values and explicit unknowns; the cheapest fully priceable material option is marked BEST VALUE in the selected inspector and completion-cost hover tooltip; Turn-In Notes summarize the selected hand-in outcome; Turn-In Economics values use normal window text sizing. Existing pricing calculations and market-depth fail-closed behaviour are unchanged. Offline tests are recorded in the 0.10.1 audit; Forever runtime acceptance remains NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.10.1.md` and `docs/MODULOMARKET-TURN-INS-0.10.1.md`.

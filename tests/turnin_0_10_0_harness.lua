@@ -2,6 +2,12 @@ _G.ModuloMarket = {}
 assert(loadfile(arg[1] .. "/AddOns/ModuloMarket/TurnInData.lua"))()
 assert(loadfile(arg[1] .. "/AddOns/ModuloMarket/TurnInEngine.lua"))()
 local data = ModuloMarket.TurnInData
+local formatReward = ModuloMarket.TurnInEngine.FormatReward
+assert(formatReward({rewardFavor=20, reputation=0}, true) == "20 F", "Favor display must not append zero reputation")
+assert(formatReward({rewardFavor=nil, reputation=125}, true) == "125 Rep", "reputation-only reward display")
+assert(formatReward({rewardFavor=nil, reputation=0}, true) == "0 Rep", "known zero reputation remains explicit")
+assert(formatReward({rewardFavor=nil, reputation=nil}, true) == "?", "unknown reward remains unknown")
+assert(formatReward({rewardFavor=20, reputation=0}, false) == "20 Favor", "inspector uses exclusive full reward label")
 assert(#data.crates == 30, "expected all 30 labelled crates")
 local countOptions, names, ids = 0, {}, {}
 local catalog, byID = {}, {}
@@ -42,6 +48,7 @@ for id, item in pairs(byID) do if id ~= rows[1].itemID then noCrate[id] = item e
 local noCrateRows = ModuloMarket.TurnInEngine.BuildRows(catalog, noCrate)
 assert(noCrateRows[1].completionCostCopper == nil, "crate AH price is mandatory")
 assert(data.firstTurnInBonus.favor == 50 and data.firstTurnInBonus.reputation == 2000)
+print("PASS exclusive Favor / reputation reward formatting")
 print("PASS 30 crate definitions / unique IDs")
 print("PASS 96 one-of bundle alternatives")
 print("PASS crate + material completion cost")

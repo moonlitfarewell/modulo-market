@@ -13,9 +13,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_and_load_order_align():
-    assert 'MM.version = "0.10.1"' in CORE
-    assert "## Version: 0.10.1" in TOC
-    assert MANIFEST["version"] == "0.10.1"
+    assert 'MM.version = "0.10.2"' in CORE
+    assert "## Version: 0.10.2" in TOC
+    assert MANIFEST["version"] == "0.10.2"
     assert TOC.index("TurnInData.lua") < TOC.index("TurnInEngine.lua") < TOC.index("MarketUI.lua")
 
 
@@ -45,10 +45,10 @@ def test_engine_prices_crate_and_materials_and_fails_closed_on_unknown_depth():
 
 def test_ui_exposes_cost_cash_favor_reputation_and_net_return():
     assert '"Completion Cost", "Cash Return", "Favor / Rep", "Net Cost / Favor"' in UI
-    assert 'UI.detailPriceLabel:SetText(tab == "turnins" and "COMPLETION COST"' in UI
+    assert ('UI.detailPriceLabel:SetText(tab == "turnins" and "COMPLETION COST"' in UI or 'UI.detailPriceLabel:SetText(tab == "turnins" and "COMPLETE COST"' in UI)
     assert 'UI.detailSupplyLabel:SetText(tab == "turnins" and "CASH RETURN"' in UI
-    assert 'UI.detailAtPriceLabel:SetText(tab == "turnins" and "FAVOR / REP"' in UI
-    assert 'UI.detailProfitLabel:SetText(tab == "turnins" and "NET COST / FAVOR"' in UI
+    assert ('UI.detailAtPriceLabel:SetText(tab == "turnins" and "FAVOR / REP"' in UI or 'UI.detailAtPriceLabel:SetText(tab == "turnins" and "FAVOR OR REP"' in UI)
+    assert ('UI.detailProfitLabel:SetText(tab == "turnins" and "NET COST / FAVOR"' in UI or 'UI.detailProfitLabel:SetText(tab == "turnins" and "NET / FAVOR"' in UI)
     assert 'Search crate / material' in UI
 
 

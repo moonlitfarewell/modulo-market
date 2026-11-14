@@ -94,6 +94,8 @@ local function FormatMoney(copper)
     return sign .. table.concat(parts, " ")
 end
 
+local FormatTurnInReward = MM.TurnInEngine.FormatReward
+
 local function NormalizeSearchText(value)
     value = string.lower(tostring(value or ""))
     value = value:gsub("['’]", "")
@@ -1853,8 +1855,7 @@ function UI.RenderRows()
                 button.name:SetText(GetItemDisplayName(item))
                 button.price:SetText(item.completionCostCopper and FormatMoney(item.completionCostCopper) or "Incomplete")
                 button.depth:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper) or "Unknown")
-                button.atPrice:SetText((item.rewardFavor ~= nil and tostring(item.rewardFavor) or "?")
-                    .. " F · " .. (item.reputation ~= nil and tostring(item.reputation) or "?") .. " Rep")
+                button.atPrice:SetText(FormatTurnInReward(item, true))
                 button.total:SetText("")
                 profitText = item.netCostPerFavorCopper ~= nil
                     and FormatMoney(item.netCostPerFavorCopper) or "—"
@@ -2471,11 +2472,10 @@ SelectItem = function(item)
         UI.detailBadges:SetText(string.upper(tostring(item.tier)) .. "  ·  " .. string.upper(tostring(item.category)))
         UI.detailVariants:SetText(tostring(#(item.bundleAlternatives or {})) .. " accepted bundles")
         UI.marketInfoHeading:SetText("Turn-In Economics")
-        UI.detailProfitLabel:SetText("NET COST / FAVOR")
+        UI.detailProfitLabel:SetText("NET / FAVOR")
         UI.detailPrice:SetText(item.completionCostCopper and FormatMoney(item.completionCostCopper) or "Incomplete")
         UI.detailSupply:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper) or "Unknown")
-        UI.detailAtPrice:SetText((item.rewardFavor ~= nil and tostring(item.rewardFavor) or "?")
-            .. " Favor · " .. (item.reputation ~= nil and tostring(item.reputation) or "?") .. " Rep")
+        UI.detailAtPrice:SetText(FormatTurnInReward(item, false))
         UI.detailProfit:SetText(item.netCostPerFavorCopper ~= nil and FormatMoney(item.netCostPerFavorCopper) or "—")
         if UI.detailPrice.SetFontObject then UI.detailPrice:SetFontObject(GameFontHighlight) end
         if UI.detailSupply.SetFontObject then UI.detailSupply:SetFontObject(GameFontHighlight) end
@@ -3150,11 +3150,11 @@ local function SetTab(tab)
     if UI.relationshipHeading then
         UI.relationshipHeading:SetText(tab == "turnins" and "Required Bundles" or (craftTab and "Recipe Details" or "Relationships"))
     end
-    if UI.detailPriceLabel then UI.detailPriceLabel:SetText(tab == "turnins" and "COMPLETION COST" or "SALE PRICE / UNIT") end
+    if UI.detailPriceLabel then UI.detailPriceLabel:SetText(tab == "turnins" and "COMPLETE COST" or "SALE PRICE / UNIT") end
     if UI.detailSupplyLabel then UI.detailSupplyLabel:SetText(tab == "turnins" and "CASH RETURN" or "TOTAL LISTED") end
-    if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(tab == "turnins" and "FAVOR / REP" or "AT PRICE") end
+    if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(tab == "turnins" and "FAVOR OR REP" or "AT PRICE") end
     if UI.detailProfitLabel then
-        UI.detailProfitLabel:SetText(tab == "turnins" and "NET COST / FAVOR" or (craftTab and "PROFIT / CRAFT" or "BEST CRAFT PROFIT"))
+        UI.detailProfitLabel:SetText(tab == "turnins" and "NET / FAVOR" or (craftTab and "PROFIT / CRAFT" or "BEST CRAFT PROFIT"))
     end
     if UI.detailProfit then UI.detailProfit:SetText("—") end
     SetDetailEconomics(tab == "turnins"
@@ -3964,24 +3964,22 @@ local function CreateUI()
     if UI.detailVariants.SetNonSpaceWrap then UI.detailVariants:SetNonSpaceWrap(true) end
 
     local function AddDetailRowLabel(text, x, y, width)
-        local label = AddLabel(frame, text, x, y, width, 18, "GameFontNormal")
-        IncreaseFontSize(label, 1)
-        return label
+        -- Compact labels keep the full metric name visible beside its value.
+        return AddLabel(frame, text, x, y, width, 18, "GameFontNormalSmall")
     end
     local function AddDetailRowValue(text, x, y, width)
-        local value = AddLabel(frame, text, x, y, width, 18, "GameFontHighlightLarge")
-        IncreaseFontSize(value, 1)
-        return value
+        -- Start at body size; non-Turn-In tabs explicitly opt back into large text.
+        return AddLabel(frame, text, x, y, width, 18, "GameFontHighlight")
     end
     UI.marketInfoHeading = AddLabel(frame, "Market Information", 1142, -278, 268, 22, "GameFontNormalLarge")
-    UI.detailPriceLabel = AddDetailRowLabel("SALE PRICE / UNIT", 1142, -304, 128)
-    UI.detailPrice = AddDetailRowValue("—", 1274, -304, 132)
-    UI.detailSupplyLabel = AddDetailRowLabel("TOTAL LISTED", 1142, -328, 128)
-    UI.detailSupply = AddDetailRowValue("—", 1274, -328, 132)
-    UI.detailAtPriceLabel = AddDetailRowLabel("AT PRICE", 1142, -352, 128)
-    UI.detailAtPrice = AddDetailRowValue("—", 1274, -352, 132)
-    UI.detailProfitLabel = AddDetailRowLabel("BEST CRAFT PROFIT", 1142, -376, 128)
-    UI.detailProfit = AddDetailRowValue("—", 1274, -376, 132)
+    UI.detailPriceLabel = AddDetailRowLabel("COMPLETE COST", 1142, -304, 102)
+    UI.detailPrice = AddDetailRowValue("—", 1248, -304, 160)
+    UI.detailSupplyLabel = AddDetailRowLabel("CASH RETURN", 1142, -328, 102)
+    UI.detailSupply = AddDetailRowValue("—", 1248, -328, 160)
+    UI.detailAtPriceLabel = AddDetailRowLabel("FAVOR OR REP", 1142, -352, 102)
+    UI.detailAtPrice = AddDetailRowValue("—", 1248, -352, 160)
+    UI.detailProfitLabel = AddDetailRowLabel("NET / FAVOR", 1142, -376, 102)
+    UI.detailProfit = AddDetailRowValue("—", 1248, -376, 160)
 
     UI.relationshipHeading = AddLabel(frame, "Relationships", 1142, -430, 268, 22, "GameFontNormalLarge")
     IncreaseFontSize(UI.relationshipHeading, 1)
