@@ -114,6 +114,8 @@ _G.ModuloMarket = {
         SetCraftFilter = function(key, value) state.craftFilters[key] = value end,
         SetEconomicsFilter = function(key, value) state.economicsFilters[key] = value end,
         SetTurnInFilters = function(tier, category) state.turnInTierFilter=tier; state.turnInCategoryFilter=category end,
+        GetTurnInCategoryOptions = function() return {{text="All categories / professions",value="all"}} end,
+        FillAuctionHouseSearch = function() return false end,
         SelectItem = function(value) selected = value; state.selected = value end,
         SortBy = function(key) sortKey = key end,
         TriggerFullScan = function() scanTriggered = true end,

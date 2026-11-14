@@ -15,10 +15,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0_11_3_release_metadata_aligns():
-    assert 'MM.version = "0.11.4"' in CORE
-    assert "## Version: 0.11.4" in TOC
-    assert 'version = "0.11.4"' in DATA
-    assert MANIFEST["version"] == "0.11.4"
+    assert 'MM.version = "0.11.5"' in CORE
+    assert "## Version: 0.11.5" in TOC
+    assert 'version = "0.11.5"' in DATA
+    assert MANIFEST["version"] == "0.11.5"
 
 
 def test_single_scan_button_progresses_through_prepare_confirm_and_cancel():
@@ -52,7 +52,7 @@ def test_modern_search_checkbox_and_dropdown_use_custom_affordances():
 
 def test_history_is_limited_to_three_days_and_modern_chart_is_bounded():
     assert 'now - 3 * 86400' in MARKET
-    assert '(cutoff == 0 or stamp >= cutoff)' in MARKET
+    assert 'if cutoff and stamp > 0 and stamp >= cutoff' in MARKET
     assert 'math.min(18, (tonumber(source.height) or 4) * 0.22)' in MODERN
     assert 'label:SetPoint("BOTTOM", bar, "TOP", 0, 2)' in MODERN
 

@@ -1,0 +1,96 @@
+from pathlib import Path
+import json
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parents[1]
+ADDON = ROOT / "AddOns/ModuloMarket"
+CORE = (ADDON / "Core.lua").read_text(encoding="utf-8")
+TOC = (ADDON / "ModuloMarket.toc").read_text(encoding="utf-8")
+MARKET = (ADDON / "MarketUI.lua").read_text(encoding="utf-8")
+MODERN = (ADDON / "ModernUI.lua").read_text(encoding="utf-8")
+TURNINS = (ADDON / "TurnInEngine.lua").read_text(encoding="utf-8")
+ENGINE = (ADDON / "TurnInEngine.lua").read_text(encoding="utf-8")
+MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
+
+
+def test_release_versions_are_0_11_5():
+    assert 'MM.version = "0.11.5"' in CORE
+    assert "## Version: 0.11.5" in TOC
+    assert MANIFEST["version"] == "0.11.5"
+
+
+def test_history_is_a_fail_closed_rolling_72_hour_window():
+    assert "local cutoff = now > 0 and (now - 3 * 86400) or nil" in MARKET
+    assert "if cutoff and stamp > 0 and stamp >= cutoff and found and tonumber(found.price) then" in MARKET
+    assert "if #points > 4 then table.remove(points, 1) end" in MARKET
+
+
+def test_turnin_crates_are_explicitly_typed_and_writs_keep_their_type():
+    assert 'turnIn = true, turnInType = "crate"' in ENGINE
+    assert 'turnIn = true, turnInType = "writ"' in ENGINE
+    assert 'item.turnInType ~= build.turnInTypeFilter' in MARKET
+
+
+def test_category_filter_options_follow_turnin_type_and_reset_invalid_selection():
+    assert "GetTurnInCategoryOptions(UI.turnInTypeFilter)" in MARKET
+    assert "function UI.GetTurnInCategoryOptions()" in MARKET
+    assert "TURNIN_CRATE_CATEGORIES" in MARKET and "TURNIN_WRIT_PROFESSIONS" in MARKET
+    assert "validCategory and nextCategory or \"all\"" in MARKET
+    assert "UI.GetTurnInCategoryOptions()" in MODERN
+
+
+def test_turnin_column_names_and_reward_abbreviations_are_consistent():
+    expected = ["Turn-In Item", "Cost", "Gross", "Rep / Favor", "Net / Reward"]
+    for label in expected:
+        assert label in MARKET
+    for label in ["TURN-IN ITEM", "COST", "GROSS", "REP / FAVOR", "NET / REWARD"]:
+        assert label in MODERN
+    assert 'compact and " Fav" or " Favor"' in ENGINE
+    assert 'compact and " Rep" or " Reputation"' in ENGINE
+    assert "REPORTED REP*" not in MARKET + MODERN
+    assert "Rep*" not in MARKET + MODERN
+
+
+def test_writ_inspector_uses_reputation_without_reported_prefix_or_asterisk():
+    assert '"REPUTATION"' in MARKET
+    assert '"Daily Writ · " .. tostring(item.reputation or "?")' in MARKET
+    assert '" Reputation. Variable Coin Pouch' in MARKET
+    assert "reported Rep*" not in MARKET
+
+
+def test_modern_title_is_centered_without_logo_and_redundant_toolbar_close():
+    assert 'Label(frame, "MODULO MARKET", 0, -10, 1536, 30' in MODERN
+    assert "title:SetJustifyH(\"CENTER\")" in MODERN
+    assert 'Label(frame, "M"' not in MODERN
+    assert 'FlatButton(frame, "Close"' not in MODERN
+    assert "Modern.closeAction" not in MODERN
+    # The top-right X remains as the normal window chrome; Escape and /mm remain available.
+    assert "Modern.Hide()" in MODERN
+
+
+def test_tab_geometry_is_fixed_and_compact():
+    assert "local tabX = 18 + math.floor((1424 - (#tabSpecs * 178)) / 2)" in MARKET
+    assert 'button:SetSize(width, 28)' in MARKET
+    assert "Modern.nav:SetSize(1472, 40)" in MODERN
+    assert "button:SetSize(tabWidth, 38)" in MODERN
+
+
+def test_shift_click_fills_native_auction_search_without_chat_link_hook():
+    assert "function UI.FillAuctionHouseSearch(item)" in MARKET
+    assert "_G.AuctionFrame" in MARKET and "_G.BrowseName" in MARKET
+    assert "browseName:SetText(name)" in MARKET
+    assert "browseName:SetFocus()" in MARKET
+    assert "UI.FillAuctionHouseSearch(selected)" in MARKET
+    assert "UI.FillAuctionHouseSearch(self.item)" in MODERN
+    assert "ChatEdit_InsertLink(" not in MARKET
+
+
+def test_refresh_icon_is_a_custom_white_rgba_tga():
+    with Image.open(ADDON / "Textures/refresh.tga") as im:
+        assert im.format == "TGA" and im.mode == "RGBA" and im.size == (64, 64)
+        alpha = im.getchannel("A")
+        assert alpha.getbbox() is not None
+        colors = im.getcolors(64 * 64)
+        opaque = [color for _, color in (colors or []) if color[3] > 200]
+        assert sum(count for count, color in (colors or []) if color[3] > 200) > 250
+        assert opaque and all(min(color[:3]) >= 245 for color in opaque)

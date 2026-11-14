@@ -17,10 +17,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_and_writ_data_are_in_manifest():
-    assert 'MM.version = "0.11.4"' in CORE
-    assert "## Version: 0.11.4" in TOC
-    assert 'version = "0.11.4"' in WRITS
-    assert MANIFEST["version"] == "0.11.4"
+    assert 'MM.version = "0.11.5"' in CORE
+    assert "## Version: 0.11.5" in TOC
+    assert 'version = "0.11.5"' in WRITS
+    assert MANIFEST["version"] == "0.11.5"
     assert "WritData.lua" in TOC
     assert "AddOns/ModuloMarket/WritData.lua" in MANIFEST["files"]
 
@@ -80,7 +80,7 @@ def test_writ_economics_include_writ_and_one_buy_or_craft_route_without_guessing
     assert "writPriceCopper" in TURNINS
     assert "netCostPerReputationCopper" in TURNINS
     assert 'cashReturnCopper = nil, cashReturnText = "Variable pouch"' in TURNINS
-    assert 'item.turnInType == "writ" and text ~= "?" then return text .. "*"' in MARKET
+    assert 'return text .. "*"' not in MARKET
     assert "PriceFor(marketItem, quantity)" in TURNINS
     assert "Variable reagent quantity is not estimated" in TURNINS
 
@@ -98,7 +98,7 @@ def test_writ_turnin_lua_harness():
         [lua, str(ROOT / "tests/turnin_writs_0_11_4_harness.lua"), str(ADDON)],
         check=True, capture_output=True, text=True,
     )
-    assert "11 writ turn-in checks passed" in result.stdout
+    assert "11 Writ checks + explicit crate-type check passed" in result.stdout
 
 
 def test_writ_recipe_names_resolve_against_the_bundled_foreverdb_baseline():

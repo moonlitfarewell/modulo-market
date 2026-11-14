@@ -11,14 +11,14 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_align():
-    assert 'MM.version = "0.11.4"' in CORE
-    assert "## Version: 0.11.4" in TOC
-    assert 'version = "0.11.4"' in DATA
-    assert MANIFEST["version"] == "0.11.4"
+    assert 'MM.version = "0.11.5"' in CORE
+    assert "## Version: 0.11.5" in TOC
+    assert 'version = "0.11.5"' in DATA
+    assert MANIFEST["version"] == "0.11.5"
 
 
 def test_turnins_uses_five_columns_and_combined_reward_sort():
-    assert '"Favor / Rep"' in UI
+    assert '"Turn-In Item", "Cost", "Gross", "Rep / Favor", "Net / Reward"' in UI
     assert '"name", "completion", "price", "reward", "net"' in UI
     assert 'elseif key == "reward" then' in UI
     assert 'button.total:SetText("")' in UI
@@ -28,7 +28,7 @@ def test_turnins_uses_five_columns_and_combined_reward_sort():
 
 def test_reward_display_is_mutually_exclusive_and_preserves_zero_unknown():
     assert 'function Engine.FormatReward(item, compact)' in ENGINE
-    assert 'return tostring(item.rewardFavor) .. (compact and " F" or " Favor")' in ENGINE
+    assert 'return tostring(item.rewardFavor) .. (compact and " Fav" or " Favor")' in ENGINE
     assert 'return tostring(item.reputation) .. (compact and " Rep" or " Reputation")' in ENGINE
     assert 'return "?"' in ENGINE
     assert 'button.atPrice:SetText(FormatTurnInReward(item, true))' in UI

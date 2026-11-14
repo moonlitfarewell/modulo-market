@@ -107,7 +107,6 @@ end
 
 local function FormatTurnInReward(item, compact)
     local text = MM.TurnInEngine.FormatReward(item, compact)
-    if type(item) == "table" and item.turnInType == "writ" and text ~= "?" then return text .. "*" end
     return text
 end
 
@@ -2229,12 +2228,12 @@ function UI.RenderHistory()
     local history = MM.db and MM.db.marketHistory or {}
     local points = {}
     local now = type(_G.time) == "function" and _G.time() or 0
-    local cutoff = now > 0 and (now - 3 * 86400) or 0
+    local cutoff = now > 0 and (now - 3 * 86400) or nil
     for i = 1, #history do
         local snapshot = history[i]
         local stamp = tonumber(snapshot.timestamp) or 0
         local found = snapshot.items and snapshot.items[tonumber(item.itemID)]
-        if found and tonumber(found.price) and (cutoff == 0 or stamp >= cutoff) then
+        if cutoff and stamp > 0 and stamp >= cutoff and found and tonumber(found.price) then
             points[#points + 1] = {
                 price = tonumber(found.price),
                 quantity = tonumber(found.quantity) or 0,
@@ -2676,9 +2675,9 @@ SelectItem = function(item)
         UI.detailBadges:SetText(string.upper(tostring(item.tier)) .. "  ·  " .. string.upper(tostring(item.category)))
         UI.detailVariants:SetText(tostring(#(item.bundleAlternatives or {})) .. (item.turnInType == "writ" and " buy / craft routes" or " accepted bundles"))
         UI.marketInfoHeading:SetText("Turn-In Economics")
-        UI.detailProfitLabel:SetText(item.turnInType == "writ" and "COST / REP*" or "NET / FAVOR")
+        UI.detailProfitLabel:SetText(item.turnInType == "writ" and "COST / REP" or "NET / FAVOR")
         if UI.detailSupplyLabel then UI.detailSupplyLabel:SetText(item.turnInType == "writ" and "COIN POUCH" or "CASH RETURN") end
-        if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(item.turnInType == "writ" and "REPORTED REP*" or "FAVOR / REP") end
+        if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(item.turnInType == "writ" and "REPUTATION" or "FAVOR") end
         UI.detailPrice:SetText(item.completionCostCopper and FormatMoney(item.completionCostCopper) or "Incomplete")
         UI.detailSupply:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper)
             or (item.cashReturnText or "Unknown"))
@@ -2697,11 +2696,8 @@ SelectItem = function(item)
         if UI.historyText then
             local outcome
             if item.turnInType == "writ" then
-                local rewardNote = item.tier == "Expert"
-                    and "Expert reports conflict; verify quest text."
-                    or "Community-reported amount; verify quest text."
                 outcome = "Daily Writ · " .. tostring(item.reputation or "?")
-                    .. " reported Rep*. " .. rewardNote .. " Variable Coin Pouch; not deducted from Cost / Rep*."
+                    .. " Reputation. Variable Coin Pouch; not deducted from Cost / Rep."
             elseif item.cashReturnCopper ~= nil and item.rewardFavor ~= nil then
                 outcome = "Hand in for " .. FormatMoney(item.cashReturnCopper) .. " cash + " .. tostring(item.rewardFavor) .. " Merchant's Favor."
             elseif item.cashReturnCopper ~= nil then
@@ -3155,9 +3151,7 @@ local function SetTab(tab)
     elseif tab == "turnins" then
         local mode = UI.turnInTypeFilter or "all"
         local nameLabel = mode == "writ" and "Craftsman's Writ" or (mode == "crate" and "Waylaid Crate" or "Turn-In")
-        local netLabel = mode == "writ" and "Cost / Rep*" or (mode == "crate" and "Net / Favor" or "Net / Reward")
-        -- The original crate header sequence was: "Completion Cost", "Cash Return", "Favor / Rep", "Net Cost / Favor".
-        labels = { nameLabel, "Completion Cost", "Cash Return", "Favor / Rep", netLabel }
+        labels = { "Turn-In Item", "Cost", "Gross", "Rep / Favor", "Net / Reward" }
         keys = { "name", "completion", "price", "reward", "net" }
     elseif tab == "history" then
         labels = { "Item", "Cheapest", "Price Change", "Latest Units", "Total", "Best Craft Profit" }
@@ -3361,9 +3355,9 @@ local function SetTab(tab)
     end
     if UI.detailPriceLabel then UI.detailPriceLabel:SetText(tab == "turnins" and "COMPLETE COST" or "SALE PRICE / UNIT") end
     if UI.detailSupplyLabel then UI.detailSupplyLabel:SetText(tab == "turnins" and "CASH RETURN" or "TOTAL LISTED") end
-    if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(tab == "turnins" and "FAVOR OR REP" or "AT PRICE") end
+    if UI.detailAtPriceLabel then UI.detailAtPriceLabel:SetText(tab == "turnins" and "REP / FAVOR" or "AT PRICE") end
     if UI.detailProfitLabel then
-        UI.detailProfitLabel:SetText(tab == "turnins" and "NET / FAVOR" or (craftTab and "PROFIT / CRAFT" or "BEST CRAFT PROFIT"))
+        UI.detailProfitLabel:SetText(tab == "turnins" and "NET / REWARD" or (craftTab and "PROFIT / CRAFT" or "BEST CRAFT PROFIT"))
     end
     if UI.detailProfit then UI.detailProfit:SetText("—") end
     SetDetailEconomics(tab == "turnins"
@@ -3409,6 +3403,55 @@ local function ApplyBackgroundOpacity(frame, alpha)
     if frame and type(frame.SetAlpha) == "function" then frame:SetAlpha(alpha) end
     if UI.opacityValue then UI.opacityValue:SetText(string.format("%d%%", math.floor(alpha * 100 + 0.5))) end
     return alpha
+end
+
+local TURNIN_CRATE_CATEGORIES = { "Herbs", "Ore", "Textiles", "Curiosities", "Fabrics", "Ingots", "Parts" }
+local TURNIN_WRIT_PROFESSIONS = { "Alchemy", "Blacksmithing", "Engineering", "Leatherworking", "Tailoring" }
+
+local function GetTurnInCategoryOptions(mode)
+    mode = mode or UI.turnInTypeFilter or "all"
+    local options = { { text = mode == "writ" and "All professions"
+        or (mode == "crate" and "All categories" or "All categories / professions"), value = "all" } }
+    if mode ~= "writ" then
+        for _, value in ipairs(TURNIN_CRATE_CATEGORIES) do
+            options[#options + 1] = { text = value, value = value }
+        end
+    end
+    if mode ~= "crate" then
+        for _, value in ipairs(TURNIN_WRIT_PROFESSIONS) do
+            options[#options + 1] = { text = value, value = value }
+        end
+    end
+    return options
+end
+
+function UI.GetTurnInCategoryOptions()
+    return GetTurnInCategoryOptions(UI.turnInTypeFilter or "all")
+end
+
+-- Shift-click on a market row fills the native Classic Auction House browse
+-- field. It deliberately does not call ChatEdit_InsertLink or auto-submit a
+-- search, so normal chat item linking and player confirmation remain intact.
+function UI.FillAuctionHouseSearch(item)
+    local name = item and GetItemDisplayName(item) or nil
+    if type(name) ~= "string" or name == "" then return false end
+    local auctionFrame = _G.AuctionFrame
+    if not auctionFrame or type(auctionFrame.IsShown) ~= "function" or not auctionFrame:IsShown() then
+        return false
+    end
+    local browseName = _G.BrowseName
+    if not browseName then return false end
+    if type(browseName.IsShown) == "function" and not browseName:IsShown() then
+        local browseTab = _G.AuctionFrameTab1
+        if browseTab and type(browseTab.Click) == "function" then
+            pcall(browseTab.Click, browseTab)
+        end
+    end
+    browseName:SetText(name)
+    if browseName.SetFocus then browseName:SetFocus() end
+    if browseName.HighlightText then browseName:HighlightText() end
+    if SetStatus then SetStatus("Auction House search filled: " .. name .. " · press Search to run it") end
+    return true
 end
 
 local function CreateUI()
@@ -3560,18 +3603,18 @@ local function CreateUI()
     AddBevelBorder(frame, 18, -112, 1424, 34, "panel", "BORDER")
     UI.tabs = {}
     local tabSpecs = {
-        { "market", "All Items", 194 },
-        { "economics", "Economics", 194 },
-        { "crafts", "Crafts", 194 },
-        { "materials", "Materials", 194 },
-        { "turnins", "Turn-Ins", 194 },
-        { "history", "History", 194 },
+        { "market", "All Items", 178 },
+        { "economics", "Economics", 178 },
+        { "crafts", "Crafts", 178 },
+        { "materials", "Materials", 178 },
+        { "turnins", "Turn-Ins", 178 },
+        { "history", "History", 178 },
     }
-    local tabX = 22
+    local tabX = 18 + math.floor((1424 - (#tabSpecs * 178)) / 2)
     for _, spec in ipairs(tabSpecs) do
         local key, label, width = spec[1], spec[2], spec[3]
         local button = CreateFrame("Button", nil, frame)
-        button:SetSize(width, 30)
+        button:SetSize(width, 28)
         button:SetPoint("TOPLEFT", frame, "TOPLEFT", tabX, -114)
         button.background = button:CreateTexture(nil, "BACKGROUND")
         button.background:SetAllPoints(button)
@@ -3598,7 +3641,7 @@ local function CreateUI()
         button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         button.label:SetPoint("CENTER")
         button.label:SetText(label)
-        IncreaseFontSize(button.label, 1)
+
         SetThemeFontColor(button.label, "textAccent", {0.96, 0.89, 0.72, 1})
         button.tabKey = key
         button:SetScript("OnClick", function() SetTab(key) end)
@@ -3949,15 +3992,7 @@ local function CreateUI()
         function(value) UI.SetTurnInFilters(value, UI.turnInCategoryFilter, UI.turnInTypeFilter) end)
     UI.turnInCategoryLabel = AddLabel(frame, "Category / profession", 30, -400, 230, 18, "GameFontNormal")
     UI.turnInCategoryDropdown = CreateDropdown(frame, 230, 32, -432,
-        function() return {
-            { text="All categories / professions", value="all" }, { text="Herbs", value="Herbs" },
-            { text="Ore", value="Ore" }, { text="Textiles", value="Textiles" },
-            { text="Curiosities", value="Curiosities" }, { text="Fabrics", value="Fabrics" },
-            { text="Ingots", value="Ingots" }, { text="Parts", value="Parts" },
-            { text="Alchemy", value="Alchemy" }, { text="Blacksmithing", value="Blacksmithing" },
-            { text="Engineering", value="Engineering" }, { text="Leatherworking", value="Leatherworking" },
-            { text="Tailoring", value="Tailoring" },
-        } end,
+        function() return GetTurnInCategoryOptions(UI.turnInTypeFilter) end,
         function() return UI.turnInCategoryFilter or "all" end,
         function(value) UI.SetTurnInFilters(UI.turnInTierFilter, value, UI.turnInTypeFilter) end)
     UI.turnInInfo = AddLabel(frame, "Compare all 30 Waylaid Crates and 150 Craftsman's Writs. Writ material routes use the matching ForeverDB recipe data; variable coin-pouch returns are not treated as guaranteed cash.", 30, -476, 230, 84, "GameFontHighlightSmall")
@@ -4094,12 +4129,21 @@ local function CreateUI()
             if selected then
                 local craftingRow = UI.activeTab == "crafts"
                 ShowMarketItemTooltip(self, selected, craftingRow and selected.recipeID ~= nil)
+                if GameTooltip and GameTooltip.AddLine then
+                    GameTooltip:AddLine("Shift-click to fill the Auction House search field", 0.72, 0.78, 0.88, true)
+                    GameTooltip:Show()
+                end
             end
         end)
         row.nameHit:SetScript("OnLeave", function() if _G.GameTooltip then GameTooltip:Hide() end end)
-        row.nameHit:SetScript("OnClick", function()
+        row.nameHit:SetScript("OnClick", function(_, mouseButton)
             local selected = UI.visibleRows[slot]
-            if selected then SelectItem(selected) end
+            if selected then
+                if mouseButton == "LeftButton" and _G.IsShiftKeyDown and _G.IsShiftKeyDown() then
+                    UI.FillAuctionHouseSearch(selected)
+                end
+                SelectItem(selected)
+            end
         end)
         row.materialHit = CreateFrame("Button", nil, row)
         row.materialHit:SetPoint("LEFT", row, "LEFT", 202, 0)
@@ -4589,9 +4633,24 @@ function UI.SetCraftingScope(value)
 end
 
 function UI.SetTurnInFilters(tier, category, turnInType)
+    local previousType = UI.turnInTypeFilter or "all"
+    local nextType = turnInType or previousType
     UI.turnInTierFilter = tier or UI.turnInTierFilter or "all"
-    UI.turnInCategoryFilter = category or UI.turnInCategoryFilter or "all"
-    UI.turnInTypeFilter = turnInType or UI.turnInTypeFilter or "all"
+    UI.turnInTypeFilter = nextType
+    local nextCategory = category or UI.turnInCategoryFilter or "all"
+    local validCategory = nextCategory == "all"
+    if not validCategory then
+        for _, option in ipairs(GetTurnInCategoryOptions(nextType)) do
+            if option.value == nextCategory then validCategory = true; break end
+        end
+    end
+    UI.turnInCategoryFilter = validCategory and nextCategory or "all"
+    if UI.turnInTypeDropdown and UI.turnInTypeDropdown.RefreshText then UI.turnInTypeDropdown.RefreshText() end
+    if UI.turnInCategoryDropdown and UI.turnInCategoryDropdown.RefreshText then UI.turnInCategoryDropdown.RefreshText() end
+    if UI.turnInCategoryLabel then
+        UI.turnInCategoryLabel:SetText(nextType == "writ" and "Profession"
+            or (nextType == "crate" and "Category" or "Category / profession"))
+    end
     UI.StartViewBuild()
 end
 

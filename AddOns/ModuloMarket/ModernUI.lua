@@ -242,8 +242,8 @@ local function GetRowCells(item, state)
         price = item.completionCostCopper and UI.FormatMoney(item.completionCostCopper) or "Incomplete"
         middle = item.cashReturnCopper ~= nil and UI.FormatMoney(item.cashReturnCopper)
             or (item.cashReturnText or "Unknown")
-        quantity = item.rewardFavor ~= nil and (tostring(item.rewardFavor) .. " F")
-            or (item.reputation ~= nil and (tostring(item.reputation) .. (item.turnInType == "writ" and " Rep*" or " Rep")) or "?")
+        quantity = item.rewardFavor ~= nil and (tostring(item.rewardFavor) .. " Fav")
+            or (item.reputation ~= nil and (tostring(item.reputation) .. " Rep") or "?")
         local netCost = item.netCostPerRewardCopper or item.netCostPerFavorCopper or item.netCostPerReputationCopper
         profit = netCost ~= nil and UI.FormatMoney(netCost) or "—"
     elseif tab == "crafts" then
@@ -319,6 +319,14 @@ function Modern.RenderRows()
     Modern.RefreshInspector()
     Modern.RefreshTabs(state.tab)
     UpdateFilterVisibility(state.tab)
+    if Modern.turnInCategoryDropdown and Modern.turnInCategoryDropdown.Refresh then
+        Modern.turnInCategoryDropdown.Refresh()
+        if Modern.turnInCategoryDropdown.sectionLabel then
+            local mode = state.turnInTypeFilter or "all"
+            Modern.turnInCategoryDropdown.sectionLabel:SetText(mode == "writ" and "PROFESSION"
+                or (mode == "crate" and "CATEGORY" or "CATEGORY / PROFESSION"))
+        end
+    end
     for _, group in ipairs({ Modern.quickChecks or {}, Modern.craftChecks or {}, Modern.economicsChecks or {} }) do
         for _, check in ipairs(group) do if check.Refresh then check:Refresh() end end
     end
@@ -388,19 +396,19 @@ local HEADER_MAP = {
     economics = { {"ITEM","name"},{"CHEAPEST","price"},{"CRAFT COST","materials"},{"PRICE CHANGE","change"},{"TOTAL UNITS","total"} },
     crafts = { {"RECIPE","name"},{"SALE / UNIT","price"},{"MATERIAL COST","materials"},{"AT PRICE","depth"},{"PROFIT / CRAFT","profit"} },
     materials = { {"ITEM","name"},{"CHEAPEST","price"},{"AT PRICE","depth"},{"TOTAL UNITS","total"},{"BEST CRAFT PROFIT","profit"} },
-    turnins = { {"TURN-IN","name"},{"COMPLETION COST","completion"},{"CASH RETURN","price"},{"FAVOR / REP","reward"},{"NET / REWARD","net"} },
+    turnins = { {"TURN-IN ITEM","name"},{"COST","completion"},{"GROSS","price"},{"REP / FAVOR","reward"},{"NET / REWARD","net"} },
     history = { {"ITEM","name"},{"CHEAPEST","price"},{"PRICE CHANGE","change"},{"LATEST UNITS","total"},{"BEST CRAFT PROFIT","profit"} },
 }
 
 function Modern.RefreshHeaders(tab)
     local specs = HEADER_MAP[tab] or HEADER_MAP.market
     if tab == "turnins" then
-        local mode = UI.GetModernState().turnInTypeFilter or "all"
         specs = {
-            { mode == "writ" and "CRAFTSMAN'S WRIT" or (mode == "crate" and "WAYLAID CRATE" or "TURN-IN"), "name" },
-            { "COMPLETION COST", "completion" }, { mode == "writ" and "COIN POUCH" or "CASH RETURN", "price" },
-            { mode == "writ" and "REPORTED REP*" or "FAVOR / REP", "reward" },
-            { mode == "writ" and "COST / REP*" or (mode == "crate" and "NET / FAVOR" or "NET / REWARD"), "net" },
+            { "TURN-IN ITEM", "name" },
+            { "COST", "completion" },
+            { "GROSS", "price" },
+            { "REP / FAVOR", "reward" },
+            { "NET / REWARD", "net" },
         }
     end
     for i, header in ipairs(Modern.headers or {}) do
@@ -557,9 +565,8 @@ local function CreateUI()
     titleBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -3)
     titleBar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -3)
     titleBar:SetHeight(48); Paint(titleBar, "surfaceRaised")
-    local logo = Label(frame, "M", 18, -7, 36, 34, "GameFontNormalLarge", "accent")
-    logo:SetJustifyH("CENTER")
-    local title = Label(frame, "MODULO MARKET", 62, -10, 360, 30, "GameFontNormalLarge", "textPrimary")
+    local title = Label(frame, "MODULO MARKET", 0, -10, 1536, 30, "GameFontNormalLarge", "textPrimary")
+    title:SetJustifyH("CENTER")
     Modern.title = title
     local close = FlatButton(frame, "", 38, 34, function() Modern.Hide() end)
     close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, -8)
@@ -577,9 +584,6 @@ local function CreateUI()
     AddButtonIcon(cancel, "Interface\\AddOns\\ModuloMarket\\Textures\\cancel.tga", 14, "LEFT")
     cancel:Hide()
     Modern.cancelButton = cancel
-    local closeAction = FlatButton(frame, "Close", 90, 32, function() Modern.Hide() end)
-    closeAction:SetPoint("TOPLEFT", frame, "TOPLEFT", 250, -86)
-    Modern.closeAction = closeAction
     local opacityLabel = Label(frame, "WINDOW OPACITY", 1350, -61, 120, 18, "GameFontNormalSmall", "textMuted")
     opacityLabel:SetJustifyH("RIGHT")
     local opacityValue = Label(frame, "100%", 1472, -61, 34, 18, "GameFontHighlightSmall", "textPrimary")
@@ -598,11 +602,11 @@ local function CreateUI()
     local navY = -132
     Modern.nav = CreateFrame("Frame", nil, frame)
     Modern.nav:SetPoint("TOPLEFT", frame, "TOPLEFT", 24, navY)
-    Modern.nav:SetSize(1472, 48)
+    Modern.nav:SetSize(1472, 40)
     local tabWidth = 1472 / #TAB_SPECS
     for i, spec in ipairs(TAB_SPECS) do
         local button = CreateFrame("Button", nil, Modern.nav)
-        button:SetSize(tabWidth, 46)
+        button:SetSize(tabWidth, 38)
         button:SetPoint("TOPLEFT", Modern.nav, "TOPLEFT", (i - 1) * tabWidth, 0)
         button.background = button:CreateTexture(nil, "BACKGROUND")
         button.background:SetAllPoints(); Paint(button.background, "tabInactive")
@@ -709,13 +713,11 @@ local function CreateUI()
         } end, function() return UI.GetModernState().turnInTierFilter or "all" end,
         function(value) UI.SetTurnInFilters(value, UI.GetModernState().turnInCategoryFilter, UI.GetModernState().turnInTypeFilter) end)
     Modern.turnInCategoryDropdown = CreateDropdown(left, "CATEGORY / PROFESSION", -508, leftWidth,
-        function() return {
-            {text="All categories / professions",value="all"},{text="Herbs",value="Herbs"},{text="Ore",value="Ore"},
-            {text="Textiles",value="Textiles"},{text="Curiosities",value="Curiosities"},
-            {text="Fabrics",value="Fabrics"},{text="Ingots",value="Ingots"},{text="Parts",value="Parts"},
-            {text="Alchemy",value="Alchemy"},{text="Blacksmithing",value="Blacksmithing"},
-            {text="Engineering",value="Engineering"},{text="Leatherworking",value="Leatherworking"},{text="Tailoring",value="Tailoring"},
-        } end, function() return UI.GetModernState().turnInCategoryFilter or "all" end,
+        function()
+            if UI.GetTurnInCategoryOptions then return UI.GetTurnInCategoryOptions() end
+            return { {text="All categories / professions",value="all"} }
+        end,
+        function() return UI.GetModernState().turnInCategoryFilter or "all" end,
         function(value) UI.SetTurnInFilters(UI.GetModernState().turnInTierFilter, value, UI.GetModernState().turnInTypeFilter) end)
     Modern.craftingScopeDropdown = CreateDropdown(left, "CRAFTING SCOPE", -508, leftWidth,
         function() return {
@@ -790,8 +792,22 @@ local function CreateUI()
         row.quantity:SetJustifyH("RIGHT")
         row.profit = Label(row, "", 640, -5, 115, 22, "GameFontHighlight")
         row.profit:SetJustifyH("RIGHT")
-        row:SetScript("OnClick", function(self) if self.item then UI.SelectItem(self.item); Modern.RefreshInspector(); Modern.RenderRows() end end)
-        row:SetScript("OnEnter", function(self) if self.item and GameTooltip then GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText(GetItemName(self.item)); GameTooltip:Show() end end)
+        row:SetScript("OnClick", function(self, mouseButton)
+            if self.item then
+                if mouseButton == "LeftButton" and _G.IsShiftKeyDown and _G.IsShiftKeyDown() then
+                    UI.FillAuctionHouseSearch(self.item)
+                end
+                UI.SelectItem(self.item); Modern.RefreshInspector(); Modern.RenderRows()
+            end
+        end)
+        row:SetScript("OnEnter", function(self)
+            if self.item and GameTooltip then
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(GetItemName(self.item))
+                GameTooltip:AddLine("Shift-click to fill the Auction House search field", 0.72, 0.78, 0.88, true)
+                GameTooltip:Show()
+            end
+        end)
         row:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         Modern.rows[i] = row
     end
@@ -916,8 +932,6 @@ function Modern.RefreshScanActions(state)
     end
     if enabled then Modern.updateButton:Enable() else Modern.updateButton:Disable() end
     if state.pendingConfirmation then Modern.cancelButton:Show() else Modern.cancelButton:Hide() end
-    Modern.closeAction:ClearAllPoints()
-    Modern.closeAction:SetPoint("TOPLEFT", Modern.frame, "TOPLEFT", state.pendingConfirmation and 360 or 250, -86)
     if state.pendingConfirmation then
         Modern.scanState:SetText("Scan: Confirmation required")
     elseif state.active then

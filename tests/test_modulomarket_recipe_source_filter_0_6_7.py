@@ -35,7 +35,7 @@ def test_materials_and_item_views_expose_the_same_three_statuses():
 
 
 def test_old_my_crafts_tab_is_consolidated_into_crafts():
-    assert '{ "crafts", "Crafts", 194 }' in UI
+    assert '{ "crafts", "Crafts", 178 }' in UI
     assert '"My Crafts"' not in UI
     assert '"All Crafts"' not in UI
     assert 'build.tab == "crafts"' in UI

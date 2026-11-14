@@ -41,6 +41,7 @@ local byID = {}
 for _, item in ipairs(catalog) do byID[item.itemID] = item end
 local rows = E.BuildRows(catalog, byID)
 assert(#rows == 151, "one crate plus 150 writ rows")
+assert(rows[1].turnInType == "crate", "Waylaid Crate rows have explicit crate type for filtering")
 local mithril
 for _, row in ipairs(rows) do if row.outputName == "Mithril Spurs" then mithril = row; break end end
 assert(mithril, "Mithril Spurs writ is indexed")
@@ -117,4 +118,4 @@ for _, row in ipairs(incompatibleRows) do if row.outputName == "Mithril Spurs" t
 assert(incompatibleWrit and incompatibleWrit.completionCostCopper == nil,
     "incompatible/empty exact-build price index cannot leak stale name-index prices")
 
-print("11 writ turn-in checks passed; 145/150 exact recipe coverage verified against embedded ForeverDBData.lua")
+print("11 Writ checks + explicit crate-type check passed; 145/150 exact recipe coverage verified against embedded ForeverDBData.lua")

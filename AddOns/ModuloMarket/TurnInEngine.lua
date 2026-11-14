@@ -9,7 +9,7 @@ MM.TurnInEngine = Engine
 function Engine.FormatReward(item, compact)
     if type(item) ~= "table" then return "?" end
     if item.rewardFavor ~= nil then
-        return tostring(item.rewardFavor) .. (compact and " F" or " Favor")
+        return tostring(item.rewardFavor) .. (compact and " Fav" or " Favor")
     end
     if item.reputation ~= nil then
         return tostring(item.reputation) .. (compact and " Rep" or " Reputation")
@@ -260,7 +260,7 @@ function Engine.BuildRows(catalog, catalogByID)
         local row = {
             itemID = tonumber(crate.id), itemName = crate.name, name = crate.name,
             tier = crate.tier, category = crate.category,
-            turnIn = true, cratePriceCopper = crateCost, cratePriceReason = crateReason,
+            turnIn = true, turnInType = "crate", cratePriceCopper = crateCost, cratePriceReason = crateReason,
             crateMarket = crateMarket, bundleAlternatives = alternatives, bestBundle = bestBundle,
             bundleCostCopper = bestBundle and bestBundle.costCopper or nil,
             completionCostCopper = gross, cashReturnCopper = crate.rewardCashCopper,

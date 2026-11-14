@@ -3,7 +3,7 @@ assert(loadfile(arg[1] .. "/AddOns/ModuloMarket/TurnInData.lua"))()
 assert(loadfile(arg[1] .. "/AddOns/ModuloMarket/TurnInEngine.lua"))()
 local data = ModuloMarket.TurnInData
 local formatReward = ModuloMarket.TurnInEngine.FormatReward
-assert(formatReward({rewardFavor=20, reputation=0}, true) == "20 F", "Favor display must not append zero reputation")
+assert(formatReward({rewardFavor=20, reputation=0}, true) == "20 Fav", "Favor display must not append zero reputation")
 assert(formatReward({rewardFavor=nil, reputation=125}, true) == "125 Rep", "reputation-only reward display")
 assert(formatReward({rewardFavor=nil, reputation=0}, true) == "0 Rep", "known zero reputation remains explicit")
 assert(formatReward({rewardFavor=nil, reputation=nil}, true) == "?", "unknown reward remains unknown")
