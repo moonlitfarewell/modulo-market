@@ -13,9 +13,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_and_load_order_align():
-    assert 'MM.version = "0.10.2"' in CORE
-    assert "## Version: 0.10.2" in TOC
-    assert MANIFEST["version"] == "0.10.2"
+    assert 'MM.version = "0.10.3"' in CORE
+    assert "## Version: 0.10.3" in TOC
+    assert MANIFEST["version"] == "0.10.3"
     assert TOC.index("TurnInData.lua") < TOC.index("TurnInEngine.lua") < TOC.index("MarketUI.lua")
 
 

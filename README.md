@@ -1,6 +1,6 @@
-# Modulo Market 0.10.2
+# Modulo Market 0.10.3
 
-**Current player milestone:** Turn-In reward display is mutually exclusive: each crate shows its reported Favor reward, otherwise its reported reputation reward, otherwise `?`; a known zero remains visible. The selected Turn-In inspector uses compact metric labels, body-sized values and a wider value column so long metrics and currency values fit without relying on post-creation font resets. Pricing, sorting semantics, unknown handling and non-Turn-In tab styling are preserved. Offline tests and runtime limitations are recorded in `MODULOMARKET-RUNTIME-AUDIT-0.10.2.md`. Forever runtime acceptance remains NOT RUN.
+**Current player milestone:** Turn-In reward display remains mutually exclusive. Inspector metric values now use a fixed font size derived from the same `GameFontHighlight + 1` template as the middle table rows; non-Turn-In metrics use a fixed `GameFontHighlightLarge + 1` size. Font size is assigned absolutely rather than incremented on each tab switch or item selection, preventing cumulative growth. Selecting a Turn-In now immediately refreshes the virtual row pool so its selected-row highlight appears without waiting for a later rebuild. Pricing, sorting, unknown handling and market data behavior are unchanged. Offline tests and runtime limitations are recorded in `MODULOMARKET-RUNTIME-AUDIT-0.10.3.md`. Forever runtime acceptance remains NOT RUN.
 
 # Modulo Market 0.10.1
 

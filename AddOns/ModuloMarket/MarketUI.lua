@@ -995,6 +995,18 @@ local function IncreaseFontSize(fontString, delta)
     return setOK == true
 end
 
+-- Apply a deterministic size from a Blizzard font template. Unlike repeatedly
+-- incrementing the current font, this remains stable across tab changes and
+-- item reselection.
+local function SetFontFromTemplate(fontString, template, delta)
+    if not fontString or not template or type(template.GetFont) ~= "function"
+        or type(fontString.SetFont) ~= "function" then return false end
+    local ok, fontPath, fontSize, flags = pcall(template.GetFont, template)
+    if not ok or not fontPath or not tonumber(fontSize) then return false end
+    return pcall(fontString.SetFont, fontString, fontPath,
+        tonumber(fontSize) + (tonumber(delta) or 0), flags) == true
+end
+
 local function AddLabel(parent, text, x, y, width, height, font)
     local label = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
     label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
@@ -2477,10 +2489,12 @@ SelectItem = function(item)
         UI.detailSupply:SetText(item.cashReturnCopper ~= nil and FormatMoney(item.cashReturnCopper) or "Unknown")
         UI.detailAtPrice:SetText(FormatTurnInReward(item, false))
         UI.detailProfit:SetText(item.netCostPerFavorCopper ~= nil and FormatMoney(item.netCostPerFavorCopper) or "—")
-        if UI.detailPrice.SetFontObject then UI.detailPrice:SetFontObject(GameFontHighlight) end
-        if UI.detailSupply.SetFontObject then UI.detailSupply:SetFontObject(GameFontHighlight) end
-        if UI.detailAtPrice.SetFontObject then UI.detailAtPrice:SetFontObject(GameFontHighlight) end
-        if UI.detailProfit.SetFontObject then UI.detailProfit:SetFontObject(GameFontHighlight) end
+        for _, value in ipairs({ UI.detailPrice, UI.detailSupply, UI.detailAtPrice, UI.detailProfit }) do
+            if value then
+                if value.SetFontObject then value:SetFontObject(GameFontHighlight) end
+                SetFontFromTemplate(value, GameFontHighlight, 1)
+            end
+        end
         UI.relationshipHeading:SetText("Required Bundles")
         local lines = {}
         lines[#lines+1] = "CRATE PURCHASE"
@@ -2528,12 +2542,17 @@ SelectItem = function(item)
             UI.historyText:SetHeight(72)
             UI.historyText:SetText(outcome)
         end
+        -- Turn-In selections return early, so refresh the virtual row pool here
+        -- to apply the selected wash/accent immediately rather than on a later build.
+        UI.RenderRows()
         return
     end
-    if UI.detailPrice.SetFontObject then UI.detailPrice:SetFontObject(GameFontHighlightLarge); IncreaseFontSize(UI.detailPrice, 1) end
-    if UI.detailSupply.SetFontObject then UI.detailSupply:SetFontObject(GameFontHighlightLarge); IncreaseFontSize(UI.detailSupply, 1) end
-    if UI.detailAtPrice.SetFontObject then UI.detailAtPrice:SetFontObject(GameFontHighlightLarge); IncreaseFontSize(UI.detailAtPrice, 1) end
-    if UI.detailProfit.SetFontObject then UI.detailProfit:SetFontObject(GameFontHighlightLarge); IncreaseFontSize(UI.detailProfit, 1) end
+    for _, value in ipairs({ UI.detailPrice, UI.detailSupply, UI.detailAtPrice, UI.detailProfit }) do
+        if value then
+            if value.SetFontObject then value:SetFontObject(GameFontHighlightLarge) end
+            SetFontFromTemplate(value, GameFontHighlightLarge, 1)
+        end
+    end
     UI.selectedItem = item
     UI.selectedByTab[UI.activeTab] = { itemID = tonumber(item.itemID), recipeKey = item.recipeKey }
     UI.detailName:SetText(item.recipeData and GetItemName(item) or GetItemDisplayName(item))
@@ -2882,9 +2901,9 @@ local function SetTab(tab)
     UI.activeTab = tab
     local economicsFont = tab == "turnins" and GameFontHighlight or GameFontHighlightLarge
     for _, value in ipairs({ UI.detailPrice, UI.detailSupply, UI.detailAtPrice, UI.detailProfit }) do
-        if value and value.SetFontObject then
-            value:SetFontObject(economicsFont)
-            if tab ~= "turnins" then IncreaseFontSize(value, 1) end
+        if value then
+            if value.SetFontObject then value:SetFontObject(economicsFont) end
+            SetFontFromTemplate(value, economicsFont, 1)
         end
     end
     if tab ~= "economics" then UI.economicsIndexBuild = nil end
