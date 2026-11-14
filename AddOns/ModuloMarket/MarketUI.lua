@@ -1656,6 +1656,7 @@ local function UpdateResultRange()
 end
 
 function UI.FinishView(rows)
+    UI.viewRevision = (UI.viewRevision or 0) + 1
     UI.viewRows = rows
     UI.rankSort = nil
     UI.scrollChild:SetHeight(math.max(1, #UI.viewRows * UI.rowHeight))
@@ -4161,13 +4162,15 @@ local function CreateUI()
 
     frame:SetScript("OnHide", function()
         UI.CloseDropdownMenus()
+        if UI.blizzlikeVisible and frame:GetAlpha() > 0 then UI.blizzlikeVisible = false end
         if _G.GameTooltip then GameTooltip:Hide() end
     end)
     frame:SetScript("OnShow", function(self)
         UI.CloseDropdownMenus()
-        self:SetFrameStrata("DIALOG")
-        self:SetToplevel(true)
-        if type(self.Raise) == "function" then self:Raise() end
+        local modernBackend = MM.Theme and MM.Theme.GetTheme and MM.Theme.GetTheme() == "modern"
+        self:SetFrameStrata(modernBackend and "BACKGROUND" or "DIALOG")
+        self:SetToplevel(not modernBackend)
+        if not modernBackend and type(self.Raise) == "function" then self:Raise() end
         UI.craftingScope = (MM.db and MM.db.craftingScope == "character") and "character" or "account"
         if UI.craftingScopeDropdown and UI.craftingScopeDropdown.RefreshText then UI.craftingScopeDropdown.RefreshText() end
         if MM.ProfessionData and MM.ProfessionData.Refresh then
@@ -4301,33 +4304,228 @@ function UI.OnRecipesUpdated()
 end
 
 function UI.Raise()
+    if MM.Theme and MM.Theme.GetTheme and MM.Theme.GetTheme() == "modern" then
+        if MM.ModernUI and MM.ModernUI.Raise then MM.ModernUI.Raise() end
+        return
+    end
     local frame = CreateUI()
-    -- Keep the Market below native GameTooltip and contextual tooltip frames.
-    -- Frame level cannot outrank another frame in a higher strata.
     frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
     if type(frame.Raise) == "function" then frame:Raise() end
 end
 
-function UI.Toggle()
+function UI.ToggleBlizzlike()
     if UI.AttachMinimapButton then UI.AttachMinimapButton() end
     local frame = CreateUI()
-    if frame:IsShown() then
+    if MM.ModernUI and MM.ModernUI.frame and MM.ModernUI.frame:IsShown() then MM.ModernUI.frame:Hide() end
+    frame:SetAlpha(1)
+    frame:EnableMouse(true)
+    frame:SetFrameStrata("DIALOG")
+    if frame:IsShown() and UI.blizzlikeVisible then
+        UI.blizzlikeVisible = false
         frame:Hide()
     else
+        UI.blizzlikeVisible = true
         frame:Show()
         UI.Raise()
     end
 end
 
+function UI.Toggle()
+    if MM.Theme and MM.Theme.GetTheme and MM.Theme.GetTheme() == "modern" and MM.ModernUI then
+        if UI.AttachMinimapButton then UI.AttachMinimapButton() end
+        MM.ModernUI.Toggle()
+        return
+    end
+    UI.ToggleBlizzlike()
+end
+
 function UI.ApplyTheme()
     if MM.Theme and MM.Theme.ApplyRegistered then MM.Theme.ApplyRegistered() end
+    if MM.ModernUI and MM.ModernUI.ApplyTheme then MM.ModernUI.ApplyTheme() end
+end
+
+function UI.ShowBlizzlike()
+    if UI.AttachMinimapButton then UI.AttachMinimapButton() end
+    local frame = CreateUI()
+    if MM.ModernUI and MM.ModernUI.frame and MM.ModernUI.frame:IsShown() then MM.ModernUI.frame:Hide() end
+    frame:SetFrameStrata("DIALOG")
+    frame:SetAlpha(1)
+    frame:EnableMouse(true)
+    UI.blizzlikeVisible = true
+    frame:Show()
+    UI.Raise()
 end
 
 function UI.Show()
-    if UI.AttachMinimapButton then UI.AttachMinimapButton() end
-    CreateUI():Show()
-    UI.Raise()
+    if MM.Theme and MM.Theme.GetTheme and MM.Theme.GetTheme() == "modern" and MM.ModernUI then
+        if UI.AttachMinimapButton then UI.AttachMinimapButton() end
+        MM.ModernUI.Show()
+        return
+    end
+    UI.ShowBlizzlike()
+end
+
+-- The legacy window remains the data engine for both presentations. In Modern
+-- mode it is kept transparent and mouse-inert so its incremental catalogue,
+-- filtering, item-data warmup and market refresh lifecycle continue unchanged.
+function UI.PrepareModernBackend()
+    local frame = CreateUI()
+    frame:SetFrameStrata("BACKGROUND")
+    frame:SetAlpha(0)
+    frame:EnableMouse(false)
+    UI.blizzlikeVisible = false
+    frame:Show()
+    return frame
+end
+
+function UI.SwitchPresentation()
+    local modernOpen = MM.ModernUI and MM.ModernUI.frame and MM.ModernUI.frame:IsShown()
+    local blizzOpen = UI.blizzlikeVisible == true
+    if not modernOpen and not blizzOpen then return end
+    if MM.Theme and MM.Theme.GetTheme and MM.Theme.GetTheme() == "modern" then
+        if MM.ModernUI then MM.ModernUI.Show() end
+    else
+        UI.ShowBlizzlike()
+    end
+end
+
+function UI.SetTab(tab)
+    CreateUI()
+    local allowed = { market=true, economics=true, crafts=true, materials=true, turnins=true, history=true, low=true }
+    if allowed[tab] then SetTab(tab) end
+end
+
+function UI.SetSearch(value)
+    CreateUI()
+    if UI.search then UI.search:SetText(tostring(value or "")); ScheduleSearchBuild() end
+end
+
+function UI.SetProfessionFilter(value)
+    CreateUI(); UI.professionFilter = tonumber(value) or 0; UI.StartViewBuild()
+end
+
+function UI.SetRoleFilter(value)
+    CreateUI(); UI.itemRoleFilter = value or "all"; UI.StartViewBuild()
+end
+
+function UI.SetItemTypeFilter(value)
+    CreateUI(); UI.itemTypeFilter = value or "all"; UI.StartViewBuild()
+end
+
+function UI.SetMarketQuickFilter(key, value)
+    if not UI.marketQuickFilters or UI.marketQuickFilters[key] == nil then return end
+    UI.marketQuickFilters[key] = value == true
+    if key == "highProfitOnly" and value == true and not UI.economicsByItemID then
+        StartEconomicsIndex()
+    else UI.StartViewBuild() end
+end
+
+function UI.SetCraftFilter(key, value)
+    if not UI.craftFilters or UI.craftFilters[key] == nil then return end
+    UI.craftFilters[key] = value == true; UI.StartViewBuild()
+end
+
+function UI.SetEconomicsFilter(key, value)
+    if not UI.economicsFilters or UI.economicsFilters[key] == nil then return end
+    UI.economicsFilters[key] = value == true; UI.StartViewBuild()
+end
+
+function UI.SetCraftingScope(value)
+    CreateUI()
+    UI.craftingScope = value == "character" and "character" or "account"
+    if MM.db then MM.db.craftingScope = UI.craftingScope end
+    if MM.ProfessionData and MM.ProfessionData.Refresh then MM.ProfessionData.Refresh() end
+    UI.economicsByItemID = nil
+    UI.economicsIndexBuild = nil
+    RefreshProfessionOptions()
+    UI.StartViewBuild()
+end
+
+function UI.SetTurnInFilters(tier, category)
+    UI.turnInTierFilter = tier or UI.turnInTierFilter or "all"
+    UI.turnInCategoryFilter = category or UI.turnInCategoryFilter or "all"
+    UI.StartViewBuild()
+end
+
+function UI.SelectItem(item)
+    if SelectItem then SelectItem(item) end
+end
+
+function UI.SortBy(key)
+    for _, header in ipairs(UI.headerButtons or {}) do
+        if header.sortKey == key and header.GetScript then
+            local handler = header:GetScript("OnClick")
+            if handler then handler(header) end
+            return true
+        end
+    end
+    return false
+end
+
+function UI.GetModernState()
+    return {
+        tab = UI.activeTab, rows = UI.viewRows or {}, selected = UI.selectedItem,
+        viewRevision = UI.viewRevision or 0,
+        resultCount = #(UI.viewRows or {}), metadata = UI.metadata and UI.metadata:GetText() or "",
+        scanState = UI.scanStateLabel and UI.scanStateLabel:GetText() or "Scan: Unknown",
+        status = UI.status and UI.status:GetText() or "",
+        professionOptions = UI.professionOptions or {}, professionFilter = UI.professionFilter or 0,
+        roleFilter = UI.itemRoleFilter or "all", itemTypeFilter = UI.itemTypeFilter or "all",
+        marketQuickFilters = UI.marketQuickFilters, craftFilters = UI.craftFilters,
+        economicsFilters = UI.economicsFilters, turnInTierFilter = UI.turnInTierFilter,
+        turnInCategoryFilter = UI.turnInCategoryFilter,
+        craftingScope = UI.craftingScope or "account",
+        auctionData = UI.auctionDataLabel and UI.auctionDataLabel:GetText() or "Auction Data: unavailable",
+        auctionState = UI.auctionDataState and UI.auctionDataState:GetText() or "Unknown",
+        recipeData = UI.recipeDataLabel and UI.recipeDataLabel:GetText() or "Recipe Data: unavailable",
+        recipeState = UI.recipeDataState and UI.recipeDataState:GetText() or "Unknown",
+        reviewData = UI.reviewDataLabel and UI.reviewDataLabel:GetText() or "Review records: —",
+        economicsByItemID = UI.economicsByItemID,
+    }
+end
+
+function UI.GetModernDetails()
+    local function get(object) return object and object.GetText and object:GetText() or "" end
+    local bundleLines = {}
+    for _, row in ipairs(UI.turnInBreakdownRows or {}) do
+        local left = get(row.left); local right = get(row.right)
+        if left ~= "" or right ~= "" then bundleLines[#bundleLines + 1] = left .. (right ~= "" and ("    " .. right) or "") end
+    end
+    local historyBars = {}
+    for i, bar in ipairs(UI.historyBars or {}) do
+        if bar and bar.IsShown and bar:IsShown() then
+            historyBars[#historyBars + 1] = { height = bar:GetHeight() or 0,
+                label = get(UI.historyBarLabels and UI.historyBarLabels[i]) }
+        end
+    end
+    return {
+        heading = get(UI.detailHeading), name = get(UI.detailName), badges = get(UI.detailBadges),
+        variants = get(UI.detailVariants), icon = UI.detailIcon and UI.detailIcon.GetTexture and UI.detailIcon:GetTexture(),
+        marketHeading = get(UI.marketInfoHeading), priceLabel = get(UI.detailPriceLabel), price = get(UI.detailPrice),
+        supplyLabel = get(UI.detailSupplyLabel), supply = get(UI.detailSupply),
+        atPriceLabel = get(UI.detailAtPriceLabel), atPrice = get(UI.detailAtPrice),
+        profitLabel = get(UI.detailProfitLabel), profit = get(UI.detailProfit),
+        relationshipHeading = get(UI.relationshipHeading), relationshipText = get(UI.detailEconomics),
+        bundleLines = bundleLines, historyHeading = get(UI.historyHeading), historyText = get(UI.historyText),
+        historyBars = historyBars,
+    }
+end
+
+function UI.GetModernItemName(item) return item and GetItemDisplayName(item) or "" end
+function UI.GetModernIcon(item) return item and GetItemIcon(item.itemID) end
+function UI.FormatMoney(copper) return FormatMoney(copper) end
+
+function UI.TriggerFullScan()
+    if not UI.scanButton then CreateUI() end
+    local handler = UI.scanButton and UI.scanButton.GetScript and UI.scanButton:GetScript("OnClick")
+    if handler then handler(UI.scanButton) end
+end
+
+function UI.TriggerBrowseScan()
+    if not UI.browseButton then CreateUI() end
+    local handler = UI.browseButton and UI.browseButton.GetScript and UI.browseButton:GetScript("OnClick")
+    if handler then handler(UI.browseButton) end
 end
 
 local function IsDefaultBlizzardSellTab(parent)

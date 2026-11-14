@@ -5,8 +5,10 @@ local Theme = {}
 MM.Theme = Theme
 
 local defaults = {
-    theme = "blizzlike",
+    marketAppearance = "blizzlike",
+    blizzlikeStyle = "classic",
     modernPalette = "dark",
+    blizzlikeCustomAccent = { r = 1.0, g = 0.19, b = 0.31 },
     customAccent = { r = 1.0, g = 0.19, b = 0.31 },
 }
 
@@ -35,41 +37,81 @@ end
 
 function Theme.Initialize()
     if type(MM.db) ~= "table" then return end
-    if MM.db.theme ~= "modern" then MM.db.theme = "blizzlike" end
+    -- 0.11.0's "Modern" was a colour treatment on the old Blizzard-style
+    -- window. Preserve that exact choice as a Blizz-like style on upgrade;
+    -- the new Modern value now selects a separate window implementation.
+    if MM.db.marketAppearance ~= "modern" and MM.db.marketAppearance ~= "blizzlike" then
+        MM.db.marketAppearance = "blizzlike"
+        if MM.db.theme == "modern" then
+            local oldPalette = MM.db.modernPalette
+            MM.db.blizzlikeStyle = (oldPalette == "class" or oldPalette == "custom") and oldPalette or "dark"
+            if oldPalette == "custom" and type(MM.db.blizzlikeCustomAccent) ~= "table" then
+                MM.db.blizzlikeCustomAccent = CopyColor(MM.db.customAccent or defaults.customAccent)
+            end
+        elseif MM.db.blizzlikeStyle ~= "dark" and MM.db.blizzlikeStyle ~= "class"
+            and MM.db.blizzlikeStyle ~= "custom" then
+            MM.db.blizzlikeStyle = "classic"
+        end
+    end
+    if MM.db.blizzlikeStyle ~= "dark" and MM.db.blizzlikeStyle ~= "class"
+        and MM.db.blizzlikeStyle ~= "custom" then MM.db.blizzlikeStyle = "classic" end
     if MM.db.modernPalette ~= "class" and MM.db.modernPalette ~= "custom" then
         MM.db.modernPalette = "dark"
     end
-    local color = MM.db.customAccent
-    if type(color) ~= "table" then color = defaults.customAccent end
-    MM.db.customAccent = CopyColor(color)
+    MM.db.blizzlikeCustomAccent = CopyColor(MM.db.blizzlikeCustomAccent or defaults.blizzlikeCustomAccent)
+    MM.db.customAccent = CopyColor(MM.db.customAccent or defaults.customAccent)
+    MM.db.theme = MM.db.marketAppearance
 end
 
 function Theme.GetTheme()
-    return MM.db and MM.db.theme == "modern" and "modern" or "blizzlike"
+    return MM.db and MM.db.marketAppearance == "modern" and "modern" or "blizzlike"
 end
 
-function Theme.GetAccent()
-    local mode = MM.db and MM.db.modernPalette or "dark"
+function Theme.GetBlizzlikeStyle()
+    local value = MM.db and MM.db.blizzlikeStyle
+    if value == "dark" or value == "class" or value == "custom" then return value end
+    return "classic"
+end
+
+function Theme.GetModernPalette()
+    local value = MM.db and MM.db.modernPalette
+    if value == "class" or value == "custom" then return value end
+    return "dark"
+end
+
+function Theme.GetBlizzlikeAccent()
+    local mode = Theme.GetBlizzlikeStyle()
+    if mode == "class" then return GetClassAccent() end
+    if mode == "custom" then return CopyColor(MM.db and MM.db.blizzlikeCustomAccent or defaults.blizzlikeCustomAccent) end
+    if mode == "dark" then return { r = 0.61, g = 0.65, b = 0.72 } end
+    return { r = 0.96, g = 0.72, b = 0.25 }
+end
+
+function Theme.GetModernAccent()
+    local mode = Theme.GetModernPalette()
     if mode == "class" then return GetClassAccent() end
     if mode == "custom" then return CopyColor(MM.db and MM.db.customAccent or defaults.customAccent) end
     return { r = 0.61, g = 0.65, b = 0.72 }
+end
+
+-- Kept as a compatibility helper for the settings swatch and older callers.
+function Theme.GetAccent()
+    return Theme.GetTheme() == "modern" and Theme.GetModernAccent() or Theme.GetBlizzlikeAccent()
 end
 
 local function Mix(a, b, amount)
     return a + (b - a) * amount
 end
 
-function Theme.GetColor(role, fallback)
-    if Theme.GetTheme() ~= "modern" then
-        return fallback or { 1, 1, 1, 1 }
-    end
-    local accent = Theme.GetAccent()
+local function BuildPalette(accent, modernBase)
     local r, g, b = accent.r, accent.g, accent.b
-    local palette = {
-        surface = { 0.025, 0.030, 0.043, 0.97 },
+    local base = modernBase and { 0.025, 0.030, 0.043 } or { 0.035, 0.032, 0.028 }
+    local raised = modernBase and { 0.085, 0.095, 0.125 } or { 0.075, 0.060, 0.040 }
+    return {
+        surface = { base[1], base[2], base[3], 0.97 },
         surfaceAlt = { 0.050, 0.060, 0.080, 0.98 },
-        surfaceRaised = { 0.085, 0.095, 0.125, 0.96 },
-        panelHeader = { Mix(0.055, r, 0.17), Mix(0.060, g, 0.17), Mix(0.080, b, 0.17), 0.94 },
+        surfaceRaised = { raised[1], raised[2], raised[3], 0.96 },
+        panelHeader = { Mix(base[1], r, 0.17), Mix(base[2], g, 0.17), Mix(base[3], b, 0.17), 0.94 },
         border = { r, g, b, 0.42 },
         borderStrong = { r, g, b, 0.78 },
         accent = { r, g, b, 1 },
@@ -90,7 +132,17 @@ function Theme.GetColor(role, fallback)
         historyBaseline = { r, g, b, 0.52 },
         historyBar = { r, g, b, 0.88 },
     }
-    return palette[role] or fallback or { r, g, b, 1 }
+end
+
+function Theme.GetColor(role, fallback)
+    if Theme.GetBlizzlikeStyle() == "classic" then return fallback or { 1, 1, 1, 1 } end
+    local palette = BuildPalette(Theme.GetBlizzlikeAccent(), false)
+    return palette[role] or fallback or { 1, 1, 1, 1 }
+end
+
+function Theme.GetModernColor(role, fallback)
+    local palette = BuildPalette(Theme.GetModernAccent(), true)
+    return palette[role] or fallback or { 1, 1, 1, 1 }
 end
 
 local textures, fontStrings = {}, {}
@@ -144,20 +196,38 @@ end
 
 function Theme.SetTheme(value)
     if not MM.db then return end
-    MM.db.theme = value == "modern" and "modern" or "blizzlike"
+    local previous = Theme.GetTheme()
+    MM.db.marketAppearance = value == "modern" and "modern" or "blizzlike"
+    MM.db.theme = MM.db.marketAppearance
     Theme.ApplyRegistered()
+    if previous ~= MM.db.marketAppearance and MM.MarketUI and MM.MarketUI.SwitchPresentation then
+        MM.MarketUI.SwitchPresentation()
+    end
 end
 
 function Theme.SetPalette(value)
     if not MM.db then return end
     if value ~= "class" and value ~= "custom" then value = "dark" end
     MM.db.modernPalette = value
+    if MM.ModernUI and MM.ModernUI.ApplyTheme then MM.ModernUI.ApplyTheme() end
+end
+
+function Theme.SetBlizzlikeStyle(value)
+    if not MM.db then return end
+    if value ~= "dark" and value ~= "class" and value ~= "custom" then value = "classic" end
+    MM.db.blizzlikeStyle = value
     Theme.ApplyRegistered()
 end
 
 function Theme.SetCustomAccent(r, g, b)
     if not MM.db then return end
     MM.db.customAccent = { r = Clamp(r), g = Clamp(g), b = Clamp(b) }
+    if MM.ModernUI and MM.ModernUI.ApplyTheme then MM.ModernUI.ApplyTheme() end
+end
+
+function Theme.SetBlizzlikeCustomAccent(r, g, b)
+    if not MM.db then return end
+    MM.db.blizzlikeCustomAccent = { r = Clamp(r), g = Clamp(g), b = Clamp(b) }
     Theme.ApplyRegistered()
 end
 
@@ -180,8 +250,9 @@ local function MakeButton(parent, text, x, y, width, onClick)
 end
 
 local function BuildDropdown(parent, labelText, x, y, width, options, getter, setter)
-    MakeLabel(parent, labelText, x, y + 20, width)
+    local sectionLabel = MakeLabel(parent, labelText, x, y + 20, width)
     local button = MakeButton(parent, "", x, y - 5, width, nil)
+    button.sectionLabel = sectionLabel
     local popup = CreateFrame("Frame", nil, UIParent)
     popup:SetFrameStrata("DIALOG")
     popup:SetFrameLevel(200)
@@ -223,7 +294,7 @@ local function BuildDropdown(parent, labelText, x, y, width, options, getter, se
     end)
     button:HookScript("OnHide", function() popup:Hide() end)
     Refresh()
-    return button, Refresh, popup
+    return button, Refresh
 end
 
 local settingsPanel
@@ -235,29 +306,28 @@ local function OpenMarket()
     if MM.MarketUI and MM.MarketUI.Show then MM.MarketUI.Show() end
 end
 
-local function OpenColorPicker(swatch)
+local function OpenColorPicker(swatch, appearance)
     if not _G.ColorPickerFrame then
         if MM.Print then MM.Print("The client colour picker is unavailable.") end
         return
     end
-    local old = CopyColor(MM.db.customAccent or defaults.customAccent)
+    local source = appearance == "blizzlike" and MM.db.blizzlikeCustomAccent or MM.db.customAccent
+    local old = CopyColor(source or (appearance == "blizzlike" and defaults.blizzlikeCustomAccent or defaults.customAccent))
+    local function Set(r, g, b)
+        if appearance == "blizzlike" then Theme.SetBlizzlikeCustomAccent(r, g, b)
+        else Theme.SetCustomAccent(r, g, b) end
+        local c = appearance == "blizzlike" and Theme.GetBlizzlikeAccent() or Theme.GetModernAccent()
+        if swatch then swatch:SetColorTexture(c.r, c.g, c.b, 1) end
+    end
     local function ReadColor()
         local r, g, b = ColorPickerFrame:GetColorRGB()
-        Theme.SetCustomAccent(r, g, b)
-        if swatch then
-            local c = Theme.GetAccent()
-            swatch:SetColorTexture(c.r, c.g, c.b, 1)
-        end
+        Set(r, g, b)
     end
-    local function Restore()
-        Theme.SetCustomAccent(old.r, old.g, old.b)
-        if swatch then swatch:SetColorTexture(old.r, old.g, old.b, 1) end
-    end
+    local function Restore() Set(old.r, old.g, old.b) end
     if type(ColorPickerFrame.SetupColorPickerAndShow) == "function" then
         ColorPickerFrame:SetupColorPickerAndShow({
             r = old.r, g = old.g, b = old.b, hasOpacity = false,
-            swatchFunc = ReadColor,
-            cancelFunc = Restore,
+            swatchFunc = ReadColor, cancelFunc = Restore,
         })
     else
         ColorPickerFrame.hasOpacity = false
@@ -273,52 +343,101 @@ local function RegisterSettingsPanel()
     if settingsPanel then return end
     settingsPanel = CreateFrame("Frame")
     settingsPanel.name = "Modulo Market"
-    MakeLabel(settingsPanel, "Modulo Market Settings", 18, -18, 560, "GameFontNormalLarge")
-    MakeLabel(settingsPanel, "Open the market window and choose its visual theme. These settings do not change market data or calculations.", 18, -48, 680, "GameFontHighlight")
+    MakeLabel(settingsPanel, "Modulo Market Settings", 18, -18, 620, "GameFontNormalLarge")
+    MakeLabel(settingsPanel, "Choose which Modulo Market window to open. Both appearances use the same market data and calculations.", 18, -48, 760, "GameFontHighlight")
     MakeButton(settingsPanel, "Open Modulo Market (/mm)", 18, -88, 220, OpenMarket)
-    local refreshTheme
-    local themeButton
-    themeButton, refreshTheme = BuildDropdown(settingsPanel, "Market appearance", 18, -150, 240, {
-        { label = "Blizz-like", value = "blizzlike" },
-        { label = "Modern", value = "modern" },
-    }, Theme.GetTheme, function(value) Theme.SetTheme(value); refreshTheme(); Theme.RefreshSettingsVisibility() end)
-    Theme.themeDropdownRefresh = refreshTheme
-    local modernHeader = MakeLabel(settingsPanel, "Modern appearance", 18, -220, 500, "GameFontNormalLarge")
-    Theme.modernHeader = modernHeader
-    Theme.paletteDescription = MakeLabel(settingsPanel, "Choose the accent colour system used by the Modern theme.", 18, -248, 600, "GameFontHighlight")
-    local refreshPalette
-    local paletteButton
-    paletteButton, refreshPalette = BuildDropdown(settingsPanel, "Modern colour palette", 18, -292, 240, {
+
+    local refreshAppearance
+    local appearanceButton
+    appearanceButton, refreshAppearance = BuildDropdown(settingsPanel, "Market appearance", 18, -150, 260, {
+        { label = "Blizz-like window", value = "blizzlike" },
+        { label = "Modern window", value = "modern" },
+    }, Theme.GetTheme, function(value)
+        Theme.SetTheme(value)
+        refreshAppearance()
+        Theme.RefreshSettingsVisibility()
+    end)
+    Theme.appearanceDropdownRefresh = refreshAppearance
+
+    local blizzHeading = MakeLabel(settingsPanel, "Blizz-like window styles", 18, -218, 540, "GameFontNormalLarge")
+    local blizzDescription = MakeLabel(settingsPanel, "These retain the established WoW-style Modulo Market window and layout.", 18, -246, 700, "GameFontHighlight")
+    local refreshBlizzlike
+    local blizzlikeButton
+    blizzlikeButton, refreshBlizzlike = BuildDropdown(settingsPanel, "Blizz-like appearance", 18, -290, 260, {
+        { label = "Classic gold", value = "classic" },
+        { label = "Dark grey", value = "dark" },
+        { label = "Class colour", value = "class" },
+        { label = "Custom colour", value = "custom" },
+    }, Theme.GetBlizzlikeStyle, function(value)
+        Theme.SetBlizzlikeStyle(value)
+        refreshBlizzlike()
+        Theme.RefreshSettingsVisibility()
+    end)
+    Theme.blizzlikeDropdownRefresh = refreshBlizzlike
+    local blizzSwatch = settingsPanel:CreateTexture(nil, "ARTWORK")
+    blizzSwatch:SetSize(26, 26)
+    blizzSwatch:SetPoint("TOPLEFT", settingsPanel, "TOPLEFT", 296, -322)
+    Theme.blizzlikeSwatch = blizzSwatch
+    local blizzCustomButton = MakeButton(settingsPanel, "Choose custom colour…", 332, -322, 190,
+        function() OpenColorPicker(blizzSwatch, "blizzlike") end)
+    Theme.blizzlikeCustomButton = blizzCustomButton
+
+    local modernHeading = MakeLabel(settingsPanel, "Modern window colours", 18, -390, 540, "GameFontNormalLarge")
+    local modernDescription = MakeLabel(settingsPanel, "Modern is a separate dashboard-style window with its own controls, borders and layout.", 18, -418, 760, "GameFontHighlight")
+    local refreshModern
+    local modernButton
+    modernButton, refreshModern = BuildDropdown(settingsPanel, "Modern colour palette", 18, -462, 260, {
         { label = "Dark (grey tone)", value = "dark" },
-        { label = "Class (WoW class colour)", value = "class" },
-        { label = "Custom", value = "custom" },
-    }, function() return MM.db.modernPalette end, function(value) Theme.SetPalette(value); refreshPalette(); Theme.RefreshSettingsVisibility() end)
-    Theme.paletteDropdownRefresh = refreshPalette
-    local swatch = settingsPanel:CreateTexture(nil, "ARTWORK")
-    swatch:SetSize(26, 26)
-    swatch:SetPoint("TOPLEFT", settingsPanel, "TOPLEFT", 280, -324)
-    Theme.customSwatch = swatch
-    local customButton = MakeButton(settingsPanel, "Choose custom colour…", 316, -324, 190, function() OpenColorPicker(swatch) end)
-    Theme.customButton = customButton
-    Theme.customDescription = MakeLabel(settingsPanel, "Custom accent is saved to ModuloMarketDB and applies only while Modern is selected.", 18, -374, 650, "GameFontDisableSmall")
+        { label = "Class colour", value = "class" },
+        { label = "Custom colour", value = "custom" },
+    }, Theme.GetModernPalette, function(value)
+        Theme.SetPalette(value)
+        refreshModern()
+        Theme.RefreshSettingsVisibility()
+    end)
+    Theme.modernDropdownRefresh = refreshModern
+    local modernSwatch = settingsPanel:CreateTexture(nil, "ARTWORK")
+    modernSwatch:SetSize(26, 26)
+    modernSwatch:SetPoint("TOPLEFT", settingsPanel, "TOPLEFT", 296, -494)
+    Theme.modernSwatch = modernSwatch
+    local modernCustomButton = MakeButton(settingsPanel, "Choose custom colour…", 332, -494, 190,
+        function() OpenColorPicker(modernSwatch, "modern") end)
+    Theme.modernCustomButton = modernCustomButton
+
     Theme.RefreshSettingsVisibility = function()
-        local modern = Theme.GetTheme() == "modern"
-        local custom = modern and MM.db.modernPalette == "custom"
-        if Theme.modernHeader then if modern then Theme.modernHeader:Show() else Theme.modernHeader:Hide() end end
-        if paletteButton then if modern then paletteButton:Show() else paletteButton:Hide() end end
-        if Theme.paletteDescription then if modern then Theme.paletteDescription:Show() else Theme.paletteDescription:Hide() end end
-        if Theme.customDescription then if custom then Theme.customDescription:Show() else Theme.customDescription:Hide() end end
-        if swatch then
-            if custom then
-                local c = Theme.GetAccent(); swatch:SetColorTexture(c.r, c.g, c.b, 1); swatch:Show()
-            else swatch:Hide() end
+        local blizz = Theme.GetTheme() == "blizzlike"
+        local modern = not blizz
+        local blizzCustom = blizz and Theme.GetBlizzlikeStyle() == "custom"
+        local modernCustom = modern and Theme.GetModernPalette() == "custom"
+        for _, object in ipairs({ blizzSwatch, blizzCustomButton }) do
+            if blizzCustom then object:Show() else object:Hide() end
         end
-        if customButton then if custom then customButton:Show() else customButton:Hide() end end
+        for _, object in ipairs({ modernSwatch, modernCustomButton }) do
+            if modernCustom then object:Show() else object:Hide() end
+        end
+        if blizz then
+            local c = Theme.GetBlizzlikeAccent(); blizzSwatch:SetColorTexture(c.r, c.g, c.b, 1)
+        else
+            local c = Theme.GetModernAccent(); modernSwatch:SetColorTexture(c.r, c.g, c.b, 1)
+        end
+        -- Hide each section's labels and controls together with its selector.
+        for _, object in ipairs({ blizzlikeButton, blizzlikeButton.sectionLabel }) do if blizz then object:Show() else object:Hide() end end
+        for _, object in ipairs({ modernButton, modernButton.sectionLabel }) do if modern then object:Show() else object:Hide() end end
+        if Theme.blizzlikeSectionLabels then
+            for _, object in ipairs(Theme.blizzlikeSectionLabels) do if blizz then object:Show() else object:Hide() end end
+        end
+        if Theme.modernSectionLabels then
+            for _, object in ipairs(Theme.modernSectionLabels) do if modern then object:Show() else object:Hide() end end
+        end
     end
+    Theme.blizzlikeSectionLabels = { blizzHeading, blizzDescription }
+    Theme.modernSectionLabels = { modernHeading, modernDescription }
+
     Theme.RefreshSettingsVisibility()
     settingsPanel:SetScript("OnShow", function()
-        if Theme.themeDropdownRefresh then Theme.themeDropdownRefresh() end
-        if Theme.paletteDropdownRefresh then Theme.paletteDropdownRefresh() end
+        if Theme.appearanceDropdownRefresh then Theme.appearanceDropdownRefresh() end
+        if Theme.blizzlikeDropdownRefresh then Theme.blizzlikeDropdownRefresh() end
+        if Theme.modernDropdownRefresh then Theme.modernDropdownRefresh() end
         Theme.RefreshSettingsVisibility()
     end)
     if _G.Settings and type(Settings.RegisterCanvasLayoutCategory) == "function" and type(Settings.RegisterAddOnCategory) == "function" then
