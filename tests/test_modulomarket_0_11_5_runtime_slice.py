@@ -13,10 +13,10 @@ ENGINE = (ADDON / "TurnInEngine.lua").read_text(encoding="utf-8")
 MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
-def test_release_versions_are_0_11_6():
-    assert 'MM.version = "0.11.6"' in CORE
-    assert "## Version: 0.11.6" in TOC
-    assert MANIFEST["version"] == "0.11.6"
+def test_release_versions_are_0_11_7():
+    assert 'MM.version = "0.11.7"' in CORE
+    assert "## Version: 0.11.7" in TOC
+    assert MANIFEST["version"] == "0.11.7"
 
 
 def test_history_uses_exactly_the_latest_three_snapshots():
@@ -80,7 +80,8 @@ def test_tab_geometry_is_fixed_and_compact():
 
 def test_shift_click_uses_native_chat_link_or_auction_browse_fallback():
     assert "function UI.HandleShiftClick(item)" in MARKET
-    assert "_G.ChatEdit_GetActiveWindow" in MARKET
+    assert "_G.ChatFrameUtil" in MARKET
+    assert "chatUtil.InsertLink" in MARKET
     assert "_G.ChatEdit_InsertLink" in MARKET
     assert "_G.AuctionFrame" in MARKET and "_G.BrowseName" in MARKET
     assert "browseName:SetText(plainName)" in MARKET
@@ -121,15 +122,15 @@ def test_inspector_is_named_inspected_item_in_both_presentations():
     assert 'AddInspectorCard(1136, -158, 280, 110)' in MARKET
     assert 'AddLabel(frame, "Inspected Item"' in MARKET
     assert 'Panel(frame, "INSPECTED ITEM"' in MODERN
-    assert 'Panel(right, "INSPECTED ITEM"' in MODERN
+    assert 'Panel(right, "SELECTED ITEM"' in MODERN
 
 
-def test_artisan_crate_rewards_remain_unknown_when_not_source_confirmed():
+def test_artisan_crate_rewards_follow_user_supplied_favor_and_cash_schedule():
     data = (ADDON / "TurnInData.lua").read_text(encoding="utf-8")
     artisan = data[data.index('id=248695'):data.index('    },\n    -- One-time Shipping Label')]
-    assert artisan.count("rewardFavor=nil") == 8
-    assert artisan.count("rewardCashCopper=nil") == 8
-    assert "do not infer them from Expert values" in data
+    assert artisan.count("rewardFavor=20, rewardCashCopper=1000") == 5
+    assert artisan.count("rewardFavor=40, rewardCashCopper=2000") == 3
+    assert "50 copper per Favor" in data
 
 
 def test_snapshot_search_uses_cached_client_name_when_snapshot_name_is_missing():

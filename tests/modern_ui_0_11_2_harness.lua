@@ -8,6 +8,7 @@ local function Region(kind)
     function o:SetHeight(h) self.height = h end
     function o:GetHeight() return self.height end
     function o:GetWidth() return self.width end
+    function o:GetCenter() return 960, 540 end
     function o:SetColorTexture(...) self.color = {...} end
     function o:SetTexture(value) self.texture = value end
     function o:GetTexture() return self.texture end
@@ -15,7 +16,8 @@ local function Region(kind)
     function o:SetText(value) self.text = tostring(value or "") end
     function o:GetText() return self.text end
     function o:SetTextColor(...) self.textColor = {...} end
-    function o:SetJustifyH() end
+    function o:SetJustifyH(value) self.justifyH = value end
+    function o:GetStringWidth() return #tostring(self.text or "") * 7 end
     function o:SetJustifyV() end
     function o:SetWordWrap() end
     function o:SetTextInsets() end
@@ -137,6 +139,11 @@ assert(M.tabs.market and M.tabs.economics and M.tabs.crafts and M.tabs.materials
 assert(M.rows[1].item == item)
 assert(M.rows[1].statusMarker and M.rows[1].statusMarker.shown)
 assert(M.rows[1].statusMarker.color[1] == 0.25 and M.rows[1].statusMarker.color[2] == 0.88)
+assert(M.rows[1].price.justifyH == "RIGHT")
+assert(M.rows[1].middle.justifyH == "RIGHT")
+assert(M.rows[1].quantity.justifyH == "RIGHT")
+assert(M.rows[1].name.justifyH == "LEFT")
+assert(M.headers[2].label.justifyH == "RIGHT")
 assert(M.updateButton.iconTexture and M.updateButton.iconTexture.texture == "Interface\\AddOns\\ModuloMarket\\Textures\\refresh.tga")
 assert(M.search.icon and M.search.icon.texture == "Interface\\AddOns\\ModuloMarket\\Textures\\search.tga")
 assert(M.professionDropdown.label.text == "All professions")
@@ -154,6 +161,11 @@ M.tabs.crafts:GetScript("OnClick")(M.tabs.crafts)
 assert(state.tab == "crafts")
 assert(M.rows[1].statusMarker.shown)
 assert(M.rows[1].statusMarker.color[1] == 0.25 and M.rows[1].statusMarker.color[2] == 0.88)
+assert(M.rows[1].price.justifyH == "RIGHT")
+assert(M.rows[1].middle.justifyH == "RIGHT")
+assert(M.rows[1].quantity.justifyH == "RIGHT")
+assert(M.rows[1].name.justifyH == "LEFT")
+assert(M.headers[2].label.justifyH == "RIGHT")
 M.rows[1]:GetScript("OnClick")(M.rows[1])
 assert(selected == item)
 state.tab = "market"; M.RenderRows()
@@ -190,4 +202,4 @@ state.tab = "market"; M.RefreshInspector()
 assert(not M.bundleScroll.shown and M.relationshipText.shown)
 M.Hide()
 assert(not M.frame:IsShown())
-print("modern UI visual regression harness: 29 checks passed")
+print("modern UI visual regression harness: 34 checks passed")

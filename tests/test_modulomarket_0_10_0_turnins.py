@@ -13,9 +13,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_and_load_order_align():
-    assert 'MM.version = "0.11.6"' in CORE
-    assert "## Version: 0.11.6" in TOC
-    assert MANIFEST["version"] == "0.11.6"
+    assert 'MM.version = "0.11.7"' in CORE
+    assert "## Version: 0.11.7" in TOC
+    assert MANIFEST["version"] == "0.11.7"
     assert TOC.index("TurnInData.lua") < TOC.index("TurnInEngine.lua") < TOC.index("MarketUI.lua")
 
 
@@ -28,7 +28,9 @@ def test_low_supply_is_replaced_by_turn_ins_not_a_duplicate_market_filter():
 
 def test_turnin_dataset_has_all_crates_and_separate_alternative_bundles():
     assert len([line for line in DATA.splitlines() if '{ id=248' in line and 'name="Waylaid Crate:' in line]) == 30
-    assert 'rewardFavor=nil' in DATA and 'rewardCashCopper=nil' in DATA
+    assert 'rewardFavor=20, rewardCashCopper=1000' in DATA
+    assert 'rewardFavor=40, rewardCashCopper=2000' in DATA
+    assert 'rewardFavor=nil' not in DATA and 'rewardCashCopper=nil' not in DATA
     assert 'firstTurnInBonus = { favor=50, reputation=2000, oneTime=true }' in DATA
     assert 'performanceBonusIncluded = false' in DATA
     assert 'provider = "User-supplied Polestar Codex item index;' in DATA

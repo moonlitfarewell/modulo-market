@@ -34,8 +34,18 @@ local first = rows[1]
 assert(first.completionCostCopper == 2000, "completion cost includes one crate plus cheapest complete material option")
 assert(first.cashReturnCopper == 250 and first.rewardFavor == 5 and first.reputation == 0)
 assert(first.netCostCopper == 1750 and first.netCostPerFavorCopper == 350)
-local artisan = rows[#rows]
-assert(artisan.rewardFavor == nil and artisan.cashReturnCopper == nil and artisan.netCostPerFavorCopper == nil)
+local artisanByCategory = {}
+for _, row in ipairs(rows) do
+    if row.tier == "Artisan" then artisanByCategory[row.category] = row end
+end
+for _, category in ipairs({"Herbs", "Ore", "Textiles", "Curiosities"}) do
+    assert(artisanByCategory[category].rewardFavor == 20)
+    assert(artisanByCategory[category].cashReturnCopper == 1000)
+end
+for _, category in ipairs({"Fabrics", "Ingots", "Parts"}) do
+    assert(artisanByCategory[category].rewardFavor == 40)
+    assert(artisanByCategory[category].cashReturnCopper == 2000)
+end
 local shallow = {}
 for _, item in ipairs(catalog) do
     shallow[#shallow+1] = { itemID=item.itemID, itemName=item.itemName, minPriceCopper=100, minPriceQuantity=1, totalQuantity=100 }
@@ -53,7 +63,7 @@ print("PASS 30 crate definitions / unique IDs")
 print("PASS 96 one-of bundle alternatives")
 print("PASS crate + material completion cost")
 print("PASS cash, Favor and reputation returns")
-print("PASS Artisan unknown rewards remain unknown")
+print("PASS Artisan raw and processed category Favor/cash rewards")
 print("PASS insufficient cheapest-price depth fails closed")
 print("PASS missing crate AH price fails closed")
 print("PASS one-time Shipping Label bonus remains separate")

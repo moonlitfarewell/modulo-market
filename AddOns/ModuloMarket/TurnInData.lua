@@ -5,14 +5,15 @@ if not MM then return end
 -- generic unlabelled Waylaid Crate is only used to reveal a label and is not
 -- added as a second purchase requirement for a known crate type.
 MM.TurnInData = {
-    version = "0.11.6",
+    version = "0.11.7",
     provider = "User-supplied Polestar Codex item index; Wowhead Forever, WowSeer and Forever Hub item/reward references",
     categories = { "Herbs", "Ore", "Textiles", "Curiosities", "Fabrics", "Ingots", "Parts" },
     tiers = { "Apprentice", "Journeyman", "Expert", "Artisan" },
     -- Each bundle is an alternative. A player completes a crate with ONE
     -- complete bundle, not all listed alternatives.
-    -- Artisan crate Favor and cash payouts remain UNKNOWN in current public
-    -- Forever guides; do not infer them from Expert values or crate quality.
+    -- Artisan crate payouts follow the supplied tier/category schedule:
+    -- raw materials return 20 Favor + 10s; processed materials return
+    -- 40 Favor + 20s. Cash is 50 copper per Favor.
     crates = {
         { id=248682, name="Waylaid Crate: Apprentice Herbs", tier="Apprentice", category="Herbs", rewardFavor=5, rewardCashCopper=250, reputation=0, bundles={
             {{"Peacebloom",20}},{{"Silverleaf",20}},{{"Earthroot",10}},{{"Mageroyal",10}},{{"Briarthorn",10}},
@@ -80,28 +81,28 @@ MM.TurnInData = {
         { id=248710, name="Waylaid Crate: Expert Parts", tier="Expert", category="Parts", rewardFavor=30, rewardCashCopper=1500, reputation=0, bundles={
             {{"Iron Strut",8}},{{"Mithril Tube",5}},{{"Unstable Trigger",12}},{{"Mithril Casing",5}},
         }},
-        { id=248695, name="Waylaid Crate: Earthly Artisan Herbs", tier="Artisan", category="Herbs", rewardFavor=nil, rewardCashCopper=nil, reputation=nil, bundles={
+        { id=248695, name="Waylaid Crate: Earthly Artisan Herbs", tier="Artisan", category="Herbs", rewardFavor=20, rewardCashCopper=1000, reputation=nil, bundles={
             {{"Golden Sansam",10}},{{"Sungrass",20}},{{"Blindweed",10}},{{"Ghost Mushroom",10}},{{"Gromsblood",10}},
         }},
-        { id=248696, name="Waylaid Crate: Flowering Artisan Herbs", tier="Artisan", category="Herbs", rewardFavor=nil, rewardCashCopper=nil, reputation=nil, bundles={
+        { id=248696, name="Waylaid Crate: Flowering Artisan Herbs", tier="Artisan", category="Herbs", rewardFavor=20, rewardCashCopper=1000, reputation=nil, bundles={
             {{"Dreamfoil",20}},{{"Mountain Silversage",20}},{{"Plaguebloom",20}},{{"Icecap",20}},
         }},
-        { id=248697, name="Waylaid Crate: Artisan Ore", tier="Artisan", category="Ore", rewardFavor=nil, rewardCashCopper=nil, reputation=nil, bundles={
+        { id=248697, name="Waylaid Crate: Artisan Ore", tier="Artisan", category="Ore", rewardFavor=20, rewardCashCopper=1000, reputation=nil, bundles={
             {{"Truesilver Ore",10}},{{"Thorium Ore",20}},{{"Dark Iron Ore",20}},
         }},
-        { id=248698, name="Waylaid Crate: Artisan Textiles", tier="Artisan", category="Textiles", rewardFavor=nil, rewardCashCopper=nil, reputation=nil, bundles={
+        { id=248698, name="Waylaid Crate: Artisan Textiles", tier="Artisan", category="Textiles", rewardFavor=20, rewardCashCopper=1000, reputation=nil, bundles={
             {{"Runecloth",40}},{{"Thick Leather",20}},{{"Rugged Leather",20}},
         }},
-        { id=248699, name="Waylaid Crate: Artisan Curiosities", tier="Artisan", category="Curiosities", rewardFavor=nil, rewardCashCopper=nil, reputation=nil, bundles={
+        { id=248699, name="Waylaid Crate: Artisan Curiosities", tier="Artisan", category="Curiosities", rewardFavor=20, rewardCashCopper=1000, reputation=nil, bundles={
             {{"Dream Dust",20}},{{"Greater Nether Essence",4}},{{"Small Brilliant Shard",6}},{{"Large Brilliant Shard",2}},
         }},
-        { id=248711, name="Waylaid Crate: Artisan Fabrics", tier="Artisan", category="Fabrics", rewardFavor=nil, rewardCashCopper=nil, reputation=nil, bundles={
+        { id=248711, name="Waylaid Crate: Artisan Fabrics", tier="Artisan", category="Fabrics", rewardFavor=40, rewardCashCopper=2000, reputation=nil, bundles={
             {{"Bolt of Runecloth",8}},{{"Cured Thick Hide",2}},
         }},
-        { id=248712, name="Waylaid Crate: Artisan Ingots", tier="Artisan", category="Ingots", rewardFavor=nil, rewardCashCopper=nil, reputation=nil, bundles={
+        { id=248712, name="Waylaid Crate: Artisan Ingots", tier="Artisan", category="Ingots", rewardFavor=40, rewardCashCopper=2000, reputation=nil, bundles={
             {{"Dark Iron Bar",2}},{{"Truesilver Bar",10}},{{"Thorium Bar",20}},
         }},
-        { id=248713, name="Waylaid Crate: Artisan Parts", tier="Artisan", category="Parts", rewardFavor=nil, rewardCashCopper=nil, reputation=nil, bundles={
+        { id=248713, name="Waylaid Crate: Artisan Parts", tier="Artisan", category="Parts", rewardFavor=40, rewardCashCopper=2000, reputation=nil, bundles={
             {{"Thorium Widget",5}},{{"Truesilver Transformer",5}},{{"Thorium Tube",2}},
         }},
     },

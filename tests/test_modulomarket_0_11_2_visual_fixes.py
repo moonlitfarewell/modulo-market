@@ -13,10 +13,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0_11_2_release_versions_align():
-    assert 'MM.version = "0.11.6"' in CORE
-    assert "## Version: 0.11.6" in TOC
-    assert 'version = "0.11.6"' in DATA
-    assert MANIFEST["version"] == "0.11.6"
+    assert 'MM.version = "0.11.7"' in CORE
+    assert "## Version: 0.11.7" in TOC
+    assert 'version = "0.11.7"' in DATA
+    assert MANIFEST["version"] == "0.11.7"
 
 
 def test_modern_toolbar_and_dropdowns_use_real_textures_not_unsupported_glyphs():
@@ -74,4 +74,4 @@ def test_theme_harness_and_modern_visual_harness():
         [lua, str(ROOT / "tests/modern_ui_0_11_2_harness.lua"), str(ADDON / "ModernUI.lua")],
         check=True, capture_output=True, text=True,
     )
-    assert "29 checks passed" in modern.stdout
+    assert "34 checks passed" in modern.stdout

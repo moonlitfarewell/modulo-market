@@ -325,13 +325,9 @@ local function GetItemName(item)
     local name = type(item) == "table" and (type(item.itemName) == "string" and item.itemName or nil) or nil
     if name and name ~= "" then return name end
     local itemID = type(item) == "table" and tonumber(item.iconItemID or item.outputItemID or item.itemID) or nil
-    local itemDataCached = true
-    local api = _G.C_Item
-    if itemID and type(api) == "table" and type(api.IsItemDataCachedByID) == "function" then
-        local ok, cached = pcall(api.IsItemDataCachedByID, itemID)
-        itemDataCached = ok and cached == true
-    end
-    if itemID and itemDataCached and type(_G.GetItemInfo) == "function" then
+    -- GetItemInfo is the authoritative compatibility path on the Forever
+    -- 1.60.1 client. A separate cache probe must not suppress this lookup.
+    if itemID and type(_G.GetItemInfo) == "function" then
         local ok, cachedName = pcall(_G.GetItemInfo, itemID)
         if ok and type(cachedName) == "string" and cachedName ~= "" then return cachedName end
     end
@@ -339,6 +335,18 @@ local function GetItemName(item)
 end
 
 local itemQualityCache = {}
+local itemQualityRequested = {}
+local itemQualityFailed = {}
+local function RequestItemQuality(itemID)
+    itemID = tonumber(itemID)
+    if not itemID or itemQualityRequested[itemID] or itemQualityFailed[itemID] then return end
+    local api = _G.C_Item
+    if type(api) ~= "table" or type(api.RequestLoadItemDataByID) ~= "function" then return end
+    itemQualityRequested[itemID] = true
+    local ok, accepted = pcall(api.RequestLoadItemDataByID, itemID)
+    if not ok or accepted == false then itemQualityRequested[itemID] = nil end
+end
+
 local function GetItemQualityHex(itemID)
     itemID = tonumber(itemID)
     if not itemID then return "ffffffff" end
@@ -360,7 +368,9 @@ local function GetItemQualityHex(itemID)
             return hex
         end
     end
-    -- Uncached item quality is not guessed. White is the safe neutral fallback.
+    -- Load quality for visible rows asynchronously. Never guess rarity while
+    -- the client item cache is pending; the item-data event rerenders the row.
+    RequestItemQuality(itemID)
     return "ffffffff"
 end
 
@@ -2819,6 +2829,10 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
     if not itemID then return end
     -- Item cache completion can also resolve the real icon for virtualized rows.
     itemIconCache[itemID] = nil
+    itemQualityRequested[itemID] = nil
+    itemQualityCache[itemID] = nil
+    if success == false then itemQualityFailed[itemID] = true
+    else itemQualityFailed[itemID] = nil end
     UI.itemClassCache[itemID] = nil
     UI.itemClassRequested[itemID] = nil
     UI.itemClassPendingIDs[itemID] = nil
@@ -2848,6 +2862,7 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
     else
         UI.RenderRows()
     end
+    if MM.ModernUI and MM.ModernUI.RenderRows then MM.ModernUI.RenderRows() end
 end)
 
 local function NormalizeBuildKey(value)
@@ -3399,6 +3414,22 @@ local function SetTab(tab)
     UI.StartViewBuild()
 end
 
+local function CenterMarketWindow(frame, positionKey)
+    if not frame then return false end
+    frame:ClearAllPoints()
+    frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    local x, y = frame:GetCenter()
+    if type(MM.db) == "table" and tonumber(x) and tonumber(y) then
+        MM.db.windowPositions = MM.db.windowPositions or {}
+        MM.db.windowPositions[positionKey or "blizzlike"] = { x = x, y = y }
+    end
+    return true
+end
+
+function UI.CenterWindow()
+    return CenterMarketWindow(UI.frame, "blizzlike")
+end
+
 function UI.ResetWindowPosition()
     if type(MM.db) == "table" then
         MM.db.windowPositions = MM.db.windowPositions or {}
@@ -3452,39 +3483,55 @@ function UI.HandleShiftClick(item)
     if type(item) ~= "table" then return false end
     local itemID = tonumber(item.iconItemID or item.outputItemID or item.itemID)
     if not itemID then return false end
+
+    local plainName = GetItemName(item)
     local itemLink
     if type(_G.GetItemInfo) == "function" then
         local ok, _, link = pcall(_G.GetItemInfo, itemID)
-        if ok and type(link) == "string" and link ~= "" then itemLink = link end
+        if ok and type(link) == "string" and link:find("|Hitem:", 1, true) then
+            itemLink = link
+        end
     end
-    local plainName = GetItemName(item)
     itemLink = itemLink or ("|Hitem:" .. tostring(itemID) .. "|h[" .. plainName .. "]|h")
 
-    local activeChat
-    if type(_G.ChatEdit_GetActiveWindow) == "function" then
-        local ok, value = pcall(_G.ChatEdit_GetActiveWindow)
-        if ok then activeChat = value end
+    -- Both the Forever/Era and current clients route modified item clicks
+    -- through ChatFrameUtil.InsertLink. Use Blizzard's dispatcher so it
+    -- inserts a real hyperlink into focused chat, or places the plain item
+    -- name in the native Auction House search field without submitting.
+    local chatUtil = _G.ChatFrameUtil
+    if type(chatUtil) == "table" and type(chatUtil.InsertLink) == "function" then
+        local ok, inserted = pcall(chatUtil.InsertLink, itemLink)
+        if ok and inserted ~= false then return true end
     end
-    if activeChat and type(_G.ChatEdit_InsertLink) == "function" then
+
+    -- Compatibility fallback for older clients that expose only the legacy
+    -- global. Do not use this alias when ChatFrameUtil is available.
+    local keyboardFocus
+    if type(_G.GetCurrentKeyBoardFocus) == "function" then
+        local ok, focus = pcall(_G.GetCurrentKeyBoardFocus)
+        if ok then keyboardFocus = focus end
+    end
+    if keyboardFocus and type(_G.ChatEdit_InsertLink) == "function" then
         local ok, inserted = pcall(_G.ChatEdit_InsertLink, itemLink)
         if ok and inserted ~= false then return true end
     end
 
+    -- Last-resort legacy BrowseName support if the native dispatcher is absent.
     local auctionFrame = _G.AuctionFrame
-    if not auctionFrame or type(auctionFrame.IsShown) ~= "function" or not auctionFrame:IsShown() then
-        return false
-    end
     local browseName = _G.BrowseName
-    if not browseName then return false end
-    if type(browseName.IsShown) == "function" and not browseName:IsShown() then
-        local browseTab = _G.AuctionFrameTab1
-        if browseTab and type(browseTab.Click) == "function" then pcall(browseTab.Click, browseTab) end
+    if auctionFrame and browseName and type(auctionFrame.IsShown) == "function"
+        and auctionFrame:IsShown() then
+        if type(browseName.IsShown) == "function" and not browseName:IsShown() then
+            local browseTab = _G.AuctionFrameTab1
+            if browseTab and type(browseTab.Click) == "function" then pcall(browseTab.Click, browseTab) end
+        end
+        browseName:SetText(plainName)
+        if browseName.SetFocus then browseName:SetFocus() end
+        if browseName.HighlightText then browseName:HighlightText() end
+        if SetStatus then SetStatus("Auction House search filled: " .. plainName .. " · press Search to run it") end
+        return true
     end
-    browseName:SetText(plainName)
-    if browseName.SetFocus then browseName:SetFocus() end
-    if browseName.HighlightText then browseName:HighlightText() end
-    if SetStatus then SetStatus("Auction House search filled: " .. plainName .. " · press Search to run it") end
-    return true
+    return false
 end
 UI.FillAuctionHouseSearch = UI.HandleShiftClick
 
@@ -4548,6 +4595,7 @@ function UI.ToggleBlizzlike()
         frame:Hide()
     else
         UI.blizzlikeVisible = true
+        CenterMarketWindow(frame, "blizzlike")
         frame:Show()
         UI.Raise()
     end
@@ -4575,6 +4623,7 @@ function UI.ShowBlizzlike()
     frame:SetAlpha(1)
     frame:EnableMouse(true)
     UI.blizzlikeVisible = true
+    CenterMarketWindow(frame, "blizzlike")
     frame:Show()
     UI.Raise()
 end
@@ -4706,6 +4755,13 @@ function UI.GetModernState()
         tab = UI.activeTab, rows = UI.viewRows or {}, selected = UI.selectedItem,
         viewRevision = UI.viewRevision or 0,
         resultCount = #(UI.viewRows or {}), metadata = UI.metadata and UI.metadata:GetText() or "",
+        searchStatus = UI.searchBuildDueAt and "Searching…"
+            or (UI.viewBuild and string.format("Searching %d/%d…",
+                math.min((UI.viewBuild.index or 1) - 1, UI.viewBuild.total or 0), UI.viewBuild.total or 0))
+            or (UI.tooltipSearchWarmup and string.format("Loading descriptions %d/%d…",
+                math.max(0, (UI.tooltipSearchWarmup.index or 1) - 1 - (UI.tooltipSearchWarmup.outstanding or 0)),
+                #(UI.tooltipSearchWarmup.ids or {})))
+            or (UI.rankSort and "Sorting…") or nil,
         scanState = UI.scanStateLabel and UI.scanStateLabel:GetText() or "Scan: Unknown",
         status = UI.status and UI.status:GetText() or "",
         professionOptions = UI.professionOptions or {}, professionFilter = UI.professionFilter or 0,

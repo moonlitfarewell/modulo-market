@@ -316,6 +316,7 @@ function Modern.RenderRows()
     Modern.renderedTab = state.tab
     Modern.renderedRevision = state.viewRevision
     Modern.RefreshHeaders(state.tab)
+    Modern.UpdateColumnLayout(state)
     Modern.RefreshInspector()
     Modern.RefreshTabs(state.tab)
     UpdateFilterVisibility(state.tab)
@@ -416,6 +417,110 @@ function Modern.RefreshHeaders(tab)
         header.label:SetText(spec[1])
         header.sortKey = spec[2]
         if spec[1] == "" then header:Hide() else header:Show() end
+    end
+end
+
+function Modern.UpdateColumnLayout(state)
+    if not Modern.scrollChild or not Modern.headers or not Modern.rows then return end
+    state = state or UI.GetModernState()
+    local rowWidth = tonumber(Modern.scrollChild:GetWidth()) or 0
+    if rowWidth <= 0 then return end
+
+    local activeFields = state.tab == "market"
+        and { "price", "middle", "quantity" }
+        or { "price", "middle", "quantity", "profit" }
+    local fieldHeaders = { price=2, middle=3, quantity=4, profit=5 }
+    local minWidths = { price=82, middle=92, quantity=82, profit=118 }
+    local maxWidths = { price=176, middle=176, quantity=150, profit=190 }
+    local widths = {}
+
+    for _, field in ipairs(activeFields) do
+        local header = Modern.headers[fieldHeaders[field]]
+        local measured = header and header.label and header.label.GetStringWidth
+            and header.label:GetStringWidth() or 0
+        widths[field] = math.max(minWidths[field], tonumber(measured) or 0)
+    end
+    for _, row in ipairs(Modern.rows) do
+        if row:IsShown() then
+            for _, field in ipairs(activeFields) do
+                local cell = row[field]
+                local measured = cell and cell.GetStringWidth and cell:GetStringWidth() or 0
+                widths[field] = math.max(widths[field], tonumber(measured) or 0)
+            end
+        end
+    end
+    local total = 0
+    for _, field in ipairs(activeFields) do
+        widths[field] = math.min(maxWidths[field], widths[field] + 16)
+        total = total + widths[field]
+    end
+
+    -- Keep the numeric columns anchored to the right edge; Item/Recipe gets
+    -- the remaining width and stays left-aligned.
+    local gap, rightPadding = 8, 8
+    local availableNumeric = math.max(0, rowWidth - 46 - 90)
+    if total + gap * (#activeFields - 1) > availableNumeric then
+        local overflow = total + gap * (#activeFields - 1) - availableNumeric
+        for i = #activeFields, 1, -1 do
+            local field = activeFields[i]
+            local reducible = math.max(0, widths[field] - minWidths[field])
+            local reduction = math.min(reducible, overflow)
+            widths[field] = widths[field] - reduction
+            overflow = overflow - reduction
+            if overflow <= 0 then break end
+        end
+    end
+
+    local cursor = rowWidth - rightPadding
+    for i = #activeFields, 1, -1 do
+        local field = activeFields[i]
+        local width = widths[field]
+        local x = cursor - width
+        local header = Modern.headers[fieldHeaders[field]]
+        if header then
+            header:ClearAllPoints()
+            header:SetPoint("TOPLEFT", Modern.centerPanel, "TOPLEFT", 12 + x, -52)
+            header:SetWidth(width)
+            header.label:ClearAllPoints()
+            header.label:SetPoint("LEFT", header, "LEFT", 0, -5)
+            header.label:SetPoint("RIGHT", header, "RIGHT", -4, -5)
+            header.label:SetJustifyH("RIGHT")
+        end
+        for _, row in ipairs(Modern.rows) do
+            local cell = row[field]
+            if cell then
+                cell:ClearAllPoints()
+                cell:SetPoint("LEFT", row, "LEFT", x, 0)
+                cell:SetWidth(width)
+                cell:SetJustifyH("RIGHT")
+            end
+        end
+        cursor = x - gap
+    end
+
+    local nameWidth = math.max(72, cursor - 34)
+    local nameHeader = Modern.headers[1]
+    if nameHeader then
+        nameHeader:ClearAllPoints()
+        nameHeader:SetPoint("TOPLEFT", Modern.centerPanel, "TOPLEFT", 12, -52)
+        nameHeader:SetWidth(nameWidth + 22)
+        nameHeader.label:ClearAllPoints()
+        nameHeader.label:SetPoint("LEFT", nameHeader, "LEFT", 0, -5)
+        nameHeader.label:SetPoint("RIGHT", nameHeader, "RIGHT", -4, -5)
+        nameHeader.label:SetJustifyH("LEFT")
+    end
+    for _, row in ipairs(Modern.rows) do
+        row.name:ClearAllPoints()
+        row.name:SetPoint("LEFT", row, "LEFT", 34, 0)
+        row.name:SetWidth(nameWidth)
+        row.name:SetJustifyH("LEFT")
+    end
+    if #activeFields == 3 then
+        Modern.headers[5]:Hide()
+        for _, row in ipairs(Modern.rows) do row.profit:Hide() end
+    else
+        Modern.headers[5]:Show()
+        for _, row in ipairs(Modern.rows) do row.profit:Show() end
     end
 end
 
@@ -812,7 +917,7 @@ local function CreateUI()
     end
 
     -- Independent inspector cards.
-    local itemCard = Panel(right, "INSPECTED ITEM", 10, -46, rightWidth - 20, 106)
+    local itemCard = Panel(right, "SELECTED ITEM", 10, -46, rightWidth - 20, 106)
     Modern.itemCard = itemCard
     Modern.itemIcon = itemCard:CreateTexture(nil, "ARTWORK")
     Modern.itemIcon:SetSize(52, 52); Modern.itemIcon:SetPoint("TOPLEFT", itemCard, "TOPLEFT", 12, -44)
@@ -889,6 +994,9 @@ local function CreateUI()
         end
         if Modern.craftingScopeDropdown and Modern.craftingScopeDropdown.Refresh then Modern.craftingScopeDropdown.Refresh() end
         Modern.centerTitle:SetText(string.upper((state.tab == "market" and "ALL ITEMS") or (state.tab or "MARKET")))
+        if state.searchStatus then
+            Modern.resultCount:SetText(state.searchStatus)
+        end
         if state.tab ~= Modern.renderedTab or #state.rows ~= Modern.renderedCount
             or state.viewRevision ~= Modern.renderedRevision then
             Modern.RenderRows()
@@ -974,6 +1082,13 @@ end
 
 function Modern.Show()
     local frame = CreateUI()
+    frame:ClearAllPoints()
+    frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    local centerX, centerY = frame:GetCenter()
+    if type(MM.db) == "table" and tonumber(centerX) and tonumber(centerY) then
+        MM.db.windowPositions = MM.db.windowPositions or {}
+        MM.db.windowPositions.modern = { x = centerX, y = centerY }
+    end
     UI.PrepareModernBackend()
     if UI.frame then UI.frame:SetFrameStrata("BACKGROUND"); UI.frame:SetAlpha(0); UI.frame:EnableMouse(false) end
     frame:SetAlpha(tonumber(MM.db and MM.db.backgroundOpacity) or 0.85)

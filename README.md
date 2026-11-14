@@ -1,10 +1,10 @@
-# Modulo Market 0.11.6
+# Modulo Market 0.11.7
 
-**Current player milestone:** 0.11.6 restores learning-state row markers across every tab in both presentations, applies client item-quality colours to item names, and changes Market History to the latest three completed Full Market snapshots. Native item tooltips are restored on hover. Shift-click now inserts the real WoW item hyperlink into an active chat edit box, or fills the native Auction House Browse field when chat is not active. Snapshot search falls back to client-cached item names when the saved row name is absent. Both inspectors use the **Inspected Item** title and Blizz-like gains its own bordered item card; Turn-In column reads **REP / FAV**.
+**Current player milestone:** 0.11.7 centres both windows whenever `/mm` opens them, restores asynchronous WoW item-rarity colours on visible rows, and uses Blizzard's `ChatFrameUtil.InsertLink` dispatcher for native item hyperlink/chat and Auction House search behaviour. Modern numeric columns are measured from visible row values and headers, right-aligned, and leave the remaining width to the left-aligned Item/Recipe column. Search now reads the legacy client item cache even when the separate C_Item cache probe says data is not cached, and Modern exposes filtering/tooltip-warmup progress instead of appearing stuck at `0 / 0`. The inspector's outer heading is **Inspected Item** and its inner item card is **Selected Item**.
 
-Artisan Waylaid Crate Favor and cash remain **UNKNOWN**: the current public Forever sources still do not publish these rewards. No Expert-tier or inferred payout is substituted. Search remains a search of the saved snapshot, not an implicit live AH query. The user's screenshot includes a Full Market client footer showing 0.11.4; that screenshot is useful defect evidence but is not acceptance evidence for 0.11.6.
+Artisan Waylaid Crate rewards use the supplied category schedule: raw-material Artisan crates (Herbs, Ore, Textiles, Curiosities) return 20 Merchant's Favor and 10 Silver; processed-material Artisan crates (Fabrics, Ingots, Parts) return 40 Merchant's Favor and 20 Silver. This is 50 copper per Favor. Reputation remains unfilled because the supplied schedule did not specify a reputation amount.
 
-Forever runtime acceptance for 0.11.6 is **NOT RUN**. Retail runtime is **NOT RUN**. See `MODULOMARKET-RUNTIME-AUDIT-0.11.6.md` and `docs/MODULOMARKET-ITEM-STATUS-QUALITY-HISTORY-INSPECTOR-0.11.6.md`.
+The three-snapshot Market History, learning-state edge markers, native hover tooltips, pricing, scanner and SavedVariables structures remain preserved. See `MODULOMARKET-RUNTIME-AUDIT-0.11.7.md`. Forever runtime acceptance is **NOT RUN**; Retail runtime is **NOT RUN**.
 
 ## Preserved capabilities
 
@@ -14,6 +14,10 @@ Forever runtime acceptance for 0.11.6 is **NOT RUN**. Retail runtime is **NOT RU
 - The 0.11.3 Scan Market → Confirm Scan → Cancel workflow and settings-based Browse Scan diagnostics remain.
 - No optional addon dependency was added.
 
+
+## 0.11.7 — centered windows, native links, Modern column fit and Artisan payouts
+
+Both windows center on each explicit `/mm` open. Visible item rows request missing item quality asynchronously and rerender on item-data completion. Shift-click now calls Blizzard's `ChatFrameUtil.InsertLink` dispatcher first, allowing the client to choose active chat hyperlink insertion or native Auction House name search. Modern numeric columns measure their current headers and visible values and align right across All Items, Economics, Crafts, Materials, Turn-Ins and History. Search reads `GetItemInfo` without a separate cache-probe gate and shows filtering/description warm-up progress. The Modern inner inspector card is titled `Selected Item`. Artisan Favor/cash use the supplied raw/processed category schedule. See `docs/MODULOMARKET-0.11.7-UX-AND-SEARCH.md`.
 
 ## 0.11.6 — item status, quality, history and inspection
 
