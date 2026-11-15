@@ -17,10 +17,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_and_writ_data_are_in_manifest():
-    assert 'MM.version = "0.12.7"' in CORE
-    assert "## Version: 0.12.7" in TOC
-    assert 'version = "0.12.7"' in WRITS
-    assert MANIFEST["version"] == "0.12.7"
+    assert 'MM.version = "0.12.8"' in CORE
+    assert "## Version: 0.12.8" in TOC
+    assert 'version = "0.12.8"' in WRITS
+    assert MANIFEST["version"] == "0.12.8"
     assert "WritData.lua" in TOC
     assert "AddOns/ModuloMarket/WritData.lua" in MANIFEST["files"]
 

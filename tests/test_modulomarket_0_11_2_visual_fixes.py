@@ -13,10 +13,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0_11_2_release_versions_align():
-    assert 'MM.version = "0.12.7"' in CORE
-    assert "## Version: 0.12.7" in TOC
-    assert 'version = "0.12.7"' in DATA
-    assert MANIFEST["version"] == "0.12.7"
+    assert 'MM.version = "0.12.8"' in CORE
+    assert "## Version: 0.12.8" in TOC
+    assert 'version = "0.12.8"' in DATA
+    assert MANIFEST["version"] == "0.12.8"
 
 
 def test_modern_toolbar_and_dropdowns_use_real_textures_not_unsupported_glyphs():

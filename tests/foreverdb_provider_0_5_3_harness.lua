@@ -58,8 +58,8 @@ assert(data.IsMarketSnapshotCompatible({
 assert(data.IsMarketSnapshotCompatible({
     clientVersion = "unknown", clientBuild = "unknown",
 }) == false, "snapshots without verifiable build metadata must not be used for recipe economics")
-assert(status.recipeCount == 2493, "all provider recipes must be counted")
-assert(status.speculativeCount == 143, "speculative recipes must be counted separately")
+assert(status.recipeCount == 2350, "only non-speculative Forever-client recipe structures must be counted")
+assert(status.speculativeCount == 0, "speculative recipes must be excluded from the distribution runtime")
 assert(status.nonItemCount == 179, "non-item and unknown-output records must not become item crafts")
 assert(status.excludedKnownCount == 1, "a recipe already learned by the character must not be duplicated")
 local knownDetails = data.GetForeverRecipeDetails(sampleProfession.professionID, sampleRecipe.id)
@@ -79,7 +79,7 @@ for _, recipe in ipairs(future) do
     if recipe.sourceUnknown then unknown = true end
 end
 assert(observed, "Forever-observed or automatic sources should be represented")
-assert(borrowed, "Classic-borrowed sources should remain distinct")
+assert(not borrowed, "Classic-borrowed sources must not be present in the distribution runtime")
 assert(unknown, "unverified acquisition sources should remain distinct")
 local detailedObserved, detailedBorrowed, detailedUnknown = false, false, false
 for _, recipe in ipairs(future) do
@@ -87,22 +87,28 @@ for _, recipe in ipairs(future) do
         if source.evidence == "FOREVER_OBSERVED" and source.npc_id and source.zone then detailedObserved = true end
         if source.evidence == "CLASSIC_BORROWED" then detailedBorrowed = true end
         if source.evidence == "UNKNOWN" then detailedUnknown = true end
+        assert(source.evidence == "FOREVER_OBSERVED" or source.evidence == "FOREVER_CLIENT",
+            "only observed/client acquisition evidence may be shipped")
+    end
+    if recipe.trainerCostCopper ~= nil then
+        assert(recipe.trainerCostEvidence == "FOREVER_OBSERVED",
+            "only observed trainer prices may be shipped")
     end
 end
-assert(detailedObserved and detailedBorrowed and detailedUnknown,
-    "runtime recipes must preserve individual observed, borrowed and unknown source rows")
+assert(detailedObserved and not detailedBorrowed and not detailedUnknown,
+    "runtime acquisition rows must contain observed/client evidence only")
 
-local roleChecks = { future = false, borrowed = false, unknown = false }
+local roleChecks = { future = false, unknown = false }
 for _, recipe in ipairs(future) do
-    local role = recipe.sourceKnown and "future" or (recipe.borrowedSources and "borrowed" or "unknown")
+    local role = recipe.sourceKnown and "future" or "unknown"
     if not roleChecks[role] then
         assert(data.Matches(recipe.outputItemID, recipe.professionID, role),
             "item relationship index must support the " .. role .. " filter")
         roleChecks[role] = true
     end
 end
-assert(roleChecks.future and roleChecks.borrowed and roleChecks.unknown,
-    "all three source confidence filters must be populated")
+assert(roleChecks.future and roleChecks.unknown,
+    "observed and unknown-acquisition recipe filters should remain available")
 assert(#data.GetMaterialItems() > 0, "ForeverDB reagent relationships must populate material index")
 
 local professions = data.GetProfessions()
