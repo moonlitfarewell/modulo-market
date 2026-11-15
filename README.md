@@ -2,7 +2,7 @@
 
 **Current source milestone:** a complete Full Market snapshot is now authoritative over Browse snapshots, even when Browse has a newer timestamp. Browse is used only as a fallback when no complete Full Market snapshot exists. A completed Replicate scan still hands its exact committed snapshot to the presentation refresh path; closed presentations defer catalogue work until the next explicit open. Aborted/incomplete scans cannot replace the last-known-good Full Market snapshot or trigger the commit refresh. This is source/offline-tested; Forever client acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.12.5.md`.
 
-**0.12.5 release status:** release hardening remains in progress. Current active regression gate: 136 passed. Pre-0.10 milestone-era source-shape tests are retained under `tests/historical/` and excluded from the current gate because they assert superseded layouts and implementation details. The public GitHub `main` branch remains at 0.12.4; no remote update has been made. Distribution licensing and Forever runtime acceptance remain unresolved release gates.
+**0.12.5 release status:** release hardening remains in progress. The root `LICENSE` applies MIT terms only to original Modulo Market source code, to the extent contributors have the rights to license it; it expressly excludes third-party code, datasets, assets and trademarks. See `THIRD-PARTY-NOTICES.md` for known provenance and unresolved rights. Current active regression gate: 136 passed. Pre-0.10 milestone-era source-shape tests are retained under `tests/historical/` and excluded from the current gate because they assert superseded layouts and implementation details. The public GitHub `main` branch remains at 0.12.4; no remote update has been made. Distribution licensing and Forever runtime acceptance remain unresolved release gates.
 
 ## 1.0 scope and known limitations
 
@@ -11,7 +11,7 @@ Modulo Market is an Auction House snapshot and profession-information companion.
 Known limitations for the 1.0 candidate:
 - Forever runtime acceptance of the current 0.12.5 build is NOT RUN.
 - Public redistribution rights for the bundled ForeverDB-derived canonical/runtime data have not yet been independently confirmed. Attribution is present; attribution alone is not treated as a data redistribution licence.
-- The repository has no project `LICENSE` file; the project-code licence has not been selected/confirmed.
+- A scoped MIT `LICENSE` has been added for original project source code only. Third-party datasets, assets and dependencies are excluded; see `THIRD-PARTY-NOTICES.md`. Texture provenance and the precise status of CMaNGOS-derived facts remain UNKNOWN and block an unrestricted distribution claim.
 - The public GitHub `main` branch is still 0.12.4 and does not yet match this 0.12.5 working source.
 - Fishing commodity valuation, disenchant expected-value calculations and skill-progression opportunity ranking are outside the current 1.0 scope unless separately accepted and implemented.
 

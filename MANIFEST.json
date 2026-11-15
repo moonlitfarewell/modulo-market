@@ -75,7 +75,7 @@
     "Modulo"
   ],
   "developer_tools_version": "Embedded repository importer 0.2.0 used to compile the 70938 runtime; standalone ForeverDB importer 0.2.3 used to inspect, normalize and validate the raw 70938 capture (separate release lifecycle).",
-  "file_count": 273,
+  "file_count": 275,
   "files": [
     ".gitignore",
     "AddOns/ModuloMarket/Core.lua",
@@ -99,6 +99,7 @@
     "AddOns/ModuloMarket/TurnInData.lua",
     "AddOns/ModuloMarket/TurnInEngine.lua",
     "AddOns/ModuloMarket/WritData.lua",
+    "LICENSE",
     "MANIFEST.json",
     "MODULOMARKET-PERFORMANCE-RESEARCH-2026-11-10.md",
     "MODULOMARKET-REPLICATE-PROBE-RESULT-2026-11-10.md",
@@ -190,6 +191,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.9.8.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.9.9.md",
     "README.md",
+    "THIRD-PARTY-NOTICES.md",
     "data/ForeverDB-Canonical-1.60.1.70862.json",
     "data/ForeverDB-Canonical-1.60.1.70888.json",
     "data/ForeverDB-Canonical-1.60.1.70938.json",
@@ -622,7 +624,7 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.12.5_SOURCE_IMPLEMENTED; FULL_MARKET_SNAPSHOT_TAKES_PRECEDENCE_OVER_BROWSE; BROWSE_ONLY_FALLBACK; REAL_UI_REFRESH_HARNESS_BLIZZLIKE_MODERN_OPEN_CLOSED_DEFERRED; REPLICATE_ABORT_PRESERVES_LAST_KNOWN_GOOD; ACTIVE_OFFLINE_TESTS_136_PASS; FOREVER_RUNTIME_NOT_RUN; DISTRIBUTION_LICENSE_UNRESOLVED; PUBLIC_GITHUB_MAIN_0.12.4",
+  "runtime_status": "0.12.5_SOURCE_IMPLEMENTED; FULL_MARKET_SNAPSHOT_TAKES_PRECEDENCE_OVER_BROWSE; BROWSE_ONLY_FALLBACK; REAL_UI_REFRESH_HARNESS_BLIZZLIKE_MODERN_OPEN_CLOSED_DEFERRED; REPLICATE_ABORT_PRESERVES_LAST_KNOWN_GOOD; ACTIVE_OFFLINE_TESTS_136_PASS; FOREVER_RUNTIME_NOT_RUN; SCOPED_MIT_SOURCE_LICENSE_ADDED; THIRD_PARTY_TEXTURE_AND_CMANGOS_DATA_RIGHTS_UNKNOWN; PUBLIC_GITHUB_MAIN_0.12.4",
   "saved_variables": [
     "ModuloMarketDB"
   ],
