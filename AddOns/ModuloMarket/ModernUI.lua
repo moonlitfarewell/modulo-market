@@ -1038,7 +1038,7 @@ function Modern.RefreshScanActions(state)
         else Modern.updateButton.iconTexture:SetVertexColor(0.55, 0.58, 0.64, 1) end
     end
     if enabled then Modern.updateButton:Enable() else Modern.updateButton:Disable() end
-    if state.pendingConfirmation then Modern.cancelButton:Show() else Modern.cancelButton:Hide() end
+    if state.pendingConfirmation or state.active then Modern.cancelButton:Show() else Modern.cancelButton:Hide() end
     if state.pendingConfirmation then
         Modern.scanState:SetText("Scan: Confirmation required")
     elseif state.active then

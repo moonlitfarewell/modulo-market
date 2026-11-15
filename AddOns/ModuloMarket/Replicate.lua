@@ -800,6 +800,22 @@ function Replicate.CancelPrepare()
     SetStatus("Full Market scan confirmation cancelled. No request sent.")
 end
 
+-- Player-facing cancellation for both the confirmation step and an active
+-- Replicate transaction. Abort() always discards in-memory partial work and
+-- never reaches Finish()/the snapshot commit hand-off. The one-shot request
+-- allowance and shared cooldown remain consumed after a confirmed request.
+function Replicate.Cancel()
+    if Replicate.pendingConfirmation then
+        Replicate.CancelPrepare()
+        return true
+    end
+    if Replicate.active then
+        Abort("cancelled by player")
+        return true
+    end
+    return false
+end
+
 function Replicate.Confirm()
     if not Replicate.pendingConfirmation then
         SetStatus("Review the full Market scan warning before confirming.")
@@ -855,6 +871,7 @@ function Replicate.GetState()
         attemptedThisSession = Replicate.attemptedThisSession
             or (MM.Scanner and MM.Scanner.replicateProbeAttemptedThisSession == true) or false,
         cooldownRemaining = GetCooldownRemaining(),
+        stage = Replicate.stage,
     }
 end
 

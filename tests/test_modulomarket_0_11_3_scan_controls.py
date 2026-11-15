@@ -16,10 +16,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0_11_3_release_metadata_aligns():
-    assert 'MM.version = "0.12.5"' in CORE
-    assert "## Version: 0.12.5" in TOC
-    assert 'version = "0.12.5"' in DATA
-    assert MANIFEST["version"] == "0.12.5"
+    assert 'MM.version = "0.12.6"' in CORE
+    assert "## Version: 0.12.6" in TOC
+    assert 'version = "0.12.6"' in DATA
+    assert MANIFEST["version"] == "0.12.6"
 
 
 def test_single_scan_button_progresses_through_prepare_confirm_and_cancel():
@@ -29,9 +29,14 @@ def test_single_scan_button_progresses_through_prepare_confirm_and_cancel():
     assert 'UI.scanButton:SetText("Confirm Scan")' in MARKET
     assert 'UI.scanButton:SetText("Scan Market")' in MARKET
     assert 'function UI.TriggerCancelScan()' in MARKET
+    assert 'MM.Replicate.Cancel()' in MARKET
+    assert 'state.pendingConfirmation or state.active' in MARKET
     assert 'MM.ModernUI.RefreshScanActions(state)' in MARKET
+    assert 'state.pendingConfirmation or state.active' in MODERN
     assert 'function Modern.RefreshScanActions(state)' in MODERN
     assert 'Modern.updateButton.label:SetText(text)' in MODERN
+    assert 'if state.pendingConfirmation or state.active then Modern.cancelButton:Show() else Modern.cancelButton:Hide() end' in MODERN
+    assert 'MM.Replicate.Cancel()' in MARKET
 
 
 def test_browse_snapshot_debug_is_not_a_visible_main_window_action():
@@ -79,4 +84,4 @@ def test_scan_flow_lua_harness():
         [lua, str(ROOT / "tests/replicate_scan_flow_0_11_3_harness.lua"), str(ADDON / "Replicate.lua")],
         check=True, capture_output=True, text=True,
     )
-    assert "8 scan flow checks passed" in result.stdout
+    assert "13 scan flow checks passed" in result.stdout

@@ -3022,7 +3022,7 @@ function UI.RefreshActions()
         end
     end
     if UI.cancelButton then
-        if state.pendingConfirmation then UI.cancelButton:Show() else UI.cancelButton:Hide() end
+        if state.pendingConfirmation or state.active then UI.cancelButton:Show() else UI.cancelButton:Hide() end
     end
     if state.active then
         UI.scanButton:SetText("Scanning…")
@@ -3047,7 +3047,7 @@ function UI.RefreshActions()
     if UI.closeAction then
         UI.closeAction:ClearAllPoints()
         UI.closeAction:SetPoint("TOPLEFT", UI.frame, "TOPLEFT",
-            state.pendingConfirmation and 320 or 230, -62)
+            (state.pendingConfirmation or state.active) and 320 or 230, -62)
     end
     if MM.ModernUI and MM.ModernUI.RefreshScanActions then
         MM.ModernUI.RefreshScanActions(state)
@@ -3734,7 +3734,7 @@ local function CreateUI()
         UI.RefreshActions()
     end)
     UI.cancelButton = AddButton(frame, "Cancel", 80, 230, -62, function()
-        if MM.Replicate then MM.Replicate.CancelPrepare() end
+        if MM.Replicate then MM.Replicate.Cancel() end
         UI.RefreshActions()
     end)
     UI.cancelButton:Hide()
@@ -4923,7 +4923,8 @@ function UI.TriggerBrowseScan()
 end
 
 function UI.TriggerCancelScan()
-    if MM.Replicate and MM.Replicate.CancelPrepare then MM.Replicate.CancelPrepare() end
+    if MM.Replicate and MM.Replicate.Cancel then MM.Replicate.Cancel()
+    elseif MM.Replicate and MM.Replicate.CancelPrepare then MM.Replicate.CancelPrepare() end
     UI.RefreshActions()
 end
 
