@@ -29,7 +29,7 @@ A newer Browse snapshot could eclipse a complete Full Market snapshot because `G
 
 ## Regression-suite disposition
 
-The previous full test run had 87 failures already present on the untouched 0.12.4 baseline (388 passed / 87 failed). Those failures came from milestone-era tests asserting pre-0.10 source layouts, exact historical versions, old tab structures and old widget placement. The 65 pre-0.10 test modules are retained under `tests/historical/` and excluded from the current pytest gate. Two ForeverDB importer tests remain active. The 12 0.10–0.12 tests that had stale 0.12.4 version assertions were updated to assert 0.12.5 metadata.
+The captured untouched 0.12.4 baseline log in the supplied audit workspace records 388 passed / 87 failed. Those failures came from milestone-era tests asserting pre-0.10 source layouts, exact historical versions, old tab structures and old widget placement. The 65 pre-0.10 test modules are retained under `tests/historical/` and excluded from the current pytest gate. Two ForeverDB importer tests remain active. The 12 0.10–0.12 tests that had stale 0.12.4 version assertions were updated to assert 0.12.5 metadata.
 
 This is a test-suite scope cleanup, not deletion of the historical evidence. If a pre-0.10 behavior remains a 1.0 requirement, it must be ported into a current behavior-oriented test against the 0.12.x implementation.
 
@@ -38,11 +38,11 @@ This is a test-suite scope cleanup, not deletion of the historical evidence. If 
 - Current active pytest suite: **136 passed**.
 - Focused 0.12.1–0.12.5 acquisition, snapshot, scroll, rarity and compatibility checks: **19 passed** (includes the expanded 0.12.5 Lua behavior harness).
 - Lua syntax: **14/14 addon Lua files passed** `texluac -p`.
-- Candidate ZIP: ZIP CRC PASS (`testzip() == None`); 274 ZIP entries.
-- Fresh extraction: exact manifest inventory **273/273**; active pytest suite **136 passed**; Lua syntax **14/14 passed**.
+- Candidate ZIP: ZIP CRC PASS (`testzip() == None`); 276 files plus one root directory entry (277 ZIP entries).
+- Fresh extraction: exact manifest inventory **276/276**; active pytest suite **136 passed**; Lua syntax **14/14 passed**.
 - Candidate SHA-256 is supplied in the delivery handoff.
-- Public GitHub `main`: checked read-only; README, TOC and Core.lua still report 0.12.4. No remote writes performed.
-- Forever runtime: **NOT RUN** for 0.12.5.
+- Public GitHub `main`: checked read-only on 15 November 2026; TOC and Core.lua both report 0.12.5; scoped LICENSE and THIRD-PARTY-NOTICES.md exist. README and runtime audit still contained stale pre-push statements claiming 0.12.4/no remote update/no licence. No remote writes performed. Full remote-tree/archive equivalence NOT ESTABLISHED.
+- Forever runtime: **PARTIAL OBSERVATION** — user screenshot confirms a closed-window Full Market refresh on Forever 1.60.1, with the new complete snapshot displayed after reopening. Open-window refresh, aborted-scan preservation, alternate presentation and complete tab/feature acceptance remain **NOT RUN**.
 - Retail runtime: **NOT RUN**.
 
 ## Provenance and documentation findings
@@ -51,7 +51,7 @@ This is a test-suite scope cleanup, not deletion of the historical evidence. If 
 - The old 0.12.1 Spire note described the 14 November snapshot only. The later 0.12.3 diagnostic records Enchantresses' Spire, item ID 287025, with 18 records aggregated, and player screenshots showed it searchable. The historical statement is retained but explicitly superseded in the current README.
 - `MANIFEST.json` currently points to parent MODULO 1.0.48 with SHA-256 `8d6e037f3bb9c535690a148b68ce992e4d3dd92bfcd008402f88cde2203997da`.
 - Child bundle lineage requires reconciliation: the inherited `supersedesChildBundle` points to 0.11.5 even though a verified 0.12.4 source bundle is supplied. The final manifest must point to 0.12.4 and preserve the known intervening bundle hashes.
-- No project `LICENSE`/`COPYING` file is present. ForeverDB attribution is present, but bundled-data redistribution permission is not established by the evidence inspected. Both code licensing and data redistribution remain release gates.
+- A scoped MIT `LICENSE` and `THIRD-PARTY-NOTICES.md` are present in the candidate and live main. The MIT grant is limited to original source code. ForeverDB rules support visible attribution and bundling but are not a general open-data licence. Six UI textures have no author/licence metadata; CMaNGOS-labelled records have unresolved provenance/rights. See `MODULOMARKET-PROVENANCE-AUDIT-2026-11-15.md`.
 
 ## Remaining work and acceptance criteria
 
@@ -60,7 +60,12 @@ This is a test-suite scope cleanup, not deletion of the historical evidence. If 
 3. Finish README, installation/upgrade, scope and known-limitations documentation.
 4. Verify source/data licensing and redistribution permission. Do not invent or select a licence without the owner's decision and adequate upstream permission.
 5. Build a fresh 0.12.5 source ZIP; verify ZIP integrity, manifest, TOC/Core/data version agreement, fresh extraction, syntax, focused/full tests and SHA-256.
-6. Compare public GitHub source to the finalized release. No push until explicitly authorized.
+6. Synchronize stale README/audit statements on GitHub and compare the complete remote tree/file hashes to the finalized release. No remote writes performed in this pass.
 7. Run structured Forever acceptance: acquisition, persistence, both windows, every tab, search, crafting, history, turn-ins, post-scan refresh open/closed, aborted scan and error-free operation.
 
 **Exit:** 0.12.5 is not complete until the offline/package gates pass and unresolved licence/remote/runtime gates are either resolved or explicitly accepted as blockers. 1.0.0 remains a separate release decision.
+
+
+## Reconciliation note — 15 November 2026
+
+The manifest `supersedesChildBytes` field was inconsistent with its own SHA and `previousChildBundles` entry. The verified 0.12.4 archive is 2,805,520 bytes with SHA-256 `9bc8c51d2b2cda5fa407f978798da0a60052cddda57b0452f9d0742bc303fb53`; the candidate manifest has been corrected to that byte count. The six local TGA textures were inspected as 64×64 RGBA glyphs; appearance does not prove authorship or licence.
