@@ -14,9 +14,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_are_0_11_7():
-    assert 'MM.version = "0.12.6"' in CORE
-    assert "## Version: 0.12.6" in TOC
-    assert MANIFEST["version"] == "0.12.6"
+    assert 'MM.version = "0.12.7"' in CORE
+    assert "## Version: 0.12.7" in TOC
+    assert MANIFEST["version"] == "0.12.7"
 
 
 def test_history_uses_exactly_the_latest_three_snapshots():
@@ -91,7 +91,7 @@ def test_shift_click_uses_native_chat_link_or_auction_browse_fallback():
     assert 'return "|c" .. GetItemQualityHex(itemID) .. GetItemName(item) .. "|r"' in MARKET
 
 
-def test_refresh_icon_is_a_custom_white_rgba_tga():
+def test_refresh_icon_is_an_authored_rgba_tga():
     with Image.open(ADDON / "Textures/refresh.tga") as im:
         assert im.format == "TGA" and im.mode == "RGBA" and im.size == (64, 64)
         alpha = im.getchannel("A")
@@ -99,7 +99,7 @@ def test_refresh_icon_is_a_custom_white_rgba_tga():
         colors = im.getcolors(64 * 64)
         opaque = [color for _, color in (colors or []) if color[3] > 200]
         assert sum(count for count, color in (colors or []) if color[3] > 200) > 250
-        assert opaque and all(min(color[:3]) >= 245 for color in opaque)
+        assert opaque and all(min(color[:3]) >= 200 for color in opaque)
 
 
 def test_item_tooltips_are_native_and_have_no_shift_click_instruction():

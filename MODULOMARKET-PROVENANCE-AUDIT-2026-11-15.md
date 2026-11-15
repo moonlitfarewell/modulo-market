@@ -46,3 +46,12 @@ Read-only inspection of `moonlitfarewell/modulo-market` default branch `main` on
 - The provider terms are subject to change; re-check at release time.
 - No author/permission correspondence from ForeverDB, CMaNGOS, Blizzard, Wowhead or 60.tools was supplied.
 - No legal opinion was obtained.
+
+
+## 15 November 2026 follow-up — current provider source labels
+
+A further review of the current ForeverDB developer, About and addon pages confirms the distinction between Forever-observed data and Classic fallback material. The developer rules now explicitly state that answers carry invisible marks identifying the key they were served to, that Classic data and player-observed data are labelled, and that plugin developers must fetch and bundle data with releases rather than ship API keys. The About page says quest, drop, vendor and creature details may use labelled Classic Era data where Forever observations are missing. The ForeverDB addon page explicitly credits CMaNGOS classic-db (GPL-3.0) for its Classic fallback data. These statements strengthen provenance attribution but still do not provide a standalone sublicence for Modulo Market's redistribution of this exact mixed dataset.
+
+The 1.60.1.70938 canonical JSON was recursively inspected. It contains 2,296 `acquisition_sources[].source_text` entries labelled `Classic data (CMaNGOS), not confirmed in Forever`; 2,292 corresponding `CLASSIC_BORROWED` acquisition evidence fields; 2,050 `CLASSIC_BORROWED` acquisition entity evidence fields; 404 `CLASSIC_BORROWED` orange-skill threshold evidence fields; 196 trainer-summary source labels; 196 trainer-cost evidence/source fields; and trainer records with 95 Classic-borrowed place-evidence fields and 93 Classic-borrowed entity-evidence fields. These are field/record counts, not a count of unique copyrighted works or a legal conclusion. The data is mixed: recipe structures can be marked `FOREVER_CLIENT` while one or more acquisition/trainer details are Classic-borrowed. Removing whole recipes based only on one Classic fallback field would therefore discard independently Forever-observed recipe facts; any sanitization must be field-level and tested against the importer and runtime consumers.
+
+Sources: https://foreverdb.net/developers ; https://foreverdb.net/about ; https://foreverdb.net/addon ; https://github.com/cmangos/classic-db ; https://github.com/cmangos/classic-db/blob/master/COPYRIGHT.md

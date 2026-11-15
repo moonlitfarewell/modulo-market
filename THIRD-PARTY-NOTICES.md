@@ -41,15 +41,17 @@ material. Applicable rights remain with their respective owners.
 
 The addon declares `Modulo` as a required dependency and `LibProfessionDB` as
 an optional dependency. These are dependencies, not relicensed components.
-The project currently contains UI texture files under
-`AddOns/ModuloMarket/Textures/`; their original authorship/licence provenance
-has not yet been established in the inspected source package. Do not assume
-those textures are covered by the MIT grant until provenance is confirmed.
+The six UI texture files under `AddOns/ModuloMarket/Textures/` in 0.12.7
+are newly rendered from the project-authored SVG masters listed in
+`ASSET-PROVENANCE.md`; no third-party art source was used. These listed assets
+are included in the root MIT scope, to the extent contributors hold those
+rights. This does not change the status of any external dependency or dataset.
 
 ## Release rule
 
-The root `LICENSE` applies only to original Modulo Market source code, to the
-extent contributors have the rights to license it. It does not override any
+The root `LICENSE` applies only to original Modulo Market source code and the
+project-authored UI assets listed in `ASSET-PROVENANCE.md`, to the extent
+contributors have the rights to license them. It does not override any
 third-party licence, provider condition, dependency licence, or data right.
 Where provenance or permission is unknown, retain that status as UNKNOWN and
 resolve it before making a broader redistribution claim.

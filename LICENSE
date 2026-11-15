@@ -3,7 +3,7 @@ MIT License
 Copyright (c) 2026 Modulo Market contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of the original Modulo Market project source code files covered by this notice
+of the original Modulo Market project source files and project-authored assets covered by this notice
 (the “Software”), to deal in the Software without restriction, including
 without limitation the rights to use, copy, modify, merge, publish, distribute,
 sublicense, and/or sell copies of the Software, and to permit persons to whom
@@ -20,9 +20,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-SCOPE LIMITATION: This licence applies only to original Modulo Market source
-code authored for this project, to the extent the project contributors have
-the rights to license it. It does NOT license bundled datasets, third-party
+SCOPE LIMITATION: This licence applies only to original Modulo Market source code and the
+project-authored UI assets identified in ASSET-PROVENANCE.md, to the extent
+the project contributors have the rights to license them. It does NOT license bundled datasets, third-party
 code, third-party assets, trademarks, or other material identified in
 THIRD-PARTY-NOTICES.md or the relevant source/data provenance records. Those
 materials remain subject to their respective rights and terms. No rights are

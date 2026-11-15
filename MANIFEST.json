@@ -69,16 +69,18 @@
     "turnin_presentation": "0.11.6_SOURCE_IMPLEMENTED; REP_FAV_HEADER_BOTH_PRESENTATIONS; ARTISAN_FAVOR_AND_CASH_UNKNOWN_RETAINED_UNTIL_EVIDENCE",
     "auction_house_shift_click": "0.11.5_SHIFT_LEFT_CLICK_ROW_NAME_OR_ICON_FILLS_NATIVE_CLASSIC_BROWSE_NAME; FOCUS_AND_HIGHLIGHT; NO_AUTO_SUBMIT; NO_CHAT_LINK_HOOK; BOTH_PRESENTATIONS",
     "modern_ui_chrome": "0.11.5_CENTRED_TITLE_NO_M_LOGO; REDUNDANT_TOOLBAR_CLOSE_REMOVED; STANDARD_TITLEBAR_X_RETAINED; COMPACT_FIXED_NAV",
-    "replicate_scan_cancellation": "0.12.6_SOURCE_IMPLEMENTED; PLAYER_CANCEL_AVAILABLE_DURING_CONFIRMATION_AND_ACTIVE_SCAN; ABORT_DISCARDS_PARTIAL_IN_MEMORY_STATE; LAST_KNOWN_GOOD_FULL_MARKET_SNAPSHOT_PRESERVED; NO_COMMIT_OR_REFRESH_ON_CANCEL; FOREVER_RUNTIME_NOT_RUN"
+    "replicate_scan_cancellation": "0.12.6_SOURCE_IMPLEMENTED; PLAYER_CANCEL_AVAILABLE_DURING_CONFIRMATION_AND_ACTIVE_SCAN; ABORT_DISCARDS_PARTIAL_IN_MEMORY_STATE; LAST_KNOWN_GOOD_FULL_MARKET_SNAPSHOT_PRESERVED; NO_COMMIT_OR_REFRESH_ON_CANCEL; FOREVER_OBSERVED_PASS_MODERN_AND_BLIZZ_LIKE_ON_1.60.1",
+    "original_ui_asset_provenance": "0.12.7_REPLACED_SIX_UNDOCUMENTED_TGA_GLYPHS_WITH_PROJECT_AUTHORED_SVG_BACKED_ASSETS; SVG_MASTERS_AND_DETERMINISTIC_RENDERER_INCLUDED; ASSET_PROVENANCE_REGISTERED; ROOT_MIT_SCOPE_EXTENDED_TO_LISTED_ORIGINAL_UI_ASSETS"
   },
   "category": "Modulo By Wells",
   "dependencies": [
     "Modulo"
   ],
   "developer_tools_version": "Embedded repository importer 0.2.0 used to compile the 70938 runtime; standalone ForeverDB importer 0.2.3 used to inspect, normalize and validate the raw 70938 capture (separate release lifecycle).",
-  "file_count": 278,
+  "file_count": 288,
   "files": [
     ".gitignore",
+    "ASSET-PROVENANCE.md",
     "AddOns/ModuloMarket/Core.lua",
     "AddOns/ModuloMarket/Diagnostics.lua",
     "AddOns/ModuloMarket/ForeverDBData.lua",
@@ -138,6 +140,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.12.4.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.12.5.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.12.6.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.12.7.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.2.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.1.md",
@@ -195,6 +198,12 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.9.9.md",
     "README.md",
     "THIRD-PARTY-NOTICES.md",
+    "assets/ui-icons/cancel.svg",
+    "assets/ui-icons/check.svg",
+    "assets/ui-icons/chevron-down.svg",
+    "assets/ui-icons/close.svg",
+    "assets/ui-icons/refresh.svg",
+    "assets/ui-icons/search.svg",
     "data/ForeverDB-Canonical-1.60.1.70862.json",
     "data/ForeverDB-Canonical-1.60.1.70888.json",
     "data/ForeverDB-Canonical-1.60.1.70938.json",
@@ -344,11 +353,13 @@
     "tests/test_modulomarket_0_12_4_snapshot_autorefresh.py",
     "tests/test_modulomarket_0_12_5_snapshot_source.py",
     "tests/test_modulomarket_0_12_6_cancel.py",
+    "tests/test_modulomarket_0_12_7_assets.py",
     "tests/theme_0_11_0_harness.lua",
     "tests/theme_0_11_2_harness.lua",
     "tests/turnin_0_10_0_harness.lua",
     "tests/turnin_writs_0_11_4_harness.lua",
     "tests/version_reporting_0_5_4_harness.lua",
+    "tools/assets/render_modulomarket_icons.py",
     "tools/foreverdb_importer/.gitignore",
     "tools/foreverdb_importer/Normalize-Latest-Capture.cmd",
     "tools/foreverdb_importer/Normalize-Latest-Capture.ps1",
@@ -372,6 +383,11 @@
   "parentUploader": "developer",
   "parent_addon": "Modulo",
   "previousChildBundles": [
+    {
+      "bundle": "ModuloMarket-GitHub-Update-0.12.6-CANCEL-SLICE.zip",
+      "bytes": 2557003,
+      "sha256": "e556fb5129e9f9b089db2175741fe0b0aa336eb0fe766e3221fc71cafa7187f2"
+    },
     {
       "bundle": "ModuloMarket-GitHub-Update-0.12.4.zip",
       "bytes": 2805520,
@@ -628,12 +644,12 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.12.6_SOURCE_IMPLEMENTED; PLAYER_CANCEL_VISIBLE_DURING_PENDING_AND_ACTIVE_REPLICATE; CANCEL_ABORTS_ADDON_PROCESSING_AND_PRESERVES_LAST_KNOWN_GOOD; ACTIVE_OFFLINE_TESTS_139_PASS; LUA_SCAN_CANCEL_HARNESS_13_PASS; LUA_SYNTAX_14_OF_14_PASS; FOREVER_RUNTIME_CANCEL_ACCEPTANCE_NOT_RUN; PRIOR_0.12.5_REFRESH_PASSES_PRESERVED; LICENSE_AND_PROVENANCE_GATES_UNRESOLVED",
+  "runtime_status": "0.12.7_ORIGINAL_UI_TEXTURES_REPLACED_WITH_PROJECT_AUTHORED_SVG_BACKED_ASSETS; 0.12.6_CANCEL_RUNTIME_PASS_FOREVER_1.60.1_MODERN_AND_BLIZZ_LIKE; OPEN_WINDOW_REFRESH_PASS; CLOSED_WINDOW_REFRESH_PASS; ACTIVE_OFFLINE_TESTS_141_PASS; LUA_SYNTAX_14_OF_14_PASS; FOREVERDB_AND_CLASSIC_DATA_RIGHTS_UNRESOLVED; REMOTE_0.12.7_NOT_PUSHED",
   "saved_variables": [
     "ModuloMarketDB"
   ],
-  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.12.4.zip",
-  "supersedesChildBytes": 2805520,
-  "supersedesChildSha256": "9bc8c51d2b2cda5fa407f978798da0a60052cddda57b0452f9d0742bc303fb53",
-  "version": "0.12.6"
+  "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.12.6-CANCEL-SLICE.zip",
+  "supersedesChildBytes": 2557003,
+  "supersedesChildSha256": "e556fb5129e9f9b089db2175741fe0b0aa336eb0fe766e3221fc71cafa7187f2",
+  "version": "0.12.7"
 }
