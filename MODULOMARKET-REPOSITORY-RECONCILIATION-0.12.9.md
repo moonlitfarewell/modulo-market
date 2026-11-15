@@ -2,7 +2,7 @@
 
 ## Player problem and observable result
 
-The 0.12.8 release archive was internally clean, but the public GitHub repository still exposed three unfiltered ForeverDB canonical snapshots outside the release manifest. The 0.12.9 candidate is prepared to remove the raw snapshots from both the release package and the public Git tree, while historical test/audit files remain available as explicitly repository-only history. The public main update is not yet performed.
+The 0.12.8 release archive was internally clean, but the public GitHub repository still exposed three unfiltered ForeverDB canonical snapshots outside the release manifest. The 0.12.9 package excludes the raw snapshots, and the public `main` cleanup was pushed in commit `671df73bcdfc68037ffada5371622a318a702a16` (`Removing bloat`). That commit deletes exactly the three raw canonical snapshot paths listed below. The filtered 70938 distribution projection remains in the package.
 
 ## Exact 0.12.8 baseline
 
@@ -11,8 +11,8 @@ The 0.12.8 release archive was internally clean, but the public GitHub repositor
 - Recursive Git tree SHA: `9adbfef0c4b39e701ff286cdd23937e8983e5e40`.
 - Tree entries: 379 (366 blobs, 13 tree entries); tree was not truncated.
 - Release `MANIFEST.json`: 290 declared files; every declared path existed in the remote tree.
-- Remote blobs outside the release manifest: 76.
-- Remaining 73 repository-only files: 72 historical/current test artifacts and one superseded `MODULOMARKET-RUNTIME-AUDIT-0.7.9.md`. They are intentionally retained outside the release package.
+- Before cleanup, the remote tree contained 76 blobs outside the release manifest: the three raw snapshots, 72 historical/current test artifacts and one superseded audit.
+- Commit `671df73` removes exactly the three raw snapshot blobs; by delta, 73 repository-only blobs remain (72 test artifacts and one superseded audit), assuming no concurrent branch changes.
 
 ### Raw canonical blobs removed
 
@@ -32,7 +32,7 @@ Two inventories are deliberately distinct:
 1. `MANIFEST.json` describes the complete versioned source/release package. It includes the addon, source, docs, tests and tools intended to ship in the package.
 2. The GitHub recursive tree describes every public repository blob. It may additionally contain historical test artifacts and superseded audit records that are not part of the release package.
 
-The 0.12.9 verifier, `tools/verify_repository_tree.py`, accepts a downloaded recursive Git tree JSON document. It:
+The 0.12.9 verifier, `tools/verify_repository_tree.py`, accepts a downloaded recursive Git tree JSON document. The cleanup commit is confirmed from GitHub's commit record; a fresh complete recursive-tree download and verifier run against post-cleanup `main` remain NOT RUN. The verifier:
 - rejects a truncated tree;
 - verifies every manifest path exists locally and remotely;
 - compares every package file's locally computed Git blob SHA-1 with the GitHub tree blob SHA;
@@ -44,7 +44,7 @@ This means the release ZIP's manifest check can no longer be mistaken for a comp
 
 ## Implementation
 
-- Removed the three unfiltered canonical JSON files from the 0.12.9 candidate source tree; publication to public `main` remains pending.
+- Removed the three unfiltered canonical JSON files from the 0.12.9 source/package tree; public `main` deletion is confirmed by commit `671df73`.
 - Kept the filtered `data/ForeverDB-Distribution-1.60.1.70938.json`.
 - Preserved historical tests and the superseded 0.7.9 audit as repository-only artifacts.
 - Updated README, data README, cleanup report and provenance addendum to distinguish repository from release package.
