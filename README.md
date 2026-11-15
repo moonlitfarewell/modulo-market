@@ -1,12 +1,35 @@
-# Modulo Market 0.12.4
+# Modulo Market 0.12.5 — release hardening (in progress)
 
-**Current player milestone:** a completed Full Market Replicate scan now hands its exact committed snapshot to the UI through an explicit post-commit refresh path. If either presentation is open, the catalogue rebuild starts immediately and stale rows are cleared while indexing proceeds. If the market has not been opened, refresh is deferred until the next `/mm` open; this avoids doing a large catalogue build invisibly. Modern presentation explicitly consumes a deferred refresh even when its transparent backend frame was already shown. No auction acquisition, search matching, SavedVariables schema, or pricing behavior changes. See `MODULOMARKET-RUNTIME-AUDIT-0.12.4.md`.
+**Current source milestone:** a complete Full Market snapshot is now authoritative over Browse snapshots, even when Browse has a newer timestamp. Browse is used only as a fallback when no complete Full Market snapshot exists. A completed Replicate scan still hands its exact committed snapshot to the presentation refresh path; closed presentations defer catalogue work until the next explicit open. Aborted/incomplete scans cannot replace the last-known-good Full Market snapshot or trigger the commit refresh. This is source/offline-tested; Forever client acceptance is NOT RUN. See `MODULOMARKET-RUNTIME-AUDIT-0.12.5.md`.
+
+**0.12.5 release status:** release hardening remains in progress. Current active regression gate: 136 passed. Pre-0.10 milestone-era source-shape tests are retained under `tests/historical/` and excluded from the current gate because they assert superseded layouts and implementation details. The public GitHub `main` branch remains at 0.12.4; no remote update has been made. Distribution licensing and Forever runtime acceptance remain unresolved release gates.
+
+## 1.0 scope and known limitations
+
+Modulo Market is an Auction House snapshot and profession-information companion. Full Market auction prices and depth come only from a completed client Replicate snapshot; ForeverDB supplies profession/catalogue metadata, not live auction prices. Browse captures are narrower and never supersede a complete Full Market snapshot. Craft economics fails closed when the saved Full Market snapshot is incompatible with the running client build or does not contain sufficient price depth.
+
+Known limitations for the 1.0 candidate:
+- Forever runtime acceptance of the current 0.12.5 build is NOT RUN.
+- Public redistribution rights for the bundled ForeverDB-derived canonical/runtime data have not yet been independently confirmed. Attribution is present; attribution alone is not treated as a data redistribution licence.
+- The repository has no project `LICENSE` file; the project-code licence has not been selected/confirmed.
+- The public GitHub `main` branch is still 0.12.4 and does not yet match this 0.12.5 working source.
+- Fishing commodity valuation, disenchant expected-value calculations and skill-progression opportunity ranking are outside the current 1.0 scope unless separately accepted and implemented.
+
+## Installation and upgrade
+
+1. Install the required MODULO addon first.
+2. Copy the `AddOns/ModuloMarket` folder into the same WoW Forever client `Interface/AddOns` directory as MODULO.
+3. Enable Modulo Market in the AddOns list and log in. The addon declares MODULO as required and LibProfessionDB as optional.
+4. For upgrades, exit the client or reload the UI before replacing the addon folder. Replace only `AddOns/ModuloMarket`; do not delete `WTF` or `ModuloMarketDB` SavedVariables. Existing market snapshots, history and window settings are intended to persist across upgrades.
+5. After upgrading, verify the addon version in `/mmversion` and confirm the expected presentation opens before performing a Full Market scan.
+
+The 0.12.4 post-scan refresh implementation remains documented in `MODULOMARKET-RUNTIME-AUDIT-0.12.4.md`.
 
 # Modulo Market 0.12.2
 
 **Current player milestone:** 0.12.2 fixes stale virtual-list scroll offsets when a new search result set replaces the previous one. The visible row range is clamped to the current result count, the scroll position is reset when results finish building, and delayed scroll events cannot leave a short result set positioned beyond its final row. This addresses the Forever screenshot showing `99-2 / 2` with an empty result pane despite two matches and an inspector selection. No search matching, tooltip loading, rarity lookup, market data acquisition or SavedVariables behavior is changed. See `MODULOMARKET-RUNTIME-AUDIT-0.12.2.md`.
 
-**0.12.1 search and rarity milestone:** separates ordinary catalogue search from deep tooltip search. Typing uses a 500 ms trailing debounce and searches item names, IDs, recipes, professions and variant names without initiating tooltip warm-up; pressing Enter explicitly starts the deeper tooltip-description pass. Search-name recovery now reads display names embedded in auction item hyperlinks and uses a local GetItemInfo compatibility path that falls back to `C_Item.GetItemInfo` when the global is absent, following ProfessionMaster's compatibility approach. Item rarity uses the same passive `GetItemInfo` plus `ITEM_QUALITY_COLORS` pattern as ProfessionMaster, with a neutral fallback when quality is not cached. Modulo Market does not request item data solely to colour rows. The supplied saved Full Market snapshot does not contain the literal name `Empresses' Spire`; item ID and whether the item was present during the saved scan remain unconfirmed. See `MODULOMARKET-RUNTIME-AUDIT-0.12.1.md`.
+**0.12.1 search and rarity milestone:** separates ordinary catalogue search from deep tooltip search. Typing uses a 500 ms trailing debounce and searches item names, IDs, recipes, professions and variant names without initiating tooltip warm-up; pressing Enter explicitly starts the deeper tooltip-description pass. Search-name recovery now reads display names embedded in auction item hyperlinks and uses a local GetItemInfo compatibility path that falls back to `C_Item.GetItemInfo` when the global is absent, following ProfessionMaster's compatibility approach. Item rarity uses the same passive `GetItemInfo` plus `ITEM_QUALITY_COLORS` pattern as ProfessionMaster, with a neutral fallback when quality is not cached. Modulo Market does not request item data solely to colour rows. The supplied saved Full Market snapshot does not contain the literal name `Empresses' Spire`; item ID and whether the item was present during the saved scan remain unconfirmed. See `MODULOMARKET-RUNTIME-AUDIT-0.12.1.md`. This was the evidence state for that 14 November capture only; the later 0.12.3 diagnostic and player screenshots record Enchantresses' Spire (item ID 287025) in a completed Full Market snapshot, with 18 records aggregated. See `MODULOMARKET-RUNTIME-AUDIT-0.12.3.md`.
 
 **0.11.9 stability milestone:** retains the 0.11.8 search lexical-scope fix and replaces 0.11.7's render-triggered asynchronous item-rarity loading with passive cached lookup. Item quality is coloured only when `GetItemInfo()` already exposes it; unavailable quality remains neutral white. Item-data completion events may refresh the active presentation, but the addon no longer requests item data merely to colour a row and no longer redraws both UI presentations for one event. Modern dynamic columns, centering, Shift-click dispatch, inspector headings and the Artisan reward schedule are retained. This is a diagnostic regression-isolation release; it does not yet establish that the hard hang is fixed.
 
@@ -50,17 +73,22 @@ Introduced the independent Modern window while preserving the existing Blizz-lik
 ## 0.11.0 — historical theme foundation
 
 Introduced the first settings page and retained colour treatments now under the Blizz-like window. See `docs/MODULOMARKET-THEMES-0.11.0.md`.
-\n\n## 0.12.1 — search staging and ProfessionMaster-compatible item information
+
+
+## 0.12.1 — search staging and ProfessionMaster-compatible item information
 
 Typing now waits 500 ms after the last text change, then runs ordinary name/ID/recipe/profession/variant matching only. Pressing Enter explicitly opts into the existing deeper tooltip-description search. New search generations continue to invalidate obsolete filter builds and warm-up state. Search can recover a missing `itemName` from the auction hyperlink display name, including variant links. A local GetItemInfo compatibility helper calls the global when present and otherwise falls back to `C_Item.GetItemInfo`, following ProfessionMaster's LibMasterAddons compatibility contract. Rarity uses `ITEM_QUALITY_COLORS[quality].hex` when cached item info is available, with the existing quality-colour function as a fallback; it does not request item data from row rendering.
 
-The supplied 14 November 2026 SavedVariables snapshot contains 29,351 market variants from 268,656 processed auctions and 6,317 grouped item IDs, but no `Empresses' Spire` name in either saved snapshot. The snapshot is complete for the records returned by `C_AuctionHouse.ReplicateItems`; that does not prove that a listing seen at another time was included in that response. An item hyperlink/item ID and a fresh scan at the time the listing is visible are needed to distinguish acquisition coverage from name/indexing failure.
+The supplied 14 November 2026 SavedVariables snapshot contains 29,351 market variants from 268,656 processed auctions and 6,317 grouped item IDs, but no `Empresses' Spire` name in either saved snapshot. The snapshot is complete for the records returned by `C_AuctionHouse.ReplicateItems`; that does not prove that a listing seen at another time was included in that response. An item hyperlink/item ID and a fresh scan at the time the listing is visible are needed to distinguish acquisition coverage from name/indexing failure. This describes that historical capture only; the later 0.12.3 diagnostic and player screenshots record Enchantresses' Spire (item ID 287025) with 18 records aggregated.
 
 ## 0.12.1 — item rarity colour markup correction
 
 Fixed a malformed WoW colour escape in the shared item-name formatter. The quality helper previously returned six RGB digits for cached qualities but eight alpha+RGB digits for its neutral fallback, while the formatter prepended only `|c`. WoW requires eight digits after `|c`, so the malformed escape could consume the first two characters of an item name and display literal fragments or incorrect colours. All quality paths now normalize to eight alpha+RGB digits; unknown quality remains neutral, and no rarity-triggered item-data requests were reintroduced. See `MODULOMARKET-RUNTIME-AUDIT-0.12.1.md`.
 
-## 0.11.9 — passive rarity lookup and active-view refresh\n\nRemoved render-triggered `C_Item.RequestLoadItemDataByID` calls for rarity colours. Quality is read opportunistically from the existing client item cache, with neutral white when unavailable. Item-data completion refreshes only the currently selected presentation. This targets the most suspicious new 0.11.7 event/render workload while preserving the requested visual feature wherever cached data exists. See `MODULOMARKET-RUNTIME-AUDIT-0.11.9.md`.\n
+## 0.11.9 — passive rarity lookup and active-view refresh
+
+Removed render-triggered `C_Item.RequestLoadItemDataByID` calls for rarity colours. Quality is read opportunistically from the existing client item cache, with neutral white when unavailable. Item-data completion refreshes only the currently selected presentation. This targets the most suspicious new 0.11.7 event/render workload while preserving the requested visual feature wherever cached data exists. See `MODULOMARKET-RUNTIME-AUDIT-0.11.9.md`.
+
 
 ## 0.12.4 — post-scan snapshot auto-refresh
 

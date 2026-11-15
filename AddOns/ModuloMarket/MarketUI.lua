@@ -331,12 +331,12 @@ local function GetSnapshot()
     local db = MM.db
     if type(db) ~= "table" then return nil end
     local market, browse = db.lastMarketSnapshot, db.lastSnapshot
-    if type(market) == "table" and market.complete == true
-        and (type(browse) ~= "table" or (tonumber(market.timestamp) or 0) >= (tonumber(browse.timestamp) or 0)) then
-        return market
-    end
-    if type(browse) == "table" and browse.complete == true then return browse end
+
+    -- Full Market is the authoritative catalogue source. Browse is a narrower,
+    -- query-scoped capture and is only a bootstrap fallback when no complete
+    -- Full Market snapshot exists; its timestamp must never eclipse Market.
     if type(market) == "table" and market.complete == true then return market end
+    if type(browse) == "table" and browse.complete == true then return browse end
     return nil
 end
 

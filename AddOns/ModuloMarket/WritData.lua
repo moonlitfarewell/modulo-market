@@ -4,7 +4,7 @@ if not MM then return end
 -- Quest names, profession/tier and published hand-in NPC/zone are guide-derived.
 -- Matching recipe/material data is resolved against bundled ForeverDB 1.60.1.70938 records; unmatched recipes remain incomplete.
 MM.WritData = {
-    version = "0.12.4",
+    version = "0.12.5",
     provider = "Wowhead Forever Craftsman's Writs guide (2026-11-13); 60.tools Merchants' Favor guide (accessed 2026-11-14); ForeverDB 1.60.1.70938 recipe catalogue",
     providerURL = "https://www.wowhead.com/forever/guide/professions/craftsmans-writs-overview-recipes-rewards",
     rewardEvidenceURL = "https://www.60.tools/guides/merchants-favor",
