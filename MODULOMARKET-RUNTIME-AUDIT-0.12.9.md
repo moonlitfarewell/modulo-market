@@ -115,3 +115,17 @@ The root MIT licence applies only to original Modulo Market source and the six p
 - [x] Forever runtime remains NOT RUN for this reconciliation.
 
 **0.12.9 repository reconciliation is CLOSED/PASS.** This closes only the repository/package integrity slice. It is not 1.0.0 approval. Remaining 1.0.0 gates are final regression/compatibility review, explicit distribution/licensing posture, and release-candidate build/validation.
+
+## Post-documentation synchronization — 15 November 2026
+
+After the reconciliation records, README and data README were corrected, their four Git blob hashes were refreshed in `MANIFEST.json`. A fresh GitHub recursive-tree API read was then performed against the resulting current `main` head:
+
+- Final verified head at this check: `9c480822fa2bc1c89c3c707da2b57e92e7878e99`.
+- Git root tree SHA: `db0b7f1b26c4c7d4f11c6a496c571e1f6303d15c`.
+- Recursive tree: not truncated; 379 entries (366 blobs).
+- Manifest: version 0.12.9; 293 paths; all present in the Git tree.
+- Manifest-declared Git blob hashes: 292/292 match the current remote tree; `MANIFEST.json` is intentionally excluded from its own hash map.
+- Repository-only paths: 73; all classified as 72 test files and the superseded 0.7.9 audit.
+- Forbidden canonical snapshots: 0.
+
+This final remote-tree check supersedes the earlier 803bdf tree-head reference for the current `main` state. No addon/runtime files changed in the documentation synchronization.
