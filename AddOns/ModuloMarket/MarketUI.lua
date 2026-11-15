@@ -5009,7 +5009,7 @@ function UI.AttachMinimapButton()
     button:SetMovable(true)
     button:EnableMouse(true)
     button:RegisterForDrag("LeftButton")
-    button:RegisterForClicks("LeftButtonUp")
+    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     local icon = button:CreateTexture(nil, "BACKGROUND")
     icon:SetTexture("Interface\\Icons\\INV_Misc_Coin_01")
     icon:SetSize(18, 18)
@@ -5019,13 +5019,28 @@ function UI.AttachMinimapButton()
     border:SetAllPoints(button)
     button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     button:SetScript("OnClick", function(_, mouseButton)
-        if not mouseButton or mouseButton == "LeftButton" then UI.Toggle() end
+        if mouseButton == "RightButton" then
+            if InCombatLockdown and InCombatLockdown() then
+                if MM.Print then MM.Print("Cannot open Modulo Market settings during combat.") end
+                return
+            end
+            local category = MM.Theme and MM.Theme.settingsCategory
+            if category and _G.Settings and type(Settings.OpenToCategory) == "function"
+                and type(category.GetID) == "function" then
+                Settings.OpenToCategory(category:GetID())
+            elseif MM.Print then
+                MM.Print("Modulo Market settings are not ready yet. Try again in a moment.")
+            end
+        elseif not mouseButton or mouseButton == "LeftButton" then
+            UI.Toggle()
+        end
     end)
     button:SetScript("OnEnter", function(self)
         if _G.GameTooltip then
             GameTooltip:SetOwner(self, "ANCHOR_LEFT")
             GameTooltip:AddLine("Modulo Market")
             GameTooltip:AddLine("Left-click to open", 1, 1, 1)
+            GameTooltip:AddLine("Right-click for settings", 1, 1, 1)
             GameTooltip:AddLine("Drag to move", 0.7, 0.7, 0.7)
             GameTooltip:Show()
         end
