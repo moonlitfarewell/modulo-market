@@ -15,10 +15,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_and_two_window_load_order_align():
-    assert 'MM.version = "0.12.9"' in CORE
-    assert "## Version: 0.12.9" in TOC
-    assert 'version = "0.12.9"' in DATA
-    assert MANIFEST["version"] == "0.12.9"
+    assert 'MM.version = "0.12.10"' in CORE
+    assert "## Version: 0.12.10" in TOC
+    assert 'version = "0.12.10"' in DATA
+    assert MANIFEST["version"] == "0.12.10"
     assert TOC.index("Core.lua") < TOC.index("Theme.lua") < TOC.index("MarketUI.lua") < TOC.index("ModernUI.lua") < TOC.index("Diagnostics.lua")
 
 
@@ -52,8 +52,10 @@ def test_settings_page_exposes_appearance_selector_and_market_launcher():
     assert "MM.MarketUI.Show()" in THEME
     assert 'label = "Blizz-like window", value = "blizzlike"' in THEME
     assert 'label = "Modern window", value = "modern"' in THEME
-    assert "Settings.RegisterCanvasLayoutCategory" in THEME
-    assert "InterfaceOptions_AddCategory" in THEME
+    assert "Settings.RegisterVerticalLayoutCategory" in THEME
+    assert "Settings.RegisterProxySetting" in THEME
+    assert "Settings.CreateDropdown" in THEME
+    assert "Settings.RegisterAddOnCategory(category)" in THEME
 
 
 def test_modern_is_a_separate_window_not_a_recolour_of_legacy_window():
@@ -105,6 +107,8 @@ def test_custom_colours_persist_independently_for_both_presentations():
     assert "MM.db.blizzlikeCustomAccent = { r = Clamp(r), g = Clamp(g), b = Clamp(b) }" in THEME
     assert "ColorPickerFrame:SetupColorPickerAndShow" in THEME
     assert "cancelFunc = Restore" in THEME
+    assert "Choose Blizz-like custom colour" in THEME
+    assert "Choose Modern custom colour" in THEME
 
 
 def test_no_new_addon_dependencies():
@@ -142,9 +146,9 @@ def test_modern_ui_lua_harness():
     assert "35 checks passed" in result.stdout
 
 
-def test_release_manifest_excludes_repository_only_test_history():
+def test_release_manifest_is_a_classified_subset_of_repository_inventory():
     actual = {
-        str(p.relative_to(ROOT)).replace("\\", "/")
+        str(p.relative_to(ROOT)).replace("\\\\", "/")
         for p in ROOT.rglob("*")
         if p.is_file() and ".git" not in p.parts and "__pycache__" not in p.parts
         and p.suffix != ".pyc" and ".pytest_cache" not in p.parts
@@ -152,5 +156,7 @@ def test_release_manifest_excludes_repository_only_test_history():
     declared = set(MANIFEST["files"])
     assert declared <= actual
     repository_only = actual - declared
+    assert len(repository_only) == 73
     assert all(path.startswith("tests/") or path == "MODULOMARKET-RUNTIME-AUDIT-0.7.9.md"
                for path in repository_only)
+    assert MANIFEST["file_count"] == len(declared)

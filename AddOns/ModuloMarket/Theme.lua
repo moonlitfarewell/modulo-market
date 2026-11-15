@@ -300,7 +300,7 @@ local function BuildDropdown(parent, labelText, x, y, width, options, getter, se
     return button, Refresh
 end
 
-local settingsPanel
+local settingsCategory
 local function OpenMarket()
     if InCombatLockdown and InCombatLockdown() then
         if MM.Print then MM.Print("Cannot open Modulo Market during combat.") end
@@ -309,181 +309,140 @@ local function OpenMarket()
     if MM.MarketUI and MM.MarketUI.Show then MM.MarketUI.Show() end
 end
 
-local function OpenColorPicker(swatch, appearance)
-    if not _G.ColorPickerFrame then
-        if MM.Print then MM.Print("The client colour picker is unavailable.") end
-        return
-    end
-    local source = appearance == "blizzlike" and MM.db.blizzlikeCustomAccent or MM.db.customAccent
-    local old = CopyColor(source or (appearance == "blizzlike" and defaults.blizzlikeCustomAccent or defaults.customAccent))
-    local function Set(r, g, b)
-        if appearance == "blizzlike" then Theme.SetBlizzlikeCustomAccent(r, g, b)
-        else Theme.SetCustomAccent(r, g, b) end
-        local c = appearance == "blizzlike" and Theme.GetBlizzlikeAccent() or Theme.GetModernAccent()
-        if swatch then swatch:SetColorTexture(c.r, c.g, c.b, 1) end
-    end
-    local function ReadColor()
-        local r, g, b = ColorPickerFrame:GetColorRGB()
-        Set(r, g, b)
-    end
-    local function Restore() Set(old.r, old.g, old.b) end
-    if type(ColorPickerFrame.SetupColorPickerAndShow) == "function" then
-        ColorPickerFrame:SetupColorPickerAndShow({
-            r = old.r, g = old.g, b = old.b, hasOpacity = false,
-            swatchFunc = ReadColor, cancelFunc = Restore,
-        })
+local function ResetWindowPosition()
+    if Theme.GetTheme() == "modern" then
+        if MM.ModernUI and MM.ModernUI.ResetWindowPosition then MM.ModernUI.ResetWindowPosition() end
     else
-        ColorPickerFrame.hasOpacity = false
-        ColorPickerFrame.func = ReadColor
-        ColorPickerFrame.swatchFunc = ReadColor
-        ColorPickerFrame.cancelFunc = Restore
-        ColorPickerFrame:SetColorRGB(old.r, old.g, old.b)
-        ColorPickerFrame:Show()
+        if MM.MarketUI and MM.MarketUI.ResetWindowPosition then MM.MarketUI.ResetWindowPosition() end
     end
 end
 
 local function RegisterSettingsPanel()
-    if settingsPanel then return end
-    settingsPanel = CreateFrame("Frame")
-    settingsPanel.name = "Modulo Market"
-    local settingsScroll = CreateFrame("ScrollFrame", "ModuloMarketSettingsScrollFrame", settingsPanel, "UIPanelScrollFrameTemplate")
-    settingsScroll:SetPoint("TOPLEFT", settingsPanel, "TOPLEFT", 4, -4)
-    settingsScroll:SetPoint("BOTTOMRIGHT", settingsPanel, "BOTTOMRIGHT", -28, 4)
-    local settingsContent = CreateFrame("Frame", nil, settingsScroll)
-    settingsContent:SetSize(780, 760)
-    settingsScroll:SetScrollChild(settingsContent)
-    local settingsBar = _G.ModuloMarketSettingsScrollFrameScrollBar
-    if settingsBar then
-        settingsBar:ClearAllPoints()
-        settingsBar:SetPoint("TOPRIGHT", settingsScroll, "TOPRIGHT", -1, -14)
-        settingsBar:SetPoint("BOTTOMRIGHT", settingsScroll, "BOTTOMRIGHT", -1, 14)
-        settingsBar:SetWidth(12)
-    end
-    settingsScroll:EnableMouseWheel(true)
-    settingsScroll:SetScript("OnMouseWheel", function(self, delta)
-        local current = self:GetVerticalScroll() or 0
-        local maximum = math.max(0, settingsContent:GetHeight() - self:GetHeight())
-        self:SetVerticalScroll(math.max(0, math.min(maximum, current - delta * 42)))
-    end)
-    settingsScroll:SetVerticalScroll(0)
-    MakeLabel(settingsContent, "Modulo Market Settings", 18, -18, 620, "GameFontNormalLarge")
-    MakeLabel(settingsContent, "Choose which Modulo Market window to open. Both appearances use the same market data and calculations.", 18, -48, 760, "GameFontHighlight")
-    MakeButton(settingsContent, "Open Modulo Market (/mm)", 18, -88, 220, OpenMarket)
-    MakeLabel(settingsContent, "Advanced tools", 18, -548, 540, "GameFontNormalLarge")
-    MakeLabel(settingsContent, "Open the separate Browse Scan snapshot and diagnostic window. It is intentionally not part of either main market layout.", 18, -576, 760, "GameFontHighlight")
-    MakeButton(settingsContent, "Open Browse Scan / Snapshot Debug", 18, -612, 280, function()
-        if MM.Scanner and MM.Scanner.Toggle then MM.Scanner.Toggle() end
-    end)
-    MakeLabel(settingsContent, "Window positioning", 18, -652, 540, "GameFontNormalLarge")
-    MakeLabel(settingsContent, "Both market windows can be dragged beyond the visible game viewport. If a window is lost off-screen, reset its position here.", 18, -680, 760, "GameFontHighlight")
-    MakeButton(settingsContent, "Reset Modulo Market window position", 18, -712, 280, function()
-        if Theme.GetTheme() == "modern" then
-            if MM.ModernUI and MM.ModernUI.ResetWindowPosition then MM.ModernUI.ResetWindowPosition() end
-        else
-            if MM.MarketUI and MM.MarketUI.ResetWindowPosition then MM.MarketUI.ResetWindowPosition() end
+    if settingsCategory then return end
+    if not (_G.Settings
+        and type(Settings.RegisterVerticalLayoutCategory) == "function"
+        and type(Settings.RegisterProxySetting) == "function"
+        and type(Settings.CreateDropdown) == "function"
+        and type(Settings.RegisterAddOnCategory) == "function") then
+        if MM.Print then
+            MM.Print("The Blizzard vertical Settings API is unavailable; Modulo Market settings cannot be opened on this client build.")
         end
-    end)
+        return
+    end
 
-    local refreshAppearance
-    local appearanceButton
-    appearanceButton, refreshAppearance = BuildDropdown(settingsContent, "Market appearance", 18, -150, 260, {
+    local category, layout = Settings.RegisterVerticalLayoutCategory("Modulo Market")
+    if not category then return end
+    settingsCategory = category
+    Theme.settingsCategory = category
+    if Settings.RegisterAddOnCategory then Settings.RegisterAddOnCategory(category) end
+
+    local function AddHeader(title)
+        if layout and type(layout.AddInitializer) == "function"
+            and type(CreateSettingsListSectionHeaderInitializer) == "function" then
+            layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(title))
+        elseif Settings.RegisterInitializer and type(CreateSettingsListSectionHeaderInitializer) == "function" then
+            Settings.RegisterInitializer(category, CreateSettingsListSectionHeaderInitializer(title))
+        end
+    end
+
+    local function AddButton(name, label, callback, tooltip)
+        if layout and type(layout.AddInitializer) == "function"
+            and type(CreateSettingsButtonInitializer) == "function" then
+            layout:AddInitializer(CreateSettingsButtonInitializer(name, label, callback, tooltip, true))
+        end
+    end
+
+    local function AddDropdown(id, title, defaultValue, getter, setter, options, tooltip)
+        local setting = Settings.RegisterProxySetting(
+            category, "MODULO_MARKET_" .. id, "string", title, defaultValue, getter, setter
+        )
+        local function GetOptions()
+            local values = Settings.CreateControlTextContainer()
+            for _, option in ipairs(options) do
+                values:Add(option.value, option.label)
+            end
+            return values:GetData()
+        end
+        return Settings.CreateDropdown(category, setting, GetOptions, tooltip)
+    end
+
+    local function OpenColorPicker(appearance)
+        if not _G.ColorPickerFrame then
+            if MM.Print then MM.Print("The client colour picker is unavailable.") end
+            return
+        end
+        local isBlizzlike = appearance == "blizzlike"
+        local source = isBlizzlike and MM.db.blizzlikeCustomAccent or MM.db.customAccent
+        local old = CopyColor(source or (isBlizzlike and defaults.blizzlikeCustomAccent or defaults.customAccent))
+        local function Set(r, g, b)
+            if isBlizzlike then Theme.SetBlizzlikeCustomAccent(r, g, b)
+            else Theme.SetCustomAccent(r, g, b) end
+        end
+        local function ReadColor()
+            local r, g, b = ColorPickerFrame:GetColorRGB()
+            Set(r, g, b)
+        end
+        local function Restore() Set(old.r, old.g, old.b) end
+        if type(ColorPickerFrame.SetupColorPickerAndShow) == "function" then
+            ColorPickerFrame:SetupColorPickerAndShow({
+                r = old.r, g = old.g, b = old.b, hasOpacity = false,
+                swatchFunc = ReadColor, cancelFunc = Restore,
+            })
+        else
+            ColorPickerFrame.hasOpacity = false
+            ColorPickerFrame.func = ReadColor
+            ColorPickerFrame.swatchFunc = ReadColor
+            ColorPickerFrame.cancelFunc = Restore
+            ColorPickerFrame:SetColorRGB(old.r, old.g, old.b)
+            ColorPickerFrame:Show()
+        end
+    end
+
+    AddHeader("Market")
+    AddDropdown("APPEARANCE", "Market appearance", "blizzlike", Theme.GetTheme, Theme.SetTheme, {
         { label = "Blizz-like window", value = "blizzlike" },
         { label = "Modern window", value = "modern" },
-    }, Theme.GetTheme, function(value)
-        Theme.SetTheme(value)
-        refreshAppearance()
-        Theme.RefreshSettingsVisibility()
-    end)
-    Theme.appearanceDropdownRefresh = refreshAppearance
+    }, "Choose which Modulo Market window to open. Both appearances use the same market data and calculations.")
+    AddButton("Open Modulo Market", "Open Modulo Market (/mm)", OpenMarket,
+        "Open the selected Modulo Market presentation.")
 
-    local blizzHeading = MakeLabel(settingsContent, "Blizz-like window styles", 18, -218, 540, "GameFontNormalLarge")
-    local blizzDescription = MakeLabel(settingsContent, "These retain the established WoW-style Modulo Market window and layout.", 18, -246, 700, "GameFontHighlight")
-    local refreshBlizzlike
-    local blizzlikeButton
-    blizzlikeButton, refreshBlizzlike = BuildDropdown(settingsContent, "Blizz-like appearance", 18, -290, 260, {
-        { label = "Classic gold", value = "classic" },
-        { label = "Dark grey", value = "dark" },
-        { label = "Class colour", value = "class" },
-        { label = "Custom colour", value = "custom" },
-    }, Theme.GetBlizzlikeStyle, function(value)
-        Theme.SetBlizzlikeStyle(value)
-        refreshBlizzlike()
-        Theme.RefreshSettingsVisibility()
-    end)
-    Theme.blizzlikeDropdownRefresh = refreshBlizzlike
-    local blizzSwatch = settingsContent:CreateTexture(nil, "ARTWORK")
-    blizzSwatch:SetSize(26, 26)
-    blizzSwatch:SetPoint("TOPLEFT", settingsContent, "TOPLEFT", 296, -322)
-    Theme.blizzlikeSwatch = blizzSwatch
-    local blizzCustomButton = MakeButton(settingsContent, "Choose custom colour…", 332, -322, 190,
-        function() OpenColorPicker(blizzSwatch, "blizzlike") end)
-    Theme.blizzlikeCustomButton = blizzCustomButton
-
-    local modernHeading = MakeLabel(settingsContent, "Modern window colours", 18, -390, 540, "GameFontNormalLarge")
-    local modernDescription = MakeLabel(settingsContent, "Modern is a separate dashboard-style window with its own controls, borders and layout.", 18, -418, 760, "GameFontHighlight")
-    local refreshModern
-    local modernButton
-    modernButton, refreshModern = BuildDropdown(settingsContent, "Modern colour palette", 18, -462, 260, {
-        { label = "Dark (grey tone)", value = "dark" },
-        { label = "Class colour", value = "class" },
-        { label = "Custom colour", value = "custom" },
-    }, Theme.GetModernPalette, function(value)
-        Theme.SetPalette(value)
-        refreshModern()
-        Theme.RefreshSettingsVisibility()
-    end)
-    Theme.modernDropdownRefresh = refreshModern
-    local modernSwatch = settingsContent:CreateTexture(nil, "ARTWORK")
-    modernSwatch:SetSize(26, 26)
-    modernSwatch:SetPoint("TOPLEFT", settingsContent, "TOPLEFT", 296, -494)
-    Theme.modernSwatch = modernSwatch
-    local modernCustomButton = MakeButton(settingsContent, "Choose custom colour…", 332, -494, 190,
-        function() OpenColorPicker(modernSwatch, "modern") end)
-    Theme.modernCustomButton = modernCustomButton
-
-    Theme.RefreshSettingsVisibility = function()
-        local blizz = Theme.GetTheme() == "blizzlike"
-        local modern = not blizz
-        local blizzCustom = blizz and Theme.GetBlizzlikeStyle() == "custom"
-        local modernCustom = modern and Theme.GetModernPalette() == "custom"
-        for _, object in ipairs({ blizzSwatch, blizzCustomButton }) do
-            if blizzCustom then object:Show() else object:Hide() end
-        end
-        for _, object in ipairs({ modernSwatch, modernCustomButton }) do
-            if modernCustom then object:Show() else object:Hide() end
-        end
-        if blizz then
-            local c = Theme.GetBlizzlikeAccent(); blizzSwatch:SetColorTexture(c.r, c.g, c.b, 1)
-        else
-            local c = Theme.GetModernAccent(); modernSwatch:SetColorTexture(c.r, c.g, c.b, 1)
-        end
-        -- Hide each section's labels and controls together with its selector.
-        for _, object in ipairs({ blizzlikeButton, blizzlikeButton.sectionLabel }) do if blizz then object:Show() else object:Hide() end end
-        for _, object in ipairs({ modernButton, modernButton.sectionLabel }) do if modern then object:Show() else object:Hide() end end
-        if Theme.blizzlikeSectionLabels then
-            for _, object in ipairs(Theme.blizzlikeSectionLabels) do if blizz then object:Show() else object:Hide() end end
-        end
-        if Theme.modernSectionLabels then
-            for _, object in ipairs(Theme.modernSectionLabels) do if modern then object:Show() else object:Hide() end end
-        end
+    AddHeader("Blizz-like window")
+    AddDropdown("BLIZZLIKE_STYLE", "Blizz-like appearance", "classic",
+        Theme.GetBlizzlikeStyle, Theme.SetBlizzlikeStyle, {
+            { label = "Classic gold", value = "classic" },
+            { label = "Dark grey", value = "dark" },
+            { label = "Class colour", value = "class" },
+            { label = "Custom colour", value = "custom" },
+        }, "Choose the accent treatment for the Blizzard-style market window.")
+    local function GetBlizzlikeCustomAccent()
+        return CopyColor(MM.db and MM.db.blizzlikeCustomAccent or defaults.blizzlikeCustomAccent)
     end
-    Theme.blizzlikeSectionLabels = { blizzHeading, blizzDescription }
-    Theme.modernSectionLabels = { modernHeading, modernDescription }
+    AddButton("Choose Blizz-like custom colour", "Choose Blizz-like custom colour…",
+        function() OpenColorPicker("blizzlike") end,
+        "Choose and save the custom accent colour for the Blizz-like window.")
 
-    Theme.RefreshSettingsVisibility()
-    settingsPanel:SetScript("OnShow", function()
-        if Theme.appearanceDropdownRefresh then Theme.appearanceDropdownRefresh() end
-        if Theme.blizzlikeDropdownRefresh then Theme.blizzlikeDropdownRefresh() end
-        if Theme.modernDropdownRefresh then Theme.modernDropdownRefresh() end
-        Theme.RefreshSettingsVisibility()
-    end)
-    if _G.Settings and type(Settings.RegisterCanvasLayoutCategory) == "function" and type(Settings.RegisterAddOnCategory) == "function" then
-        local category = Settings.RegisterCanvasLayoutCategory(settingsPanel, settingsPanel.name)
-        Settings.RegisterAddOnCategory(category)
-        Theme.settingsCategory = category
-    elseif type(_G.InterfaceOptions_AddCategory) == "function" then
-        InterfaceOptions_AddCategory(settingsPanel)
+    AddHeader("Modern window")
+    AddDropdown("MODERN_PALETTE", "Modern colour palette", "dark",
+        Theme.GetModernPalette, Theme.SetPalette, {
+            { label = "Dark (grey tone)", value = "dark" },
+            { label = "Class colour", value = "class" },
+            { label = "Custom colour", value = "custom" },
+        }, "Choose the accent treatment for the separate dashboard-style window.")
+    local function GetModernCustomAccent()
+        return CopyColor(MM.db and MM.db.customAccent or defaults.customAccent)
     end
+    AddButton("Choose Modern custom colour", "Choose Modern custom colour…",
+        function() OpenColorPicker("modern") end,
+        "Choose and save the custom accent colour for the Modern window.")
+
+    AddHeader("Advanced tools")
+    AddButton("Browse Scan and Snapshot Debug", "Open Browse Scan / Snapshot Debug",
+        function() if MM.Scanner and MM.Scanner.Toggle then MM.Scanner.Toggle() end end,
+        "Open the separate Browse Scan snapshot and diagnostic window.")
+    AddButton("Reset Modulo Market window position", "Reset Modulo Market window position",
+        ResetWindowPosition, "Restore the selected market window to its default on-screen position.")
+
+    Theme.settingsCategory = category
 end
 
 local loader = CreateFrame("Frame")
