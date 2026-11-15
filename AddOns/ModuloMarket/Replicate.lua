@@ -636,7 +636,11 @@ local function Finish(scan)
     Replicate.stage = "idle"
     Replicate.scan = nil
     StopEvents()
-    if MM.MarketUI and MM.MarketUI.Refresh then MM.MarketUI.Refresh() end
+    if MM.MarketUI and MM.MarketUI.OnMarketSnapshotCommitted then
+        MM.MarketUI.OnMarketSnapshotCommitted(snapshot)
+    elseif MM.MarketUI and MM.MarketUI.Refresh then
+        MM.MarketUI.Refresh()
+    end
     SetStatus(string.format(
         "Market scan complete: %d item variants from %d auctions in %.1fs. %d units priced; %d units have no buyout. Previous data safely replaced.",
         #rows, scan.total, duration, scan.pricedQuantity, scan.unpricedQuantity))
@@ -857,7 +861,7 @@ end
 function Replicate.PrintTargetDiagnostics()
     local d = type(MM.db) == "table" and MM.db.lastReplicateTargetDiagnostics or nil
     if type(d) ~= "table" then
-        if MM.Print then MM.Print("No targeted Replicate diagnostics saved yet. Run one full Market scan with 0.12.3.") end
+        if MM.Print then MM.Print("No targeted Replicate diagnostics saved yet. Run one full Market scan with 0.12.4.") end
         return
     end
     local t = d.target or {}

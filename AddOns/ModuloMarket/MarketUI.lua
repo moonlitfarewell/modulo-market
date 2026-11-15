@@ -15,6 +15,7 @@ local UI = {
     visibleCount = 25,
     listOffset = 0,
     catalogSnapshot = nil,
+    pendingSnapshotRefresh = false,
     catalogBuild = nil,
     viewBuild = nil,
     rankSort = nil,
@@ -1402,6 +1403,14 @@ local function StartCatalog(snapshot)
     UI.viewBuild = nil
     UI.rankSort = nil
     UI.selectedItem = nil
+    -- Invalidate both presentations immediately so stale rows from the previous
+    -- snapshot are not left visible while the replacement catalogue is built.
+    UI.viewRevision = (UI.viewRevision or 0) + 1
+    if UI.RenderRows then UI.RenderRows() end
+    if MM.ModernUI and MM.ModernUI.IsShown and MM.ModernUI.IsShown()
+        and MM.ModernUI.RenderRows then
+        MM.ModernUI.RenderRows()
+    end
     if UI.detailName then
         UI.detailName:SetText("Select an item")
         UI.detailPrice:SetText("—")
@@ -3046,7 +3055,12 @@ function UI.RefreshActions()
 end
 
 function UI.Refresh()
-    if not UI.frame then return end
+    if not UI.frame then
+        -- A scan may finish before /mm has been opened this session. Defer the
+        -- catalogue build until the player opens a presentation.
+        UI.pendingSnapshotRefresh = true
+        return
+    end
     UpdateMetadata()
     if MM.ProfessionData and MM.ProfessionData.GetFutureProviderStatus then
         local provider = MM.ProfessionData.GetFutureProviderStatus()
@@ -3055,12 +3069,27 @@ function UI.Refresh()
         end
     end
     local snapshot = GetSnapshot()
-    if snapshot ~= UI.catalogSnapshot then
+    if snapshot and (UI.pendingSnapshotRefresh or snapshot ~= UI.catalogSnapshot) then
+        UI.pendingSnapshotRefresh = false
         StartCatalog(snapshot)
     elseif not UI.catalogBuild and not UI.economicsIndexBuild and not UI.viewBuild and not UI.rankSort then
         UI.StartViewBuild()
     end
     UI.RefreshActions()
+end
+
+-- Explicit hand-off from the Replicate transaction after a complete snapshot
+-- has been committed to SavedVariables. Open presentations refresh now; closed
+-- presentations defer the work until their next OnShow.
+function UI.OnMarketSnapshotCommitted(snapshot)
+    if type(snapshot) ~= "table" or snapshot.complete ~= true then return false end
+    if type(MM.db) ~= "table" or MM.db.lastMarketSnapshot ~= snapshot then return false end
+    UI.pendingSnapshotRefresh = true
+    local modernOpen = MM.ModernUI and MM.ModernUI.IsShown and MM.ModernUI.IsShown()
+    if UI.frame and (UI.blizzlikeVisible == true or modernOpen) then
+        UI.Refresh()
+    end
+    return true
 end
 
 function UI.SetStatus(message)

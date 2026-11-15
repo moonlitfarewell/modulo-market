@@ -12,10 +12,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0117_versions_are_aligned():
-    assert 'MM.version = "0.12.3"' in CORE
-    assert "## Version: 0.12.3" in TOC
-    assert 'version = "0.12.3"' in DATA
-    assert MANIFEST["version"] == "0.12.3"
+    assert 'MM.version = "0.12.4"' in CORE
+    assert "## Version: 0.12.4" in TOC
+    assert 'version = "0.12.4"' in DATA
+    assert MANIFEST["version"] == "0.12.4"
 
 
 def test_both_windows_center_on_every_explicit_open():

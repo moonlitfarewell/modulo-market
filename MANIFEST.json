@@ -75,7 +75,7 @@
     "Modulo"
   ],
   "developer_tools_version": "Embedded repository importer 0.2.0 used to compile the 70938 runtime; standalone ForeverDB importer 0.2.3 used to inspect, normalize and validate the raw 70938 capture (separate release lifecycle).",
-  "file_count": 266,
+  "file_count": 268,
   "files": [
     ".gitignore",
     "AddOns/ModuloMarket/Core.lua",
@@ -132,6 +132,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.12.1.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.12.2.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.12.3.md",
+    "MODULOMARKET-RUNTIME-AUDIT-0.12.4.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.2.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.0.md",
     "MODULOMARKET-RUNTIME-AUDIT-0.3.1.md",
@@ -268,6 +269,7 @@
     "tests/test_modulomarket_0_12_1_rarity_markup.py",
     "tests/test_modulomarket_0_12_2_search_scroll.py",
     "tests/test_modulomarket_0_12_3_replicate_target_diagnostics.py",
+    "tests/test_modulomarket_0_12_4_snapshot_autorefresh.py",
     "tests/test_modulomarket_0_5_6_redesign_and_capture_cache.py",
     "tests/test_modulomarket_0_7_0_scope_search_layout.py",
     "tests/test_modulomarket_0_7_3_search_warmup.py",
@@ -570,12 +572,12 @@
       "sha256": "427461ceebcf7d13147ece48ee6f01167ffa8e256546fe76493a790ab4fb8bcb"
     }
   ],
-  "runtime_status": "0.12.1_RARITY_MARKUP_NORMALIZED_TO_8_HEX_ALPHA_RGB; PASSIVE_ITEM_QUALITY_LOOKUP; NO_RARITY_TRIGGERED_ITEM_DATA_REQUESTS; FOCUSED_TESTS_11_PASS; FULL_SUITE_373_PASS_90_FAIL_SAME_90_BASELINE_IDS_ZERO_NEW_FAILURES_VS_0.12.0; LUA_SYNTAX_14_OF_14; FOREVER_0.12.1_RUNTIME_NOT_RUN; RETAIL_RUNTIME_NOT_RUN",
+  "runtime_status": "0.12.4_SOURCE_IMPLEMENTED; EXPLICIT_POST_COMMIT_MARKET_SNAPSHOT_REFRESH; OPEN_PRESENTATION_REFRESHES_IMMEDIATELY; CLOSED_PRESENTATION_DEFERS_UNTIL_NEXT_OPEN; FOREVER_RUNTIME_NOT_RUN",
   "saved_variables": [
     "ModuloMarketDB"
   ],
   "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.11.5.zip",
   "supersedesChildBytes": 2481734,
   "supersedesChildSha256": "1bb4568df5fc8424773df36256e534922b0edeae9aa2dfd227181a8543c4b023",
-  "version": "0.12.3"
+  "version": "0.12.4"
 }

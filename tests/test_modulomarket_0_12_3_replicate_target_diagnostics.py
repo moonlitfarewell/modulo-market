@@ -29,6 +29,6 @@ def test_version_agreement():
     toc = (ADDON / "ModuloMarket.toc").read_text()
     core = (ADDON / "Core.lua").read_text()
     manifest = json.loads((ROOT / "MANIFEST.json").read_text())
-    assert re.search(r"^## Version: 0\.12\.3$", toc, re.M)
-    assert 'MM.version = "0.12.3"' in core
-    assert manifest["version"] == "0.12.3"
+    assert re.search(r"^## Version: 0\.12\.4$", toc, re.M)
+    assert 'MM.version = "0.12.4"' in core
+    assert manifest["version"] == "0.12.4"

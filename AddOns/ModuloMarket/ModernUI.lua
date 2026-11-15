@@ -1090,6 +1090,9 @@ function Modern.Show()
         MM.db.windowPositions.modern = { x = centerX, y = centerY }
     end
     UI.PrepareModernBackend()
+    -- The backend frame may already be shown from an earlier presentation;
+    -- explicitly consume any deferred post-scan refresh in that case.
+    if UI.Refresh then UI.Refresh() end
     if UI.frame then UI.frame:SetFrameStrata("BACKGROUND"); UI.frame:SetAlpha(0); UI.frame:EnableMouse(false) end
     frame:SetAlpha(tonumber(MM.db and MM.db.backgroundOpacity) or 0.85)
     frame:Show()
