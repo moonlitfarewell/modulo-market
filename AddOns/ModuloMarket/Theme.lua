@@ -345,10 +345,15 @@ local function RegisterSettingsPanel()
         end
     end
 
-    local function AddButton(name, label, callback, tooltip)
+    local function AddButton(name, label, callback, tooltip, parent, predicate)
         if layout and type(layout.AddInitializer) == "function"
             and type(CreateSettingsButtonInitializer) == "function" then
-            layout:AddInitializer(CreateSettingsButtonInitializer(name, label, callback, tooltip, true))
+            local initializer = CreateSettingsButtonInitializer(name, label, callback, tooltip, true)
+            if parent and initializer.SetParentInitializer then
+                initializer:SetParentInitializer(parent, predicate)
+            end
+            layout:AddInitializer(initializer)
+            return initializer
         end
     end
 
@@ -364,6 +369,13 @@ local function RegisterSettingsPanel()
             return values:GetData()
         end
         return Settings.CreateDropdown(category, setting, GetOptions, tooltip)
+    end
+
+    local function SetParent(initializer, parent, predicate)
+        if initializer and parent and initializer.SetParentInitializer then
+            initializer:SetParentInitializer(parent, predicate)
+        end
+        return initializer
     end
 
     local function OpenColorPicker(appearance)
@@ -399,47 +411,51 @@ local function RegisterSettingsPanel()
     end
 
     AddHeader("Market")
-    AddDropdown("APPEARANCE", "Market appearance", "blizzlike", Theme.GetTheme, Theme.SetTheme, {
+    local appearanceInitializer = AddDropdown("APPEARANCE", "Market appearance", "blizzlike", Theme.GetTheme, Theme.SetTheme, {
         { label = "Blizz-like window", value = "blizzlike" },
         { label = "Modern window", value = "modern" },
-    }, "Choose which Modulo Market window to open. Both appearances use the same market data and calculations.")
-    AddButton("Open Modulo Market", "Open Modulo Market (/mm)", OpenMarket,
-        "Open the selected Modulo Market presentation.")
+    }, "Choose which Modulo Market window to open. Both windows use the same market data and calculations.")
+    AddButton("Open Market", "Open Market (/mm)", OpenMarket,
+        "Open the selected Modulo Market window.")
 
     AddHeader("Blizz-like window")
-    AddDropdown("BLIZZLIKE_STYLE", "Blizz-like appearance", "classic",
+    local blizzlikeInitializer = AddDropdown("BLIZZLIKE_STYLE", "Blizz-like style", "classic",
         Theme.GetBlizzlikeStyle, Theme.SetBlizzlikeStyle, {
             { label = "Classic gold", value = "classic" },
             { label = "Dark grey", value = "dark" },
             { label = "Class colour", value = "class" },
             { label = "Custom colour", value = "custom" },
         }, "Choose the accent treatment for the Blizzard-style market window.")
+    SetParent(blizzlikeInitializer, appearanceInitializer, function() return Theme.GetTheme() == "blizzlike" end)
     local function GetBlizzlikeCustomAccent()
         return CopyColor(MM.db and MM.db.blizzlikeCustomAccent or defaults.blizzlikeCustomAccent)
     end
-    AddButton("Choose Blizz-like custom colour", "Choose Blizz-like custom colour…",
+    local blizzlikeColourButton = AddButton("Blizz-like custom colour", "Choose custom colour",
         function() OpenColorPicker("blizzlike") end,
-        "Choose and save the custom accent colour for the Blizz-like window.")
+        "Choose and save the custom accent colour for the Blizz-like window.",
+        blizzlikeInitializer, function() return Theme.GetBlizzlikeStyle() == "custom" end)
 
     AddHeader("Modern window")
-    AddDropdown("MODERN_PALETTE", "Modern colour palette", "dark",
+    local modernInitializer = AddDropdown("MODERN_PALETTE", "Modern style", "dark",
         Theme.GetModernPalette, Theme.SetPalette, {
             { label = "Dark (grey tone)", value = "dark" },
             { label = "Class colour", value = "class" },
             { label = "Custom colour", value = "custom" },
         }, "Choose the accent treatment for the separate dashboard-style window.")
+    SetParent(modernInitializer, appearanceInitializer, function() return Theme.GetTheme() == "modern" end)
     local function GetModernCustomAccent()
         return CopyColor(MM.db and MM.db.customAccent or defaults.customAccent)
     end
-    AddButton("Choose Modern custom colour", "Choose Modern custom colour…",
+    AddButton("Modern custom colour", "Choose custom colour",
         function() OpenColorPicker("modern") end,
-        "Choose and save the custom accent colour for the Modern window.")
+        "Choose and save the custom accent colour for the Modern window.",
+        modernInitializer, function() return Theme.GetModernPalette() == "custom" end)
 
     AddHeader("Advanced tools")
-    AddButton("Browse Scan and Snapshot Debug", "Open Browse Scan / Snapshot Debug",
+    AddButton("Browse Scan and Snapshot Debug", "Open Browse Scan / Snapshot",
         function() if MM.Scanner and MM.Scanner.Toggle then MM.Scanner.Toggle() end end,
         "Open the separate Browse Scan snapshot and diagnostic window.")
-    AddButton("Reset Modulo Market window position", "Reset Modulo Market window position",
+    AddButton("Reset Market window position", "Reset window position",
         ResetWindowPosition, "Restore the selected market window to its default on-screen position.")
 
     Theme.settingsCategory = category

@@ -1,6 +1,6 @@
-# Modulo Market 0.12.9 — repository and distribution reconciliation
+# Modulo Market 0.12.11 — settings appearance refinement
 
-**Current source milestone:** 0.12.9 completes the repository and release-package reconciliation for commit `803bdf73042236ce741e9bedf8ae6c2df0a621aa`. The filtered 1.60.1.70938 projection retains non-speculative recipe structures, outputs and reagent quantities labelled `FOREVER_CLIENT`, plus acquisition rows labelled `FOREVER_OBSERVED` or `FOREVER_CLIENT`; it excludes speculative recipes and the specified Classic-borrowed/unknown acquisition and comparison material. The three unfiltered canonical snapshots have been deleted from public `main` by commit `671df73`. The complete projection rules and before/after counts are in `MODULOMARKET-DATA-CLEANUP-0.12.8.md`.
+**Current source milestone:** 0.12.11 refines the native Blizzard Settings presentation; 0.12.9 completed the repository and release-package reconciliation for commit `803bdf73042236ce741e9bedf8ae6c2df0a621aa`. The filtered 1.60.1.70938 projection retains non-speculative recipe structures, outputs and reagent quantities labelled `FOREVER_CLIENT`, plus acquisition rows labelled `FOREVER_OBSERVED` or `FOREVER_CLIENT`; it excludes speculative recipes and the specified Classic-borrowed/unknown acquisition and comparison material. The three unfiltered canonical snapshots have been deleted from public `main` by commit `671df73`. The complete projection rules and before/after counts are in `MODULOMARKET-DATA-CLEANUP-0.12.8.md`.
 
 The closed-window and open-window Full Market refresh paths remain FOREVER OBSERVED PASS on Forever 1.60.1; explicit cancellation remains FOREVER OBSERVED PASS in both presentations. See `MODULOMARKET-RUNTIME-AUDIT-0.12.8.md` for the exact inherited evidence scopes. No new player runtime test was needed for this data-only projection.
 
@@ -115,3 +115,22 @@ A completed Full Market Replicate scan now hands the exact committed snapshot to
 ## 0.12.6 active Replicate cancellation
 
 The Cancel control remains visible while a Replicate scan is awaiting confirmation or actively processing. Active cancellation stops addon-side processing and preserves the last-known-good Full Market snapshot; the already-sent client request cannot be retracted and the one-shot cooldown remains consumed. See `MODULOMARKET-RUNTIME-AUDIT-0.12.6.md`. Forever runtime acceptance of this new control is NOT RUN.
+
+
+## 0.12.11 — Native settings appearance refinement
+
+The Modulo Market settings category continues to use Blizzard's vertical Settings
+layout, matching the native Settings approach used by Modulo ItemSlot 0.6.1.
+The master **Market appearance** selector controls the two child selectors:
+**Blizz-like style** and **Modern style**. Each child is parented to the master
+initializer so Blizzard's Settings UI disables it when its window is not selected.
+Each custom-colour action is in turn parented to its corresponding style selector
+and is enabled only when that selector is set to **Custom colour**.
+
+The visible labels and button text have been shortened to avoid clipping in the
+Settings pane. Existing SavedVariables, colour-picker persistence/cancel behavior,
+market data, scanner, Replicate and profession calculations are unchanged.
+
+Source checks: seven focused Python tests passed; the native Settings Lua harness
+passed 20 checks; all 14 addon Lua files passed syntax compilation. These checks
+do not establish Forever or Retail in-client appearance/runtime acceptance.
