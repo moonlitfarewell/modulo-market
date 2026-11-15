@@ -1,6 +1,6 @@
-# Modulo Market 0.12.11 — settings appearance refinement
+# Modulo Market 0.12.14 — item-data event efficiency
 
-**Current source milestone:** 0.12.11 refines the native Blizzard Settings presentation; 0.12.9 completed the repository and release-package reconciliation for commit `803bdf73042236ce741e9bedf8ae6c2df0a621aa`. The filtered 1.60.1.70938 projection retains non-speculative recipe structures, outputs and reagent quantities labelled `FOREVER_CLIENT`, plus acquisition rows labelled `FOREVER_OBSERVED` or `FOREVER_CLIENT`; it excludes speculative recipes and the specified Classic-borrowed/unknown acquisition and comparison material. The three unfiltered canonical snapshots have been deleted from public `main` by commit `671df73`. The complete projection rules and before/after counts are in `MODULOMARKET-DATA-CLEANUP-0.12.8.md`.
+**Current source milestone:** 0.12.14 reduces redundant item-data event work; 0.12.13 refined native settings and minimap access; 0.12.9 completed the repository and release-package reconciliation for commit `803bdf73042236ce741e9bedf8ae6c2df0a621aa`. The filtered 1.60.1.70938 projection retains non-speculative recipe structures, outputs and reagent quantities labelled `FOREVER_CLIENT`, plus acquisition rows labelled `FOREVER_OBSERVED` or `FOREVER_CLIENT`; it excludes speculative recipes and the specified Classic-borrowed/unknown acquisition and comparison material. The three unfiltered canonical snapshots have been deleted from public `main` by commit `671df73`. The complete projection rules and before/after counts are in `MODULOMARKET-DATA-CLEANUP-0.12.8.md`.
 
 The closed-window and open-window Full Market refresh paths remain FOREVER OBSERVED PASS on Forever 1.60.1; explicit cancellation remains FOREVER OBSERVED PASS in both presentations. See `MODULOMARKET-RUNTIME-AUDIT-0.12.8.md` for the exact inherited evidence scopes. No new player runtime test was needed for this data-only projection.
 
@@ -142,3 +142,23 @@ Corrected the 0.12.12 wording reversal: **Diagnostic window** is now the
 short settings-row label, while the button itself says **Open Browse Scan /
 Snapshot**. The button still opens the same Browse Scan / Snapshot Debug
 window. No behavior changed.
+
+
+## 0.12.14 — Item-data event efficiency
+
+Item-data notifications continue to invalidate icon, quality, item-class and
+vendor metadata caches immediately. When neither Market presentation is visible,
+the event path skips synchronous vendor/class metadata reads and does not queue
+presentation rendering. The ordinary getters resolve current metadata lazily
+when the player opens Market again.
+
+When a presentation is visible, completed item IDs are coalesced for 120 ms.
+Metadata is resolved once per item in the burst, even if both legacy and modern
+item-data notifications arrive. The active presentation is refreshed once.
+Item-class warmup and its filter-triggered rebuild pause while the actual
+presentation is hidden, including while the transparent Modern backend frame
+remains shown.
+
+See `MODULOMARKET-RUNTIME-AUDIT-0.12.14.md` for implementation scope,
+regression evidence and the required Freeloader runtime comparison. No in-client
+CPU improvement is claimed until that comparison passes.

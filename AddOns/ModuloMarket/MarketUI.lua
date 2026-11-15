@@ -2899,10 +2899,78 @@ end
 local vendorInfoEvents = CreateFrame("Frame")
 vendorInfoEvents:RegisterEvent("GET_ITEM_INFO_RECEIVED")
 pcall(vendorInfoEvents.RegisterEvent, vendorInfoEvents, "ITEM_DATA_LOAD_RESULT")
+
+local function IsMarketPresentationVisible()
+    local modernActive = MM.Theme and MM.Theme.GetTheme
+        and MM.Theme.GetTheme() == "modern"
+    if modernActive then
+        return MM.ModernUI and MM.ModernUI.IsShown and MM.ModernUI.IsShown() == true
+    end
+    return UI.blizzlikeVisible == true and UI.frame
+        and UI.frame.IsShown and UI.frame:IsShown() == true
+end
+
+local function FlushVendorInfoRefresh()
+    vendorInfoEvents:SetScript("OnUpdate", nil)
+    local pending = vendorInfoEvents.pendingRefresh
+    vendorInfoEvents.pendingRefresh = nil
+    if not pending or not IsMarketPresentationVisible() then return end
+
+    -- Resolve each completed item once per burst, even when the client emits both
+    -- legacy and modern item-data notifications for the same ID.
+    for itemID, success in pairs(pending.items or {}) do
+        if success ~= false then
+            local sellPrice = ReadVendorInfo(itemID)
+            local classID = GetItemClassID(itemID, false)
+            if classID == nil then UI.itemClassFailed[itemID] = true end
+            if UI.itemTypeFilter and UI.itemTypeFilter ~= "all" and UI.activeTab == "market"
+                and classID ~= nil then
+                UI.itemTypeRefreshDueAt = Now() + 0.25
+            end
+            if sellPrice == nil then
+                UI.vendorPriceFailed[itemID] = true
+            end
+        end
+    end
+
+    local modernActive = MM.Theme and MM.Theme.GetTheme
+        and MM.Theme.GetTheme() == "modern"
+    if modernActive then
+        if MM.ModernUI and MM.ModernUI.RenderRows then MM.ModernUI.RenderRows() end
+    elseif pending.selectedItemID and UI.selectedItem
+        and tonumber(UI.selectedItem.itemID) == pending.selectedItemID then
+        SelectItem(UI.selectedItem)
+    else
+        UI.RenderRows()
+    end
+end
+
+local function QueueVendorInfoRefresh(itemID, success)
+    if not IsMarketPresentationVisible() then return end
+    local pending = vendorInfoEvents.pendingRefresh or {
+        dueAt = Now() + 0.12, items = {},
+    }
+    -- A successful notification wins over a duplicate failure notification.
+    if pending.items[itemID] ~= true then pending.items[itemID] = success ~= false end
+    pending.dueAt = Now() + 0.12
+    if UI.selectedItem and tonumber(UI.selectedItem.itemID) == itemID then
+        pending.selectedItemID = itemID
+    end
+    vendorInfoEvents.pendingRefresh = pending
+    vendorInfoEvents:SetScript("OnUpdate", function(self)
+        if Now() >= (self.pendingRefresh and self.pendingRefresh.dueAt or 0) then
+            FlushVendorInfoRefresh()
+        end
+    end)
+end
+
 vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
     itemID = tonumber(itemID)
     if not itemID then return end
-    -- Item cache completion can also resolve the real icon for virtualized rows.
+
+    -- Item cache completion can resolve icons and metadata for virtualized rows.
+    -- Keep these cheap cache updates even when Market is closed; only presentation
+    -- work is deferred until a relevant window is actually visible.
     itemIconCache[itemID] = nil
     itemQualityCache[itemID] = nil
     UI.itemClassCache[itemID] = nil
@@ -2916,28 +2984,9 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
         UI.itemClassFailed[itemID] = true
     else
         UI.vendorPriceFailed[itemID] = nil
-        local sellPrice = ReadVendorInfo(itemID)
-        local classID = GetItemClassID(itemID, false)
-        if classID == nil then UI.itemClassFailed[itemID] = true end
-        if UI.itemTypeFilter and UI.itemTypeFilter ~= "all" and UI.activeTab == "market"
-            and classID ~= nil then
-            UI.itemTypeRefreshDueAt = Now() + 0.25
-        end
-        if sellPrice == nil then
-            -- The client completed its item-data notification but still exposes no
-            -- vendor value. Avoid repeatedly requesting the same unavailable item.
-            UI.vendorPriceFailed[itemID] = true
-        end
     end
-    local modernActive = MM.Theme and MM.Theme.GetTheme
-        and MM.Theme.GetTheme() == "modern"
-    if modernActive then
-        if MM.ModernUI and MM.ModernUI.RenderRows then MM.ModernUI.RenderRows() end
-    elseif UI.selectedItem and tonumber(UI.selectedItem.itemID) == itemID then
-        SelectItem(UI.selectedItem)
-    else
-        UI.RenderRows()
-    end
+
+    QueueVendorInfoRefresh(itemID, success)
 end)
 
 local function NormalizeBuildKey(value)
@@ -4568,8 +4617,9 @@ local function CreateUI()
         -- Run the warmup watchdog independently of other work queues so a stale
         -- catalogue/economics task cannot starve its hard timeout.
         if UI.tooltipSearchWarmup then StepTooltipSearchWarmup() end
-        StepItemClassWarmup()
+        if IsMarketPresentationVisible() then StepItemClassWarmup() end
         if UI.itemTypeRefreshDueAt and now >= UI.itemTypeRefreshDueAt
+            and IsMarketPresentationVisible()
             and not UI.catalogBuild and not UI.economicsIndexBuild
             and not UI.viewBuild and not UI.rankSort then
             UI.itemTypeRefreshDueAt = nil
