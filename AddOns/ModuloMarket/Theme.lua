@@ -452,7 +452,7 @@ local function RegisterSettingsPanel()
         modernInitializer, function() return Theme.GetModernPalette() == "custom" end)
 
     AddHeader("Advanced tools")
-    AddButton("Browse Scan and Snapshot Debug", "Diagnostic window",
+    AddButton("Diagnostic window", "Open Browse Scan / Snapshot",
         function() if MM.Scanner and MM.Scanner.Toggle then MM.Scanner.Toggle() end end,
         "Open the separate Browse Scan snapshot and diagnostic window.")
     AddButton("Reset Market window position", "Reset window position",

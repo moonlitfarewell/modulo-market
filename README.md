@@ -1,4 +1,4 @@
-# Modulo Market 0.12.12 — settings and minimap refinements
+# Modulo Market 0.12.11 — settings appearance refinement
 
 **Current source milestone:** 0.12.11 refines the native Blizzard Settings presentation; 0.12.9 completed the repository and release-package reconciliation for commit `803bdf73042236ce741e9bedf8ae6c2df0a621aa`. The filtered 1.60.1.70938 projection retains non-speculative recipe structures, outputs and reagent quantities labelled `FOREVER_CLIENT`, plus acquisition rows labelled `FOREVER_OBSERVED` or `FOREVER_CLIENT`; it excludes speculative recipes and the specified Classic-borrowed/unknown acquisition and comparison material. The three unfiltered canonical snapshots have been deleted from public `main` by commit `671df73`. The complete projection rules and before/after counts are in `MODULOMARKET-DATA-CLEANUP-0.12.8.md`.
 
@@ -136,15 +136,9 @@ passed 20 checks; all 14 addon Lua files passed syntax compilation. These checks
 do not establish Forever or Retail in-client appearance/runtime acceptance.
 
 
-## 0.12.12 — Diagnostic label and minimap settings shortcut
+## 0.12.13 — Diagnostic setting label correction
 
-The Advanced tools action label is shortened to **Diagnostic window**. The
-Modulo Market minimap launcher now accepts both left and right clicks:
-left-click retains its existing open/toggle behavior; right-click opens the
-Modulo Market native AddOn Settings category. The tooltip documents both
-actions. Right-click is guarded during combat and reports clearly if the
-settings category is not yet available. Drag-to-reposition behavior is unchanged.
-
-Source checks: nine focused Python tests passed; the native settings harness
-passed 20 checks; all addon Lua files pass syntax compilation. These checks do
-not prove the live minimap button interaction or settings navigation on Forever.
+Corrected the 0.12.12 wording reversal: **Diagnostic window** is now the
+short settings-row label, while the button itself says **Open Browse Scan /
+Snapshot**. The button still opens the same Browse Scan / Snapshot Debug
+window. No behavior changed.
