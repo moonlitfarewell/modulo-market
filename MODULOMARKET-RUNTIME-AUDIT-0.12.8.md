@@ -2,7 +2,7 @@
 
 ## Status
 
-**DATA PROJECTION IMPLEMENTED; OFFLINE VALIDATION IN PROGRESS; FOREVER RUNTIME NOT RUN FOR THIS DATA-ONLY CHANGE.** This slice removes specified uncertain/Classic/speculative data from the distributable catalogue while retaining Forever-client recipe structures and explicitly observed/client acquisition evidence. It does not provide legal clearance for retained third-party data or approve 1.0.0.
+**DATA PROJECTION IMPLEMENTED; OFFLINE VALIDATION COMPLETE; FOREVER RUNTIME NOT RUN FOR THIS DATA-ONLY CHANGE.** This slice removes specified uncertain/Classic/speculative data from the distributable catalogue while retaining Forever-client recipe structures and explicitly observed/client acquisition evidence. It does not provide legal clearance for retained third-party data or approve 1.0.0.
 
 ## Player problem and observable result
 

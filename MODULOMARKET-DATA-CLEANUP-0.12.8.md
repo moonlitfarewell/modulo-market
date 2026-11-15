@@ -94,3 +94,12 @@ Modulo Market owns the projection script and runtime adapter. ForeverDB remains 
 ## Decision
 
 The 0.12.8 projection implements the user's no-contact policy and removes the specifically identified Classic/unknown/speculative acquisition material from the public payload. It is a conservative distribution candidate, not legal clearance for the retained ForeverDB/Blizzard-derived data and not 1.0.0 approval. No provider contact was made.
+
+
+## 15 November 2026 — public repository publication correction (0.12.9)
+
+The 0.12.8 archive's 290-file manifest and ZIP inventory were correct, and the archive did not contain the three unfiltered canonical snapshots. A separate inspection of the public GitHub `main` tree at commit `c34bb314084f4308ecb0ff9d420473e4ab7a2995` found that the three raw snapshots had nevertheless remained as repository blobs. Their presence was outside the 0.12.8 release archive manifest, but still exposed the raw data through the public repository.
+
+The snapshots were therefore a repository publication defect, not an installable-addon-folder finding and not evidence that the 0.12.8 ZIP contained them. The 0.12.9 candidate removes all three paths from its source tree; the corresponding public Git tree update remains pending. Their original capture hashes remain preserved in this report; Git blob identities and sizes from the affected public tree are recorded in `MODULOMARKET-REPOSITORY-RECONCILIATION-0.12.9.md`.
+
+The repository's other 73 files outside the 0.12.8 package manifest are historical source artifacts: 72 test files and the superseded `MODULOMARKET-RUNTIME-AUDIT-0.7.9.md`. They are retained as repository-only history, not silently treated as release-package files. `MANIFEST.json` remains the release-package inventory. A separate verifier checks both inventories and rejects raw canonical snapshots in the repository.

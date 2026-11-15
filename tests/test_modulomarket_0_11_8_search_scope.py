@@ -21,8 +21,8 @@ def test_search_name_helper_is_forward_declared_before_first_use():
 
 
 def test_0118_versions_are_aligned():
-    assert 'MM.version = "0.12.8"' in CORE
-    assert "## Version: 0.12.8" in TOC
-    assert 'version = "0.12.8"' in DATA
-    assert 'version = "0.12.8"' in WRITS
-    assert MANIFEST["version"] == "0.12.8"
+    assert 'MM.version = "0.12.9"' in CORE
+    assert "## Version: 0.12.9" in TOC
+    assert 'version = "0.12.9"' in DATA
+    assert 'version = "0.12.9"' in WRITS
+    assert MANIFEST["version"] == "0.12.9"

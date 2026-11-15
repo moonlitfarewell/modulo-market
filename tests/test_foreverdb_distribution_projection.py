@@ -4,7 +4,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools" / "foreverdb_importer"))
+sys.path.insert(0, str(ROOT / "tools"))
 from market_data_importer import validate_canonical
+from verify_repository_tree import git_blob_sha1, verify_repository_tree
 from sanitize_distribution import project
 
 DATA = ROOT / "data" / "ForeverDB-Distribution-1.60.1.70938.json"
@@ -86,3 +88,60 @@ def test_unfiltered_canonical_snapshots_are_not_distributed():
     for build in ("70862", "70888", "70938"):
         assert not (ROOT / "data" / f"ForeverDB-Canonical-1.60.1.{build}.json").exists()
     assert DATA.exists()
+
+
+def test_release_manifest_matches_local_package_inventory_and_hashes():
+    manifest = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
+    declared = set(manifest["files"])
+    actual = {
+        p.relative_to(ROOT).as_posix()
+        for p in ROOT.rglob("*")
+        if p.is_file()
+        and "__pycache__" not in p.parts
+        and ".pytest_cache" not in p.parts
+        and p.suffix != ".pyc"
+    }
+    assert declared == actual
+    assert manifest["file_count"] == len(declared)
+    assert "MANIFEST.json" in declared
+    assert set(manifest["git_blob_sha1"]) == declared - {"MANIFEST.json"}
+    assert manifest["git_blob_sha1_excludes"] == ["MANIFEST.json"]
+    for rel, expected in manifest["git_blob_sha1"].items():
+        assert git_blob_sha1(ROOT / rel) == expected
+
+
+def test_repository_tree_verifier_separates_repo_only_history_and_rejects_raw_canonical(tmp_path):
+    package = tmp_path / "package"
+    package.mkdir()
+    (package / "tests").mkdir()
+    (package / "README.md").write_text("package readme\n", encoding="utf-8")
+    (package / "tests" / "test_core.py").write_text("assert True\n", encoding="utf-8")
+    package_files = ["MANIFEST.json", "README.md", "tests/test_core.py"]
+    manifest = {"file_count": len(package_files), "files": package_files}
+    (package / "MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
+    tree_entries = []
+    for rel in package_files:
+        tree_entries.append({
+            "path": rel, "type": "blob", "sha": git_blob_sha1(package / rel)
+        })
+    tree_entries.extend([
+        {"path": "tests/historical/test_old.py", "type": "blob", "sha": "a" * 40},
+        {"path": "MODULOMARKET-RUNTIME-AUDIT-0.7.9.md", "type": "blob", "sha": "b" * 40},
+    ])
+    clean_tree = {"sha": "clean-fixture", "truncated": False, "tree": tree_entries}
+    errors, summary = verify_repository_tree(package, clean_tree)
+    assert errors == []
+    assert summary["repository_blobs"] == 5
+    assert summary["release_manifest_files"] == 3
+    assert summary["repository_only_files"] == 2
+
+    dirty_tree = {
+        "sha": "dirty-fixture",
+        "truncated": False,
+        "tree": tree_entries + [
+            {"path": "data/ForeverDB-Canonical-1.60.1.70938.json",
+             "type": "blob", "sha": "c" * 40}
+        ],
+    }
+    errors, _ = verify_repository_tree(package, dirty_tree)
+    assert any("Forbidden unfiltered canonical snapshot" in e for e in errors)

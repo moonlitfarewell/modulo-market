@@ -60,3 +60,12 @@ Sources: https://foreverdb.net/developers ; https://foreverdb.net/about ; https:
 ## 0.12.8 supersession note — 15 November 2026
 
 The 0.12.5/0.12.7 provenance review above records the original mixed-provenance 70938 canonical payload. In 0.12.8, the unfiltered 70862, 70888 and 70938 canonical JSON files were removed from the public bundle and replaced by `data/ForeverDB-Distribution-1.60.1.70938.json`. The new projection excludes speculative recipes, Classic-borrowed/unknown acquisition rows, Classic comparison metadata, non-observed trainer entities/locations/prices, and skill thresholds without Forever-client evidence. Exact counts and original source hashes are in `MODULOMARKET-DATA-CLEANUP-0.12.8.md`. This preserves the earlier audit history without implying the old unfiltered files remain in the 0.12.8 package.
+
+
+## 0.12.9 repository publication correction — 15 November 2026
+
+The 0.12.8 release ZIP was independently rechecked against its recorded SHA-256 and contained exactly 290 files matching its 290-file `MANIFEST.json`; none of the unfiltered 70862, 70888 or 70938 canonical snapshots was present in that archive. The public GitHub `main` tree was a separate distribution surface. At parent commit `c34bb314084f4308ecb0ff9d420473e4ab7a2995`, its recursive Git tree contained 366 blobs and 13 tree entries. The three unfiltered canonical snapshots remained publicly accessible as blobs of 14,798,824; 14,805,272; and 14,805,272 bytes respectively (44,409,368 bytes total). Their Git blob IDs were `de1329c98a39f88a49279c3f878dcba441f88033`, `b3e1e365da78d3aad66ee1b9855346b6db459c42`, and `5f25c0537ea617130ebee3da4cf124e3254d6424`.
+
+The three snapshots are removed from the 0.12.9 candidate source tree; publication of that candidate to the public repository remains pending. The other 73 files outside the release manifest are retained repository-only history: 72 test files and the superseded `MODULOMARKET-RUNTIME-AUDIT-0.7.9.md`. They are not part of the installable/release package. This distinction supersedes any broad reading of the 0.12.8 note that the files had been removed from all public repository surfaces.
+
+The 0.12.9 repository verifier checks that every release-manifest file exists in the Git tree with the same Git blob SHA, rejects the three raw canonical paths, and classifies repository-only files separately. This is a technical integrity check, not legal clearance for retained ForeverDB/Blizzard-derived data. No provider contact was made and no unrestricted redistribution claim is made.

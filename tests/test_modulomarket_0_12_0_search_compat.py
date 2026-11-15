@@ -12,11 +12,11 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0120_versions_are_aligned():
-    assert 'MM.version = "0.12.8"' in CORE
-    assert "## Version: 0.12.8" in TOC
-    assert 'version = "0.12.8"' in DATA
-    assert 'version = "0.12.8"' in WRITS
-    assert MANIFEST["version"] == "0.12.8"
+    assert 'MM.version = "0.12.9"' in CORE
+    assert "## Version: 0.12.9" in TOC
+    assert 'version = "0.12.9"' in DATA
+    assert 'version = "0.12.9"' in WRITS
+    assert MANIFEST["version"] == "0.12.9"
 
 
 def test_search_debounce_is_half_second_and_trailing():
