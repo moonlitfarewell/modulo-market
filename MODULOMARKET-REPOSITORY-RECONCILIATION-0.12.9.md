@@ -2,19 +2,25 @@
 
 ## Player problem and observable result
 
-The 0.12.8 release archive was internally clean, but the public GitHub repository still exposed three unfiltered ForeverDB canonical snapshots outside the release manifest. The 0.12.9 package excludes the raw snapshots, and the public `main` cleanup was pushed in commit `671df73bcdfc68037ffada5371622a318a702a16` (`Removing bloat`). That commit deletes exactly the three raw canonical snapshot paths listed below. The filtered 70938 distribution projection remains in the package.
+The 0.12.8 release archive excluded three unfiltered ForeverDB canonical snapshots, but the public GitHub repository still exposed them outside the release manifest. The 0.12.9 cleanup removed those files from public `main`. This reconciliation verifies that the post-push Git tree, release manifest and release ZIP agree, and that the remaining repository-only historical files are explicitly classified.
 
-## Exact 0.12.8 baseline
+**Result: repository/package reconciliation PASS for commit `803bdf73042236ce741e9bedf8ae6c2df0a621aa`.** The filtered 1.60.1.70938 distribution projection remains; the three unfiltered canonical captures are absent from both repository and release package.
 
-- Repository: `moonlitfarewell/modulo-market`, default branch `main`.
-- Parent commit: `c34bb314084f4308ecb0ff9d420473e4ab7a2995`.
-- Recursive Git tree SHA: `9adbfef0c4b39e701ff286cdd23937e8983e5e40`.
-- Tree entries: 379 (366 blobs, 13 tree entries); tree was not truncated.
-- Release `MANIFEST.json`: 290 declared files; every declared path existed in the remote tree.
-- Before cleanup, the remote tree contained 76 blobs outside the release manifest: the three raw snapshots, 72 historical/current test artifacts and one superseded audit.
-- Commit `671df73` removes exactly the three raw snapshot blobs; by delta, 73 repository-only blobs remain (72 test artifacts and one superseded audit), assuming no concurrent branch changes.
+## Canonical source and tree
 
-### Raw canonical blobs removed
+- Repository: `moonlitfarewell/modulo-market`.
+- Branch: `main`.
+- Verified head: `803bdf73042236ce741e9bedf8ae6c2df0a621aa` (`Post push correction`).
+- Parent: `671df73bcdfc68037ffada5371622a318a702a16`.
+- Git root tree SHA: `0bedfe3723e9544dd9718ac239be247a91c085e5`.
+- Local export guard: `HEAD == origin/main`.
+- Recursive tree: 379 entries (366 blobs and 13 directory entries), `truncated=false`.
+
+The GitHub `main` branch endpoint independently reported the same head commit. The uploaded tree export is generated from the local Git object database at that matching commit; this is not described as a separate fresh GitHub recursive-tree API download.
+
+## Raw canonical blobs removed
+
+GitHub commit `671df73bcdfc68037ffada5371622a318a702a16`, message `Removing bloat`, deletes exactly:
 
 | Path | Bytes | Git blob SHA-1 |
 |---|---:|---|
@@ -23,60 +29,73 @@ The 0.12.8 release archive was internally clean, but the public GitHub repositor
 | `data/ForeverDB-Canonical-1.60.1.70938.json` | 14,805,272 | `5f25c0537ea617130ebee3da4cf124e3254d6424` |
 | **Total** | **44,409,368** | |
 
-The SHA-1 values above are Git object identifiers from the affected remote tree, not the original capture SHA-256 values. The original capture SHA-256 provenance remains in `MODULOMARKET-DATA-CLEANUP-0.12.8.md`.
+The SHA-1 values are Git object identifiers, not the original capture SHA-256 values. Original capture provenance and cryptographic hashes remain in `MODULOMARKET-DATA-CLEANUP-0.12.8.md`.
 
-## Inventory policy
+The filtered `data/ForeverDB-Distribution-1.60.1.70938.json` remains present (Git blob `95ba8ad57104a862e2ae0d11a297f7636c0de4e0`).
 
-Two inventories are deliberately distinct:
+## Distinct inventories
 
-1. `MANIFEST.json` describes the complete versioned source/release package. It includes the addon, source, docs, tests and tools intended to ship in the package.
-2. The GitHub recursive tree describes every public repository blob. It may additionally contain historical test artifacts and superseded audit records that are not part of the release package.
+Two inventories remain deliberately distinct:
 
-The 0.12.9 verifier, `tools/verify_repository_tree.py`, accepts a downloaded recursive Git tree JSON document. The cleanup commit is confirmed from GitHub's commit record; a fresh complete recursive-tree download and verifier run against post-cleanup `main` remain NOT RUN. The verifier:
-- rejects a truncated tree;
-- verifies every manifest path exists locally and remotely;
-- compares every package file's locally computed Git blob SHA-1 with the GitHub tree blob SHA;
-- rejects all three unfiltered canonical snapshot paths;
-- reports repository-only paths separately;
-- permits repository-only files only under `tests/` or the exact superseded 0.7.9 audit path, failing closed on unclassified extras.
+1. `MANIFEST.json` defines the 293-file versioned source/release package.
+2. The GitHub repository tree defines every public repository blob, including 72 historical/current test files and one superseded audit not included in the release package.
 
-This means the release ZIP's manifest check can no longer be mistaken for a complete public repository check.
+The repository verifier, `tools/verify_repository_tree.py`, checks the package against a complete recursive Git tree, rejects truncated trees, verifies local and remote manifest paths, compares Git blob IDs, rejects the three raw canonical paths and classifies repository-only paths. It fails closed on unclassified extras.
 
-## Implementation
+## Verification result
 
-- Removed the three unfiltered canonical JSON files from the 0.12.9 source/package tree; public `main` deletion is confirmed by commit `671df73`.
-- Kept the filtered `data/ForeverDB-Distribution-1.60.1.70938.json`.
-- Preserved historical tests and the superseded 0.7.9 audit as repository-only artifacts.
-- Updated README, data README, cleanup report and provenance addendum to distinguish repository from release package.
-- Corrected the 0.12.8 runtime audit's stale opening status to reflect completed offline validation.
-- Advanced addon and package version together to 0.12.9.
-- Added a repository-tree verifier and regression coverage.
+The uploaded export contains 379 entries, 366 blobs and 13 directory entries. The 0.12.9 ZIP contains 366 regular files; all 293 manifest paths exist in the ZIP and Git tree.
 
-## Runtime consumer review
+The verifier was first run against the raw ZIP extraction. It reported 286 blob mismatches because the Windows-created archive extraction represented text files with CRLF line endings while Git stores the corresponding text blobs with LF. This was investigated rather than waived. A temporary verification copy converted CRLF to LF for text files only; the original ZIP remained unchanged. The verifier was then rerun:
 
-The source review confirms that `ProfessionData.lua` classifies recipes with no retained acquisition source as unknown. `MarketUI.lua` omits unknown/borrowed-source recipes from its background economics index, while the Crafts view separately calls `BuildEconomics` for displayed recipes and the item relationship inspector computes recipe summaries independently. This is a distinction between acquisition guidance and craft-cost computation, not evidence that missing acquisition data is silently replaced with a fabricated source.
+- Manifest paths checked: 293/293.
+- Git blob comparisons: 293/293 pass, including the `MANIFEST.json` blob.
+- Manifest-declared file hashes: 292 (self-hash excluded).
+- Hash mismatches after line-ending normalization: 0.
+- Missing local or remote manifest paths: 0.
+- Forbidden canonical snapshots: 0.
+- Repository-only files: 73.
+- Unclassified repository-only files: 0.
 
-The complete player-facing effect for all 1,495 recipes without retained acquisition rows remains not runtime demonstrated. No UI or runtime behavior was changed in this slice; no new Forever runtime test is claimed.
+Repository-only classification:
+- 72 paths under `tests/`.
+- `MODULOMARKET-RUNTIME-AUDIT-0.7.9.md` (superseded historical audit).
+- No other repository-only paths.
 
-## Risks, ownership and limitations
+## Release ZIP integrity and identity
 
-- Modulo Market owns the release manifest, repository verifier, documentation and runtime adapter.
-- ForeverDB remains the upstream provider.
-- Repository cleanup does not establish legal rights to redistribute retained Forever-client/player-observed data.
+- Artifact: `modulo-market-803bdf7.zip`.
+- SHA-256: `daa870ee7237e5c65fe6ee856c1320261d4a806277aa03b96e19cf1447a6b4cc`.
+- ZIP CRC: PASS.
+- Fresh extraction: PASS (366 regular files).
+- TOC version: 0.12.9.
+- Core version: `MM.version = "0.12.9"`.
+- The archive is a source snapshot, so absence of `.git/` is expected.
+
+The ZIP's CRLF representation for 286 text paths is a Windows archive conversion; the normalized temporary copy is used only for Git blob comparison. No line-ending normalization was written back into the ZIP or the canonical source.
+
+## Implementation and ownership
+
+- Modulo Market owns the release manifest, repository verifier, addon package and reconciliation records.
+- ForeverDB remains the upstream data provider.
+- Repository cleanup does not establish legal rights to redistribute retained ForeverDB/Blizzard-derived data.
 - No ForeverDB contact was made.
-- The 0.12.9 repository verifier proves Git-tree/package consistency only when run against a complete, current recursive Git tree response; it does not prove a licence grant.
-- Forever runtime for the filtered data remains NOT RUN under the user's acceptance-by-exception policy.
+- No unrestricted redistribution claim is made.
 
-## Acceptance and exit criteria
+## Runtime and evidence boundaries
 
-- [x] Exact 0.12.8 archive hash and ZIP integrity reverified.
-- [x] 0.12.8 archive contains exactly 290 files matching its manifest.
-- [x] Live 0.12.8 parent Git tree fully enumerated; all 290 manifest paths present.
-- [x] Three raw canonical repository blobs identified by exact path, size and Git blob ID.
-- [x] Historical repository-only files classified and retained.
-- [x] Offline regression, Lua syntax and provider/Writ harnesses pass on the 0.12.9 candidate.
-- [ ] Public `main` update and post-change recursive tree/package blob-hash verification: NOT RUN.
-- [ ] Final 0.12.9 archive SHA-256 and fresh-extraction verification recorded in the completed standalone audit.
-- [ ] Forever runtime: NOT RUN; no runtime behavior changed.
+No addon Lua/runtime behavior or distribution projection payload changed in this reconciliation correction. Forever runtime for this slice is **NOT RUN**. Inherited Forever 1.60.1 observations remain scoped to closed-window Full Market refresh, open-window Full Market refresh and explicit Replicate cancellation in both presentations; these remain **FOREVER OBSERVED**, not **FOREVER VERIFIED**. The reconciliation is an integrity result, not a runtime compatibility claim.
 
-The 0.12.9 slice is source/offline accepted only after the remaining package and post-push repository checks pass. It is not 1.0.0 approval.
+## Acceptance
+
+- [x] Raw canonical snapshot deletions confirmed by GitHub commit evidence.
+- [x] Current GitHub `main` head confirmed as 0.12.9 correction commit.
+- [x] Complete 379-entry local Git tree exported with no truncation.
+- [x] All 293 release paths present in package and Git tree.
+- [x] All 293 blob comparisons pass after documented CRLF-to-LF normalization.
+- [x] No forbidden canonical snapshots remain.
+- [x] All 73 repository-only files classified.
+- [x] ZIP CRC, extraction and version agreement pass.
+- [x] Runtime evidence remains accurately scoped.
+
+**The 0.12.9 repository reconciliation is closed/PASS.** This does not approve 1.0.0. The remaining release gates are final regression/compatibility review, explicit distribution/licensing posture and 1.0.0 release-candidate validation.
