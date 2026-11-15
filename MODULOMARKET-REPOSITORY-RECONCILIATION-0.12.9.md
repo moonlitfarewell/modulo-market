@@ -4,13 +4,13 @@
 
 The 0.12.8 release archive excluded three unfiltered ForeverDB canonical snapshots, but the public GitHub repository still exposed them outside the release manifest. The 0.12.9 cleanup removed those files from public `main`. This reconciliation verifies that the post-push Git tree, release manifest and release ZIP agree, and that the remaining repository-only historical files are explicitly classified.
 
-**Result: repository/package reconciliation PASS for commit `803bdf73042236ce741e9bedf8ae6c2df0a621aa`.** The filtered 1.60.1.70938 distribution projection remains; the three unfiltered canonical captures are absent from both repository and release package.
+**Result: repository/package reconciliation PASS for the reconciled source at commit `e34bbc26bee6185ccd806f8c580b54aba717c33a`.** The filtered 1.60.1.70938 distribution projection remains; the three unfiltered canonical captures are absent from both repository and release package.
 
 ## Canonical source and tree
 
 - Repository: `moonlitfarewell/modulo-market`.
 - Branch: `main`.
-- Verified head: `803bdf73042236ce741e9bedf8ae6c2df0a621aa` (`Post push correction`).
+- Historical package-check head: `803bdf73042236ce741e9bedf8ae6c2df0a621aa` (`Post push correction`); superseded by the final head recorded below.
 - Parent: `671df73bcdfc68037ffada5371622a318a702a16`.
 - Git root tree SHA: `0bedfe3723e9544dd9718ac239be247a91c085e5`.
 - Local export guard: `HEAD == origin/main`.
@@ -112,4 +112,18 @@ After the reconciliation records, README and data README were corrected, their f
 - Repository-only paths: 73; all classified as 72 test files and the superseded 0.7.9 audit.
 - Forbidden canonical snapshots: 0.
 
-This final remote-tree check supersedes the earlier 803bdf tree-head reference for the current `main` state. No addon/runtime files changed in the documentation synchronization.
+This check was subsequently advanced by the documentation synchronization commits. The final reconciled local source snapshot is commit `e34bbc26bee6185ccd806f8c580b54aba717c33a`, root tree `ed8e3f40458c82c5e975437050cea7c191b46309` (379 entries; 366 blobs; not truncated). The uploaded ZIP manifest self-blob and all 292 declared file hashes match that final tree after temporary CRLF-to-LF normalization. No addon/runtime files changed in the documentation synchronization.
+
+
+## Final source anchor — 15 November 2026
+
+The current handoff source supersedes the earlier 803bdf and intermediate 9c4808 references above:
+
+- Commit: `e34bbc26bee6185ccd806f8c580b54aba717c33a`.
+- Root tree: `ed8e3f40458c82c5e975437050cea7c191b46309`.
+- User-confirmed local `main` was fast-forwarded to this commit and reported clean/synchronized with `origin/main`.
+- The uploaded `modulo-market-0.12.9-docs-reconciled.zip` passed CRC and fresh extraction; all 293 manifest paths and all 292 declared blob hashes match after temporary CRLF-to-LF normalization.
+
+## Regression-hygiene cross-reference — 15 November 2026
+
+The final 0.12.9 offline regression-hygiene pass is recorded in `MODULOMARKET-RUNTIME-AUDIT-0.12.9.md`: 182 active tests passed, 14/14 addon Lua syntax checks passed, and the 293-path/292-hash manifest checks passed. Superseded milestone test modules remain preserved and are explicitly excluded from current pytest collection. These results do not establish client runtime compatibility.

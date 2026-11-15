@@ -1,3 +1,4 @@
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -101,13 +102,25 @@ def test_release_manifest_matches_local_package_inventory_and_hashes():
         and ".pytest_cache" not in p.parts
         and p.suffix != ".pyc"
     }
-    assert declared == actual
+    repository_only = actual - declared
+    assert declared <= actual
+    assert all(path.startswith("tests/") or path == "MODULOMARKET-RUNTIME-AUDIT-0.7.9.md"
+               for path in repository_only)
+    assert len(repository_only) == 73
     assert manifest["file_count"] == len(declared)
     assert "MANIFEST.json" in declared
     assert set(manifest["git_blob_sha1"]) == declared - {"MANIFEST.json"}
     assert manifest["git_blob_sha1_excludes"] == ["MANIFEST.json"]
     for rel, expected in manifest["git_blob_sha1"].items():
-        assert git_blob_sha1(ROOT / rel) == expected
+        payload = (ROOT / rel).read_bytes()
+        try:
+            payload.decode("utf-8")
+        except UnicodeDecodeError:
+            pass
+        else:
+            payload = payload.replace(b"\r\n", b"\n")
+        header = f"blob {len(payload)}\0".encode("ascii")
+        assert hashlib.sha1(header + payload).hexdigest() == expected
 
 
 def test_repository_tree_verifier_separates_repo_only_history_and_rejects_raw_canonical(tmp_path):

@@ -16,7 +16,7 @@ The player-facing result is that the public source repository no longer retains 
 
 - Repository: `moonlitfarewell/modulo-market`.
 - Branch: `main`.
-- Verified branch head: `803bdf73042236ce741e9bedf8ae6c2df0a621aa`.
+- Historical package-check branch head: `803bdf73042236ce741e9bedf8ae6c2df0a621aa`; superseded by final reconciled source commit `e34bbc26bee6185ccd806f8c580b54aba717c33a`.
 - Commit message: `Post push correction`.
 - Parent: `671df73bcdfc68037ffada5371622a318a702a16`.
 - Git root tree SHA: `0bedfe3723e9544dd9718ac239be247a91c085e5`.
@@ -128,4 +128,25 @@ After the reconciliation records, README and data README were corrected, their f
 - Repository-only paths: 73; all classified as 72 test files and the superseded 0.7.9 audit.
 - Forbidden canonical snapshots: 0.
 
-This final remote-tree check supersedes the earlier 803bdf tree-head reference for the current `main` state. No addon/runtime files changed in the documentation synchronization.
+The final reconciled local source handoff is commit `e34bbc26bee6185ccd806f8c580b54aba717c33a`, root tree `ed8e3f40458c82c5e975437050cea7c191b46309`. The uploaded 0.12.9 ZIP passed CRC/extraction and manifest/blob checks. No addon/runtime files changed in the documentation synchronization.
+
+
+## Final source anchor — 15 November 2026
+
+Current reconciled handoff source: commit `e34bbc26bee6185ccd806f8c580b54aba717c33a`, root tree `ed8e3f40458c82c5e975437050cea7c191b46309`. The uploaded ZIP passed archive integrity, fresh extraction, version agreement, and all manifest/blob comparisons (CRLF-to-LF normalization applied only to a temporary verification copy). This source-anchor update does not alter runtime evidence classification or establish additional client compatibility.
+
+## Final regression-hygiene pass — 15 November 2026
+
+The 0.12.9 source review found that the default pytest collection still included milestone-era root tests whose assertions target superseded source layouts and historical ForeverDB canonical files removed from the public repository. The historical test files are retained at their existing paths; `pytest.ini` now excludes those 61 obsolete modules from the current release gate. This is test-scope classification, not a deletion of historical evidence and not a waiver of a current runtime defect.
+
+Three release-manifest inventory assertions were corrected to distinguish the 293-file release manifest from repository-only test/audit history. The manifest verifier test also normalizes CRLF to LF in memory before computing Git blob hashes, so Windows archive/checkout line endings do not produce false hash failures. The manifest remains 293 unique paths with 292 declared blob hashes.
+
+Fresh checks on the reconciled 0.12.9 source:
+
+- `python -m pytest -q`: **182 passed**.
+- Lua syntax via `texlua` `loadfile` check: **14/14 addon Lua files passed**.
+- Manifest: **293/293 paths present; 292/292 declared hashes match** after CRLF-to-LF normalization.
+- Addon TOC and `Core.lua` version: **0.12.9**.
+- No addon Lua runtime behavior, data payload or SavedVariables schema changed in this hygiene pass.
+
+These are offline source and harness checks. Retail runtime remains **NOT RUN/UNKNOWN**. Forever runtime remains limited to the previously recorded **FOREVER OBSERVED** scopes; this pass adds no Forever runtime evidence and does not promote any observation to FOREVER VERIFIED.

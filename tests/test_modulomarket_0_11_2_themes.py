@@ -142,12 +142,15 @@ def test_modern_ui_lua_harness():
     assert "35 checks passed" in result.stdout
 
 
-def test_manifest_inventory_is_exact():
-    actual = sorted(
+def test_release_manifest_excludes_repository_only_test_history():
+    actual = {
         str(p.relative_to(ROOT)).replace("\\", "/")
         for p in ROOT.rglob("*")
         if p.is_file() and ".git" not in p.parts and "__pycache__" not in p.parts
         and p.suffix != ".pyc" and ".pytest_cache" not in p.parts
-    )
-    assert MANIFEST["files"] == actual
-    assert MANIFEST["file_count"] == len(actual)
+    }
+    declared = set(MANIFEST["files"])
+    assert declared <= actual
+    repository_only = actual - declared
+    assert all(path.startswith("tests/") or path == "MODULOMARKET-RUNTIME-AUDIT-0.7.9.md"
+               for path in repository_only)
