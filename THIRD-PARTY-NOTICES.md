@@ -19,20 +19,34 @@ speculative recipes. The original mixed-provenance canonical captures are not
 included in this release. See `MODULOMARKET-DATA-CLEANUP-0.12.8.md` for exact
 source hashes, counts, and projection rules.
 
-ForeverDB's published developer instructions require visible credit with a
-link on the free tier, prohibit reselling the data or presenting it as our own,
-and say not to ship API keys in distributed plugins or apps. The developer
-page also instructs approved developers to fetch data and bundle it with
-releases. Modulo Market displays `Data from ForeverDB.net` and links to
-https://foreverdb.net; no API key is included.
+### Distribution basis and conditions (reviewed 16 November 2026)
 
-These instructions describe the provider's developer workflow and usage
-conditions. They are not a general open-data licence and do not grant rights on
-behalf of Blizzard or other underlying rights holders. The retained Forever
-client/player-observed fields remain provider-derived third-party data and are
-not covered by the root MIT licence. The project has not obtained a separate
-written rights confirmation and makes no unrestricted redistribution claim.
-Provider: https://foreverdb.net/developers
+ForeverDB's published developer page expressly instructs approved developers
+to fetch data themselves and bundle it with their releases. It also states the
+conditions relevant to this distribution: on the free tier, credit ForeverDB
+with a visible link wherever its data is shown; do not resell the data or
+present it as your own; and never ship an API key inside a distributed plugin
+or app. Modulo Market follows that workflow: the addon displays `Data from
+ForeverDB.net` with a link wherever the catalogue data is presented, the data
+is bundled locally, no key is included, and the data is not sold or represented
+as project-owned.
+
+We rely on this published fetch-and-bundle workflow as the basis for including
+the filtered provider-derived projection in this free addon release, subject to
+those stated conditions. This is not a claim that ForeverDB has granted a
+standalone open-data licence, transferred ownership, or authorised resale or
+relicensing of the data. The root MIT licence does not apply to the projection.
+Provider terms can change; the current instructions are at
+https://foreverdb.net/developers.
+
+ForeverDB separately states that data from the WoW Forever client is
+Blizzard's and that ForeverDB is not affiliated with Blizzard Entertainment.
+The provider's bundling workflow does not grant rights on Blizzard's behalf.
+Modulo Market therefore makes no ownership or independent licensing claim over
+client-derived data, game assets or trademarks. This is the remaining disclosed
+third-party rights limitation; no false grant is made in the Modulo Market
+licence. The project does not claim that this notice is legal advice or a
+substitute for the rights holder's terms.
 
 ## CMaNGOS / Classic-derived material
 
