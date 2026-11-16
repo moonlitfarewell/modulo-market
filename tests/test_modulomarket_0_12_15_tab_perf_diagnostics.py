@@ -42,6 +42,6 @@ def test_version_metadata_is_consistent():
     toc = TOC.read_text(encoding="utf-8")
     core = CORE.read_text(encoding="utf-8")
     turnin = (ROOT / "AddOns/ModuloMarket/TurnInData.lua").read_text(encoding="utf-8")
-    assert "## Version: 0.12.19" in toc
-    assert 'MM.version = "0.12.19"' in core
-    assert "0.12.19" in turnin
+    assert "## Version: 0.12.20" in toc
+    assert 'MM.version = "0.12.20"' in core
+    assert "0.12.20" in turnin

@@ -1987,6 +1987,8 @@ local function StepView()
             ascending = sort.ascending,
             source = build.rows,
             target = {},
+            keys = {},
+            prepareIndex = 1,
             width = 1,
             left = 1,
             i = 1,
@@ -2205,52 +2207,47 @@ function UI.FinishView(rows)
     end
 end
 
-local function ComesBefore(a, b, key, ascending)
-    local av, bv
+local function BuildSortKey(row, key, ascending)
+    local primary
     if key == "name" then
-        av, bv = NormalizeSearchText(GetItemName(a)), NormalizeSearchText(GetItemName(b))
+        primary = NormalizeSearchText(GetItemName(row))
     elseif key == "price" then
-        av = tonumber(a.minPriceCopper or a.salePriceCopper) or math.huge
-        bv = tonumber(b.minPriceCopper or b.salePriceCopper) or math.huge
+        primary = tonumber(row.minPriceCopper or row.salePriceCopper) or math.huge
     elseif key == "depth" then
-        av = tonumber(a.minPriceQuantity) or math.huge
-        bv = tonumber(b.minPriceQuantity) or math.huge
+        primary = tonumber(row.minPriceQuantity) or math.huge
     elseif key == "materials" then
-        av = tonumber(a.materialCostCopper or (a.economics and a.economics.materialCostCopper)) or math.huge
-        bv = tonumber(b.materialCostCopper or (b.economics and b.economics.materialCostCopper)) or math.huge
+        primary = tonumber(row.materialCostCopper or (row.economics and row.economics.materialCostCopper)) or math.huge
     elseif key == "total" then
-        av = tonumber(a.totalQuantity) or math.huge
-        bv = tonumber(b.totalQuantity) or math.huge
+        primary = tonumber(row.totalQuantity) or math.huge
     elseif key == "completion" then
-        av = tonumber(a.completionCostCopper) or math.huge
-        bv = tonumber(b.completionCostCopper) or math.huge
+        primary = tonumber(row.completionCostCopper) or math.huge
     elseif key == "favor" then
-        av = tonumber(a.rewardFavor) or (ascending and math.huge or -math.huge)
-        bv = tonumber(b.rewardFavor) or (ascending and math.huge or -math.huge)
+        primary = tonumber(row.rewardFavor) or (ascending and math.huge or -math.huge)
     elseif key == "reward" then
-        av = tonumber(a.rewardFavor ~= nil and a.rewardFavor or a.reputation)
-            or (ascending and math.huge or -math.huge)
-        bv = tonumber(b.rewardFavor ~= nil and b.rewardFavor or b.reputation)
+        primary = tonumber(row.rewardFavor ~= nil and row.rewardFavor or row.reputation)
             or (ascending and math.huge or -math.huge)
     elseif key == "net" then
-        av = tonumber(a.netCostPerRewardCopper or a.netCostPerFavorCopper or a.netCostPerReputationCopper) or math.huge
-        bv = tonumber(b.netCostPerRewardCopper or b.netCostPerFavorCopper or b.netCostPerReputationCopper) or math.huge
+        primary = tonumber(row.netCostPerRewardCopper or row.netCostPerFavorCopper or row.netCostPerReputationCopper) or math.huge
     elseif key == "change" then
-        av = tonumber(a.historyDeltaCopper) or (ascending and math.huge or -math.huge)
-        bv = tonumber(b.historyDeltaCopper) or (ascending and math.huge or -math.huge)
+        primary = tonumber(row.historyDeltaCopper) or (ascending and math.huge or -math.huge)
     else
-        av = tonumber(a.estimatedProfitCopper or a.profitCopper
-            or (a.economics and a.economics.profitCopper)) or -math.huge
-        bv = tonumber(b.estimatedProfitCopper or b.profitCopper
-            or (b.economics and b.economics.profitCopper)) or -math.huge
+        primary = tonumber(row.estimatedProfitCopper or row.profitCopper
+            or (row.economics and row.economics.profitCopper)) or -math.huge
     end
-    if av == bv then
-        local an, bn = NormalizeSearchText(GetItemName(a)), NormalizeSearchText(GetItemName(b))
-        if an == bn then return (tonumber(a.itemID or a.recipeID) or 0) < (tonumber(b.itemID or b.recipeID) or 0) end
-        return an < bn
+    return {
+        primary = primary,
+        name = NormalizeSearchText(GetItemName(row)),
+        id = tonumber(row.itemID or row.recipeID) or 0,
+    }
+end
+
+local function SortKeysComeBefore(a, b, ascending)
+    if a.primary == b.primary then
+        if a.name == b.name then return a.id < b.id end
+        return a.name < b.name
     end
-    if ascending then return av < bv end
-    return av > bv
+    if ascending then return a.primary < b.primary end
+    return a.primary > b.primary
 end
 
 local function StepRankSort()
@@ -2258,7 +2255,12 @@ local function StepRankSort()
     if not state then return end
     local budget = 500
     while budget > 0 do
-        if state.width >= state.count then
+        if state.prepareIndex <= state.count then
+            local row = state.source[state.prepareIndex]
+            state.keys[row] = BuildSortKey(row, state.key, state.ascending)
+            state.prepareIndex = state.prepareIndex + 1
+            budget = budget - 1
+        elseif state.width >= state.count then
             if state.perfEnabled and UI.tabPerfDiagnostics and UI.tabPerfDiagnostics.enabled then
                 local sortDiagnostics = UI.tabPerfDiagnostics.sorts
                 sortDiagnostics.completed = sortDiagnostics.completed + 1
@@ -2295,7 +2297,10 @@ local function StepRankSort()
                     UI.tabPerfDiagnostics.sorts.comparatorCalls =
                         UI.tabPerfDiagnostics.sorts.comparatorCalls + 1
                 end
-                takeLeft = ComesBefore(state.source[state.i], state.source[state.j], state.key, state.ascending)
+                takeLeft = SortKeysComeBefore(
+                    state.keys[state.source[state.i]],
+                    state.keys[state.source[state.j]],
+                    state.ascending)
             end
             if takeLeft then
                 state.target[state.k] = state.source[state.i]
