@@ -16,8 +16,11 @@ def test_item_event_diagnostics_are_opt_in_and_count_unique_ids():
 
 def test_item_type_refresh_reschedules_and_triggers_are_counted():
     source = MARKET_UI.read_text(encoding="utf-8")
-    assert "events.refreshScheduled = events.refreshScheduled + 1" in source
-    assert "events.refreshRescheduled = events.refreshRescheduled + 1" in source
+    assert "perf.itemEvents.refreshScheduled = perf.itemEvents.refreshScheduled + 1" in source
+    assert "if not UI.itemTypeRefreshPending then" in source
+    assert "local wasClassRequested = UI.itemClassRequested[itemID] == true" in source
+    assert "UI.itemTypeRefreshPendingSince = Now()" in source
+    assert "StepItemTypeRefreshBatch(now)" in source
     assert "UI.tabPerfDiagnostics.itemEvents.refreshTriggered =" in source
 
 
@@ -41,7 +44,7 @@ def test_version_metadata_is_consistent():
     core = CORE.read_text(encoding="utf-8")
     turnin = (ROOT / "AddOns/ModuloMarket/TurnInData.lua").read_text(encoding="utf-8")
     manifest = __import__("json").loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
-    assert "## Version: 0.12.16" in toc
-    assert 'MM.version = "0.12.16"' in core
-    assert "0.12.16" in turnin
-    assert manifest["version"] == "0.12.16"
+    assert "## Version: 0.12.19" in toc
+    assert 'MM.version = "0.12.19"' in core
+    assert "0.12.19" in turnin
+    assert manifest["version"] == "0.12.19"

@@ -3,7 +3,7 @@ local MM = _G.ModuloMarket or {}
 _G.ModuloMarket = MM
 
 MM.name = ADDON_NAME or "ModuloMarket"
-MM.version = "0.12.16"
+MM.version = "0.12.19"
 MM.debugPrefix = "|cff66ccffModuloMarket:|r "
 
 local function Print(message)
@@ -119,8 +119,9 @@ loader:SetScript("OnEvent", function(_, event, loadedName)
             local tabs = {}
             for tab in pairs(d.tabs or {}) do tabs[#tabs + 1] = tab end
             table.sort(tabs)
-            if #tabs == 0 then
-                Print("No tab build samples yet. Use /mmtabperf on, switch tabs, then run /mmtabperf.")
+            if #tabs == 0 and (d.catalogWork.starts or 0) == 0
+                and (d.viewWork.frames or 0) == 0 then
+                Print("No pipeline samples yet. Use /mmtabperf on before opening Market, then reproduce the hitch.")
                 return
             end
             for _, tab in ipairs(tabs) do
@@ -139,6 +140,17 @@ loader:SetScript("OnEvent", function(_, event, loadedName)
                 sort.started or 0, sort.completed or 0, sort.restarted or 0,
                 sort.comparatorCalls or 0, sort.lastTab or "none", sort.lastFilter or "all",
                 sort.lastRows or 0, sort.lastElapsedSeconds or 0))
+            local c, v, k = d.catalogWork or {}, d.viewWork or {}, d.classLookups or {}
+            Print(string.format("Catalog starts=%d done=%d cancelled=%d rows=%d unique=%d variants=%d frames=%d stepTotal=%.1fms stepMax=%.2fms finalize=%.2fms elapsed=%.1fms",
+                c.starts or 0, c.completed or 0, c.cancelled or 0, c.processedRows or 0,
+                c.uniqueItems or 0, c.variantMerges or 0, c.frames or 0,
+                c.totalStepMs or 0, c.maxStepMs or 0, c.finalizeMs or 0, c.lastElapsedMs or 0))
+            Print(string.format("View frames=%d rows=%d total=%.1fms max=%.2fms last=%.2fms lastRows=%d tab=%s filter=%s",
+                v.frames or 0, v.rowsProcessed or 0, v.totalStepMs or 0, v.maxStepMs or 0,
+                v.lastStepMs or 0, v.lastRows or 0, v.lastTab or "none", v.lastFilter or "all"))
+            Print(string.format("Class lookup calls=%d cache=%d instant=%d/%d fallback=%d/%d missing=%d queued=%d",
+                k.calls or 0, k.cacheHits or 0, k.instantResolved or 0, k.instantCalls or 0,
+                k.fallbackResolved or 0, k.fallbackCalls or 0, k.missing or 0, k.requestsQueued or 0))
         end
         SLASH_MODULOMARKETSEARCHDEBUG1 = "/mmsearchdebug"
         SlashCmdList.MODULOMARKETSEARCHDEBUG = function()

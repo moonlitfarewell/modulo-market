@@ -38,6 +38,8 @@ local UI = {
     itemClassPendingIDs = {},
     itemClassPendingOrder = {},
     itemClassPendingIndex = 1,
+    itemTypeRefreshPending = false,
+    itemTypeRefreshPendingSince = nil,
     vendorPriceRequested = {},
     vendorPriceFailed = {},
     historyBars = {},
@@ -74,6 +76,14 @@ local UI = {
             seenItems = {}, lastItemID = 0, lastEvent = "none", lastFilter = "all" },
         sorts = { started = 0, completed = 0, restarted = 0, comparatorCalls = 0,
             lastTab = "none", lastFilter = "all", lastRows = 0, lastElapsedSeconds = 0 },
+        catalogWork = { starts = 0, completed = 0, cancelled = 0, totalRows = 0,
+            processedRows = 0, uniqueItems = 0, variantMerges = 0, frames = 0,
+            totalStepMs = 0, maxStepMs = 0, lastStepMs = 0,
+            finalizeMs = 0, lastElapsedMs = 0, active = nil },
+        viewWork = { frames = 0, rowsProcessed = 0, totalStepMs = 0,
+            maxStepMs = 0, lastStepMs = 0, lastRows = 0, lastTab = "none", lastFilter = "all" },
+        classLookups = { calls = 0, cacheHits = 0, instantCalls = 0, instantResolved = 0,
+            fallbackCalls = 0, fallbackResolved = 0, missing = 0, requestsQueued = 0 },
     },
 }
 MM.MarketUI = UI
@@ -92,6 +102,14 @@ local SelectItem
 
 local function Now()
     return type(_G.GetTime) == "function" and _G.GetTime() or 0
+end
+
+local function PerfMilliseconds()
+    if type(_G.debugprofilestop) == "function" then
+        local ok, value = pcall(_G.debugprofilestop)
+        if ok and tonumber(value) then return tonumber(value) end
+    end
+    return Now() * 1000
 end
 
 -- ProfessionMaster's LibMasterAddons compatibility layer resolves the Classic
@@ -544,10 +562,12 @@ end
 local function CacheVendorInfo(itemID, sellPrice, classID)
     sellPrice = tonumber(sellPrice)
     if not itemID or sellPrice == nil then return false end
+    local resolvedClassID = tonumber(classID)
     UI.vendorPriceCache[itemID] = {
         sellPrice = sellPrice,
-        classID = tonumber(classID),
+        classID = resolvedClassID,
     }
+    if resolvedClassID ~= nil then UI.itemClassCache[itemID] = resolvedClassID end
     UI.vendorPriceRequested[itemID] = nil
     UI.vendorPriceFailed[itemID] = nil
     return true
@@ -770,34 +790,67 @@ end
 local function GetItemClassID(itemID, requestLoad)
     itemID = tonumber(itemID)
     if not itemID then return nil end
+    local perf = UI.tabPerfDiagnostics
+    local trackClass = perf and perf.enabled and UI.activeTab == "market"
+        and UI.itemTypeFilter and UI.itemTypeFilter ~= "all"
+    if trackClass then perf.classLookups.calls = perf.classLookups.calls + 1 end
     local cached = UI.itemClassCache[itemID]
-    if cached ~= nil then return cached end
-    if UI.itemClassFailed[itemID] then return nil end
+    if cached ~= nil then
+        if trackClass then perf.classLookups.cacheHits = perf.classLookups.cacheHits + 1 end
+        return cached
+    end
+    if UI.itemClassFailed[itemID] then
+        if trackClass then perf.classLookups.missing = perf.classLookups.missing + 1 end
+        return nil
+    end
 
+    -- Item-type filters need only the static class identifier. The Instant API
+    -- is available on Forever 1.60.1 and returns classID as its sixth value;
+    -- unlike GetItemInfo it does not wait for the full item record to load.
     local api = _G.C_Item
-    if type(api) == "table" and type(api.GetItemInfo) == "function" then
-        local ok, info = pcall(api.GetItemInfo, itemID)
-        if ok and type(info) == "table" then
-            local classID = tonumber(info.classID or info.itemClassID)
-            if classID ~= nil then
-                UI.itemClassCache[itemID] = classID
-                return classID
-            end
+    local instant = type(api) == "table" and api.GetItemInfoInstant or nil
+    if type(instant) ~= "function" then instant = _G.GetItemInfoInstant end
+    if type(instant) == "function" then
+        if trackClass then perf.classLookups.instantCalls = perf.classLookups.instantCalls + 1 end
+        local ok, returnedID, itemType, itemSubType, equipLocation, icon, classID = pcall(instant, itemID)
+        classID = ok and tonumber(classID) or nil
+        if classID ~= nil then
+            if trackClass then perf.classLookups.instantResolved = perf.classLookups.instantResolved + 1 end
+            UI.itemClassCache[itemID] = classID
+            return classID
         end
     end
 
+    -- Compatibility fallback for clients without GetItemInfoInstant or for
+    -- incomplete Instant results. Full item info may be asynchronous.
+    if type(api) == "table" and type(api.GetItemInfo) == "function" then
+        if trackClass then perf.classLookups.fallbackCalls = perf.classLookups.fallbackCalls + 1 end
+        local ok, itemName, itemLink, quality, itemLevel, requiredLevel, itemClass,
+            itemSubClass, maxStack, equipLocation, texture, sellPrice, classID = pcall(api.GetItemInfo, itemID)
+        classID = ok and tonumber(classID) or nil
+        if classID ~= nil then
+            if trackClass then perf.classLookups.fallbackResolved = perf.classLookups.fallbackResolved + 1 end
+            UI.itemClassCache[itemID] = classID
+            return classID
+        end
+    end
+
+    if trackClass then perf.classLookups.fallbackCalls = perf.classLookups.fallbackCalls + 1 end
     local ok, itemName, itemLink, quality, itemLevel, requiredLevel, itemClass,
         itemSubClass, maxStack, equipLocation, texture, sellPrice, classID = pcall(GetItemInfoCompat, itemID)
     classID = ok and tonumber(classID) or nil
     if classID ~= nil then
+        if trackClass then perf.classLookups.fallbackResolved = perf.classLookups.fallbackResolved + 1 end
         UI.itemClassCache[itemID] = classID
         return classID
     end
 
+    if trackClass then perf.classLookups.missing = perf.classLookups.missing + 1 end
     if requestLoad and not UI.itemClassRequested[itemID]
         and not UI.itemClassPendingIDs[itemID] then
         UI.itemClassPendingIDs[itemID] = true
         UI.itemClassPendingOrder[#UI.itemClassPendingOrder + 1] = itemID
+        if trackClass then perf.classLookups.requestsQueued = perf.classLookups.requestsQueued + 1 end
     end
     return nil
 end
@@ -837,6 +890,44 @@ local function StepItemClassWarmup()
     else
         UI.itemClassPendingIndex = index
     end
+end
+
+local ITEM_TYPE_REFRESH_MAX_WAIT_SECONDS = 10
+
+local function HasPendingItemClassRequests()
+    local order = UI.itemClassPendingOrder or {}
+    local index = tonumber(UI.itemClassPendingIndex) or 1
+    if index <= #order then return true end
+    for _ in pairs(UI.itemClassRequested or {}) do return true end
+    return false
+end
+
+local function StepItemTypeRefreshBatch(now)
+    if not UI.itemTypeRefreshPending or UI.activeTab ~= "market"
+        or not UI.itemTypeFilter or UI.itemTypeFilter == "all" then return end
+    if UI.catalogBuild or UI.economicsIndexBuild or UI.viewBuild or UI.rankSort
+        or UI.tooltipSearchWarmup then return end
+
+    local timedOut = UI.itemTypeRefreshPendingSince
+        and (now - UI.itemTypeRefreshPendingSince) >= ITEM_TYPE_REFRESH_MAX_WAIT_SECONDS
+    if HasPendingItemClassRequests() and not timedOut then return end
+
+    if timedOut then
+        -- A bounded fallback prevents an unavailable item-data response from
+        -- holding the filtered view indefinitely.
+        for itemID in pairs(UI.itemClassRequested or {}) do
+            UI.itemClassRequested[itemID] = nil
+            UI.itemClassFailed[itemID] = true
+        end
+    end
+    UI.itemTypeRefreshPending = false
+    UI.itemTypeRefreshPendingSince = nil
+    UI.itemTypeRefreshDueAt = nil
+    if UI.tabPerfDiagnostics and UI.tabPerfDiagnostics.enabled then
+        UI.tabPerfDiagnostics.itemEvents.refreshTriggered =
+            UI.tabPerfDiagnostics.itemEvents.refreshTriggered + 1
+    end
+    UI.StartViewBuild()
 end
 
 local function MatchesItemType(itemID, filter)
@@ -1383,6 +1474,15 @@ local function AddVariant(aggregate, row)
 end
 
 local function StartCatalog(snapshot)
+    local catalogPerf = UI.tabPerfDiagnostics and UI.tabPerfDiagnostics.enabled
+        and UI.tabPerfDiagnostics.catalogWork or nil
+    if catalogPerf then
+        if catalogPerf.active then catalogPerf.cancelled = catalogPerf.cancelled + 1 end
+        catalogPerf.starts = catalogPerf.starts + 1
+        catalogPerf.active = { startedMs = PerfMilliseconds(), rows = 0,
+            uniqueItems = 0, variantMerges = 0, frames = 0,
+            totalStepMs = 0, maxStepMs = 0, finalizeMs = 0 }
+    end
     UI.catalogSnapshot = snapshot
     UI.recipeMarketBuildCompatible = true
     UI.recipeMarketSnapshotBuild = nil
@@ -1431,6 +1531,11 @@ end
 local function StepCatalog()
     local build = UI.catalogBuild
     if not build then return end
+    local catalogPerf = UI.tabPerfDiagnostics and UI.tabPerfDiagnostics.enabled
+        and UI.tabPerfDiagnostics.catalogWork or nil
+    local activePerf = catalogPerf and catalogPerf.active or nil
+    local stepStartedMs = activePerf and PerfMilliseconds() or nil
+    local processedThisFrame, uniqueThisFrame, mergesThisFrame = 0, 0, 0
     local stop = math.min(build.total, build.index + 249)
     while build.index <= stop do
         local row = build.rows[build.index]
@@ -1441,23 +1546,52 @@ local function StepCatalog()
                 aggregate = NewAggregate(row)
                 build.byID[id] = aggregate
                 build.ordered[#build.ordered + 1] = id
+                uniqueThisFrame = uniqueThisFrame + 1
             else
                 AddVariant(aggregate, row)
+                mergesThisFrame = mergesThisFrame + 1
             end
         end
+        processedThisFrame = processedThisFrame + 1
         build.index = build.index + 1
+    end
+    if activePerf then
+        local stepMs = math.max(0, PerfMilliseconds() - stepStartedMs)
+        activePerf.rows = activePerf.rows + processedThisFrame
+        activePerf.uniqueItems = activePerf.uniqueItems + uniqueThisFrame
+        activePerf.variantMerges = activePerf.variantMerges + mergesThisFrame
+        activePerf.frames = activePerf.frames + 1
+        activePerf.totalStepMs = activePerf.totalStepMs + stepMs
+        activePerf.maxStepMs = math.max(activePerf.maxStepMs, stepMs)
     end
     if build.index <= build.total then
         SetStatus(string.format("Preparing market index: %d/%d", math.min(build.index - 1, build.total), build.total))
         return
     end
+    local finalizeStartedMs = activePerf and PerfMilliseconds() or nil
     for i = 1, #build.ordered do
         UI.catalog[i] = build.byID[build.ordered[i]]
     end
     UI.catalogByID = build.byID
+    if activePerf then
+        activePerf.finalizeMs = math.max(0, PerfMilliseconds() - finalizeStartedMs)
+    end
     local duration = math.max(0, Now() - (build.startedAt or Now()))
     UI.lastIndexDuration = duration
     UI.lastIndexRows = build.total
+    if activePerf then
+        catalogPerf.completed = catalogPerf.completed + 1
+        catalogPerf.totalRows = catalogPerf.totalRows + activePerf.rows
+        catalogPerf.processedRows = activePerf.rows
+        catalogPerf.uniqueItems = activePerf.uniqueItems
+        catalogPerf.variantMerges = activePerf.variantMerges
+        catalogPerf.frames = activePerf.frames
+        catalogPerf.totalStepMs = activePerf.totalStepMs
+        catalogPerf.maxStepMs = activePerf.maxStepMs
+        catalogPerf.finalizeMs = activePerf.finalizeMs
+        catalogPerf.lastElapsedMs = math.max(0, PerfMilliseconds() - activePerf.startedMs)
+        catalogPerf.active = nil
+    end
     UI.catalogBuild = nil
     SetStatus(string.format("%d items ready · indexed %d rows in %.2fs.",
         #UI.catalog, build.total, duration))
@@ -1496,6 +1630,14 @@ function UI.ResetTabPerfDiagnostics()
         seenItems = {}, lastItemID = 0, lastEvent = "none", lastFilter = "all" }
     diagnostics.sorts = { started = 0, completed = 0, restarted = 0, comparatorCalls = 0,
         lastTab = "none", lastFilter = "all", lastRows = 0, lastElapsedSeconds = 0 }
+    diagnostics.catalogWork = { starts = 0, completed = 0, cancelled = 0, totalRows = 0,
+        processedRows = 0, uniqueItems = 0, variantMerges = 0, frames = 0,
+        totalStepMs = 0, maxStepMs = 0, lastStepMs = 0, finalizeMs = 0,
+        lastElapsedMs = 0, active = nil }
+    diagnostics.viewWork = { frames = 0, rowsProcessed = 0, totalStepMs = 0,
+        maxStepMs = 0, lastStepMs = 0, lastRows = 0, lastTab = "none", lastFilter = "all" }
+    diagnostics.classLookups = { calls = 0, cacheHits = 0, instantCalls = 0, instantResolved = 0,
+        fallbackCalls = 0, fallbackResolved = 0, missing = 0, requestsQueued = 0 }
 end
 
 function UI.GetTabPerfDiagnostics()
@@ -1508,7 +1650,15 @@ function UI.GetTabPerfDiagnostics()
         tabs = {},
         itemEvents = {},
         sorts = {},
+        catalogWork = {},
+        viewWork = {},
+        classLookups = {},
     }
+    for key, value in pairs(diagnostics.catalogWork or {}) do
+        if key ~= "active" then result.catalogWork[key] = value end
+    end
+    for key, value in pairs(diagnostics.viewWork or {}) do result.viewWork[key] = value end
+    for key, value in pairs(diagnostics.classLookups or {}) do result.classLookups[key] = value end
     for key, value in pairs(diagnostics.itemEvents or {}) do
         if key ~= "seenItems" then result.itemEvents[key] = value end
     end
@@ -1632,6 +1782,10 @@ local function StepView()
     if not build then return end
     if build.generation ~= UI.searchGeneration then UI.viewBuild = nil; return end
     local source = build.source or {}
+    local viewPerf = UI.tabPerfDiagnostics and UI.tabPerfDiagnostics.enabled
+        and UI.tabPerfDiagnostics.viewWork or nil
+    local viewStepStartedMs = viewPerf and PerfMilliseconds() or nil
+    local viewStartIndex = build.index
     local stop = math.min(build.total, build.index + 249)
     UI.tooltipSearchRequestsThisFrame = 0
     UI.tooltipSearchScansThisFrame = 0
@@ -1787,6 +1941,18 @@ local function StepView()
                 active.processedRows = active.processedRows + 1
             end
         end
+    end
+    if viewPerf then
+        local stepMs = math.max(0, PerfMilliseconds() - viewStepStartedMs)
+        local rowsThisFrame = math.max(0, build.index - viewStartIndex)
+        viewPerf.frames = viewPerf.frames + 1
+        viewPerf.rowsProcessed = viewPerf.rowsProcessed + rowsThisFrame
+        viewPerf.totalStepMs = viewPerf.totalStepMs + stepMs
+        viewPerf.maxStepMs = math.max(viewPerf.maxStepMs, stepMs)
+        viewPerf.lastStepMs = stepMs
+        viewPerf.lastRows = rowsThisFrame
+        viewPerf.lastTab = tostring(build.tab or "unknown")
+        viewPerf.lastFilter = tostring(build.itemTypeFilter or "all")
     end
     if build.index <= build.total then
         if UI.resultCount then
@@ -3054,6 +3220,7 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
         events.lastEvent = tostring(event)
         events.lastFilter = tostring(UI.itemTypeFilter or "all")
     end
+    local wasClassRequested = UI.itemClassRequested[itemID] == true
     -- Item cache completion can also resolve the real icon for virtualized rows.
     itemIconCache[itemID] = nil
     itemQualityCache[itemID] = nil
@@ -3071,17 +3238,18 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
         local sellPrice = ReadVendorInfo(itemID)
         local classID = GetItemClassID(itemID, false)
         if classID == nil then UI.itemClassFailed[itemID] = true end
-        if UI.itemTypeFilter and UI.itemTypeFilter ~= "all" and UI.activeTab == "market"
-            and classID ~= nil then
+        if wasClassRequested and UI.itemTypeFilter and UI.itemTypeFilter ~= "all"
+            and UI.activeTab == "market" and classID ~= nil then
             if perf and perf.enabled then
-                local events = perf.itemEvents
-                events.resolvedClass = events.resolvedClass + 1
-                events.refreshScheduled = events.refreshScheduled + 1
-                if UI.itemTypeRefreshDueAt then
-                    events.refreshRescheduled = events.refreshRescheduled + 1
+                perf.itemEvents.resolvedClass = perf.itemEvents.resolvedClass + 1
+            end
+            if not UI.itemTypeRefreshPending then
+                UI.itemTypeRefreshPending = true
+                UI.itemTypeRefreshPendingSince = Now()
+                if perf and perf.enabled then
+                    perf.itemEvents.refreshScheduled = perf.itemEvents.refreshScheduled + 1
                 end
             end
-            UI.itemTypeRefreshDueAt = Now() + 0.25
         end
         if sellPrice == nil then
             -- The client completed its item-data notification but still exposes no
@@ -4736,20 +4904,11 @@ local function CreateUI()
         -- catalogue/economics task cannot starve its hard timeout.
         if UI.tooltipSearchWarmup then StepTooltipSearchWarmup() end
         StepItemClassWarmup()
-        if UI.itemTypeRefreshDueAt and now >= UI.itemTypeRefreshDueAt
-            and not UI.catalogBuild and not UI.economicsIndexBuild
-            and not UI.viewBuild and not UI.rankSort then
-            UI.itemTypeRefreshDueAt = nil
-            if UI.tabPerfDiagnostics and UI.tabPerfDiagnostics.enabled then
-                UI.tabPerfDiagnostics.itemEvents.refreshTriggered =
-                    UI.tabPerfDiagnostics.itemEvents.refreshTriggered + 1
-            end
-            UI.StartViewBuild()
-        end
         if UI.catalogBuild then StepCatalog()
         elseif UI.economicsIndexBuild then StepEconomicsIndex()
         elseif UI.viewBuild then StepView()
         elseif UI.rankSort then StepRankSort() end
+        StepItemTypeRefreshBatch(now)
         UI.refreshElapsed = UI.refreshElapsed + (tonumber(elapsed) or 0)
         if UI.refreshElapsed >= 1 then
             UI.refreshElapsed = UI.refreshElapsed - 1
