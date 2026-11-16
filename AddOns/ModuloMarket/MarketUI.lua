@@ -1777,6 +1777,26 @@ local function ScheduleSearchBuild()
     if UI.resultCount then UI.resultCount:SetText("Waiting…") end
 end
 
+-- View rows are expected to be a dense array, but refresh/cancellation paths
+-- can hand the sorter a sparse or partially invalid result. Rebuild a dense,
+-- ordered list before deriving #count or starting the merge sort.
+local function CompactSortRows(rows)
+    local indexed = {}
+    for index, row in pairs(rows or {}) do
+        if type(index) == "number" and index >= 1 and index % 1 == 0 then
+            indexed[#indexed + 1] = { index = index, row = row }
+        end
+    end
+    table.sort(indexed, function(a, b) return a.index < b.index end)
+    local compact = {}
+    for _, entry in ipairs(indexed) do
+        if type(entry.row) == "table" then
+            compact[#compact + 1] = entry.row
+        end
+    end
+    return compact
+end
+
 local function StepView()
     local build = UI.viewBuild
     if not build then return end
@@ -1980,6 +2000,7 @@ local function StepView()
         return
     end
     UI.viewBuild = nil
+    build.rows = CompactSortRows(build.rows)
     if #build.rows > 1 then
         local sort = UI.sortByTab[build.tab] or { key = "name", ascending = true }
         UI.rankSort = {
@@ -2242,6 +2263,10 @@ local function BuildSortKey(row, key, ascending)
 end
 
 local function SortKeysComeBefore(a, b, ascending)
+    -- Missing keys must never be indexed. Valid rows sort before malformed
+    -- entries; two missing keys remain stable (left side wins).
+    if a == nil then return false end
+    if b == nil then return true end
     if a.primary == b.primary then
         if a.name == b.name then return a.id < b.id end
         return a.name < b.name

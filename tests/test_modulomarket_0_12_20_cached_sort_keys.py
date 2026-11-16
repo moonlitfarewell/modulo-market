@@ -46,6 +46,6 @@ def test_version_metadata_is_0_12_20():
     toc = (ROOT / "AddOns/ModuloMarket/ModuloMarket.toc").read_text(encoding="utf-8")
     core = (ROOT / "AddOns/ModuloMarket/Core.lua").read_text(encoding="utf-8")
     manifest = __import__("json").loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
-    assert "## Version: 1.0.2" in toc
-    assert 'MM.version = "1.0.2"' in core
-    assert manifest["version"] == "1.0.2"
+    assert "## Version: 1.0.3" in toc
+    assert 'MM.version = "1.0.3"' in core
+    assert manifest["version"] == "1.0.3"

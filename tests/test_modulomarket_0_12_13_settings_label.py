@@ -13,5 +13,5 @@ def test_diagnostic_setting_name_is_short_and_button_keeps_action_label():
 def test_version_metadata_is_consistent():
     toc = (ADDON / "ModuloMarket.toc").read_text(encoding="utf-8")
     core = (ADDON / "Core.lua").read_text(encoding="utf-8")
-    assert "## Version: 1.0.2" in toc
-    assert 'MM.version = "1.0.2"' in core
+    assert "## Version: 1.0.3" in toc
+    assert 'MM.version = "1.0.3"' in core

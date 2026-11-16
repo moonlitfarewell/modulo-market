@@ -35,7 +35,7 @@ def test_release_version_is_consistent():
     core = (ROOT / "AddOns/ModuloMarket/Core.lua").read_text(encoding="utf-8")
     turnin = (ROOT / "AddOns/ModuloMarket/TurnInData.lua").read_text(encoding="utf-8")
     manifest = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
-    assert "## Version: 1.0.2" in toc
-    assert 'MM.version = "1.0.2"' in core
-    assert "1.0.2" in turnin
-    assert manifest["version"] == "1.0.2"
+    assert "## Version: 1.0.3" in toc
+    assert 'MM.version = "1.0.3"' in core
+    assert "1.0.3" in turnin
+    assert manifest["version"] == "1.0.3"

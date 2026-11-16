@@ -16,10 +16,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_0_11_3_release_metadata_aligns():
-    assert 'MM.version = "1.0.2"' in CORE
-    assert "## Version: 1.0.2" in TOC
-    assert 'version = "1.0.2"' in DATA
-    assert MANIFEST["version"] == "1.0.2"
+    assert 'MM.version = "1.0.3"' in CORE
+    assert "## Version: 1.0.3" in TOC
+    assert 'version = "1.0.3"' in DATA
+    assert MANIFEST["version"] == "1.0.3"
 
 
 def test_single_scan_button_progresses_through_prepare_confirm_and_cancel():
