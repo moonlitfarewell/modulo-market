@@ -1,10 +1,14 @@
-# Modulo Market 0.12.14 — item-data event efficiency
+# Modulo Market 0.12.15 — opt-in tab-build diagnostics
 
-**Current source milestone:** 0.12.14 reduces redundant item-data event work; 0.12.13 refined native settings and minimap access; 0.12.9 completed the repository and release-package reconciliation for commit `803bdf73042236ce741e9bedf8ae6c2df0a621aa`. The filtered 1.60.1.70938 projection retains non-speculative recipe structures, outputs and reagent quantities labelled `FOREVER_CLIENT`, plus acquisition rows labelled `FOREVER_OBSERVED` or `FOREVER_CLIENT`; it excludes speculative recipes and the specified Classic-borrowed/unknown acquisition and comparison material. The three unfiltered canonical snapshots have been deleted from public `main` by commit `671df73`. The complete projection rules and before/after counts are in `MODULOMARKET-DATA-CLEANUP-0.12.8.md`.
+**Current source milestone:** 0.12.15 adds opt-in tab-build diagnostics; 0.12.9 completed the repository and release-package reconciliation for commit `803bdf73042236ce741e9bedf8ae6c2df0a621aa`. The filtered 1.60.1.70938 projection retains non-speculative recipe structures, outputs and reagent quantities labelled `FOREVER_CLIENT`, plus acquisition rows labelled `FOREVER_OBSERVED` or `FOREVER_CLIENT`; it excludes speculative recipes and the specified Classic-borrowed/unknown acquisition and comparison material. The three unfiltered canonical snapshots have been deleted from public `main` by commit `671df73`. The complete projection rules and before/after counts are in `MODULOMARKET-DATA-CLEANUP-0.12.8.md`.
 
 The closed-window and open-window Full Market refresh paths remain FOREVER OBSERVED PASS on Forever 1.60.1; explicit cancellation remains FOREVER OBSERVED PASS in both presentations. See `MODULOMARKET-RUNTIME-AUDIT-0.12.8.md` for the exact inherited evidence scopes. No new player runtime test was needed for this data-only projection.
 
 **0.12.9 reconciliation status: CLOSED/PASS.** The post-push local Git tree export at the GitHub-confirmed `main` head contains 379 entries (366 blobs, 13 directory entries). The repository verifier checked all 293 release-manifest paths against the tree with zero hash mismatches after CRLF-to-LF normalization of a temporary copy of the Windows ZIP extraction; the ZIP itself was not modified. All 73 repository-only files are classified (72 tests and one superseded audit), and no raw canonical snapshots remain. See `MODULOMARKET-REPOSITORY-RECONCILIATION-0.12.9.md` and `MODULOMARKET-RUNTIME-AUDIT-0.12.9.md`. The root `LICENSE` applies MIT terms only to original Modulo Market source code and the six project-authored UI assets listed in `ASSET-PROVENANCE.md`, to the extent contributors have the rights to license them. The retained ForeverDB-derived projection is not MIT-licensed. ForeverDB's published developer instructions describe fetching and bundling data with releases, visible attribution and no API keys; they are not a general open-data licence or a blanket Blizzard rights grant. The projection removes explicitly Classic-borrowed and unknown records/fields, but retained Forever-client/player-observed material remains third-party/provider-derived and its broader rights are not independently cleared. See `THIRD-PARTY-NOTICES.md`. Current active regression gate and package verification are recorded in `MODULOMARKET-RUNTIME-AUDIT-0.12.8.md`. The 0.12.8 archive was clean, but the public GitHub `main` tree at parent commit `c34bb314084f4308ecb0ff9d420473e4ab7a2995` still exposed the three unfiltered canonical snapshots outside the 290-file release manifest. The 0.12.9 cleanup removed those paths from public `main`; the post-push verifier now confirms the 293-file 0.12.9 package and complete 379-entry tree agree, with repository-only history separately classified. Historical tests and the superseded 0.7.9 audit remain repository-only artifacts. Runtime evidence remains scoped and is not upgraded to FOREVER VERIFIED.
+
+## 0.12.15 — opt-in tab-build diagnostics
+
+The player can now measure tab selection and incremental view-build work without continuous logging. Run `/mmtabperf on`, reproduce the tab-switching pattern, then run `/mmtabperf` to report per-tab build requests, completed/cancelled builds, source rows, rows processed, result rows, source-construction time and total build elapsed time. `/mmtabperf reset` clears counters; `/mmtabperf off` disables collection. Collection is off by default and does not alter filtering, sorting, prices, recipes, snapshots or persisted settings. This is an instrumentation-only diagnostic slice; it does not claim a performance fix or identify the cause of every profiler spike. Forever runtime acceptance is NOT RUN. See `MODULOMARKET-TAB-BUILD-DIAGNOSTICS-AUDIT-2026-11-15.md`.
 
 ## 0.12.9 — repository and distribution reconciliation
 
@@ -142,23 +146,3 @@ Corrected the 0.12.12 wording reversal: **Diagnostic window** is now the
 short settings-row label, while the button itself says **Open Browse Scan /
 Snapshot**. The button still opens the same Browse Scan / Snapshot Debug
 window. No behavior changed.
-
-
-## 0.12.14 — Item-data event efficiency
-
-Item-data notifications continue to invalidate icon, quality, item-class and
-vendor metadata caches immediately. When neither Market presentation is visible,
-the event path skips synchronous vendor/class metadata reads and does not queue
-presentation rendering. The ordinary getters resolve current metadata lazily
-when the player opens Market again.
-
-When a presentation is visible, completed item IDs are coalesced for 120 ms.
-Metadata is resolved once per item in the burst, even if both legacy and modern
-item-data notifications arrive. The active presentation is refreshed once.
-Item-class warmup and its filter-triggered rebuild pause while the actual
-presentation is hidden, including while the transparent Modern backend frame
-remains shown.
-
-See `MODULOMARKET-RUNTIME-AUDIT-0.12.14.md` for implementation scope,
-regression evidence and the required Freeloader runtime comparison. No in-client
-CPU improvement is claimed until that comparison passes.

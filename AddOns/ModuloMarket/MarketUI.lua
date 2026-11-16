@@ -67,6 +67,7 @@ local UI = {
     tooltipSearchWarmup = nil,
     tooltipSearchMode = false,
     tooltipSearchDiagnostics = { searches = 0, requests = 0, cacheHits = 0, events = 0, failures = 0, timeouts = 0, completed = 0, structuredReads = 0, legacyFallbacks = 0, emptyResults = 0, lastItemID = nil, lastSource = "none", lastLineCount = 0, lastState = "idle" },
+    tabPerfDiagnostics = { enabled = false, tabs = {}, tabSelections = 0, sameTabSelections = 0, cancelledBuilds = 0 },
 }
 MM.MarketUI = UI
 
@@ -1456,8 +1457,68 @@ local function StepCatalog()
     UI.StartViewBuild()
 end
 
+local function GetTabPerfRecord(tab)
+    local diagnostics = UI.tabPerfDiagnostics
+    diagnostics.tabs[tab] = diagnostics.tabs[tab] or {
+        requests = 0, builds = 0, completed = 0, cancelled = 0,
+        sourceRows = 0, processedRows = 0, resultRows = 0,
+        sourceSeconds = 0, elapsedSeconds = 0, lastSourceRows = 0,
+        lastProcessedRows = 0, lastResultRows = 0, lastElapsedSeconds = 0,
+    }
+    return diagnostics.tabs[tab]
+end
+
+function UI.SetTabPerfDiagnostics(enabled)
+    local diagnostics = UI.tabPerfDiagnostics
+    diagnostics.enabled = enabled == true
+    if not diagnostics.enabled then
+        diagnostics.activeBuild = nil
+    end
+    return diagnostics.enabled
+end
+
+function UI.ResetTabPerfDiagnostics()
+    local diagnostics = UI.tabPerfDiagnostics
+    diagnostics.tabs = {}
+    diagnostics.tabSelections = 0
+    diagnostics.sameTabSelections = 0
+    diagnostics.cancelledBuilds = 0
+    diagnostics.activeBuild = nil
+end
+
+function UI.GetTabPerfDiagnostics()
+    local diagnostics = UI.tabPerfDiagnostics
+    local result = {
+        enabled = diagnostics.enabled == true,
+        tabSelections = diagnostics.tabSelections or 0,
+        sameTabSelections = diagnostics.sameTabSelections or 0,
+        cancelledBuilds = diagnostics.cancelledBuilds or 0,
+        tabs = {},
+    }
+    for tab, record in pairs(diagnostics.tabs or {}) do
+        result.tabs[tab] = {}
+        for key, value in pairs(record) do result.tabs[tab][key] = value end
+    end
+    return result
+end
+
 function UI.StartViewBuild()
     if not UI.search or UI.catalogBuild then return end
+    local perf = UI.tabPerfDiagnostics
+    local perfEnabled = perf.enabled == true
+    local perfTab = UI.activeTab or "unknown"
+    local perfStartedAt = perfEnabled and Now() or nil
+    if perfEnabled then
+        local record = GetTabPerfRecord(perfTab)
+        record.requests = record.requests + 1
+        if perf.activeBuild then
+            perf.activeBuild.cancelled = true
+            record = GetTabPerfRecord(perf.activeBuild.tab)
+            record.cancelled = record.cancelled + 1
+            perf.cancelledBuilds = perf.cancelledBuilds + 1
+            perf.activeBuild = nil
+        end
+    end
     UI.searchBuildDueAt = nil
     UI.tooltipSearchWarmup = nil
     local query = NormalizeSearchText(UI.search:GetText() or "")
@@ -1481,6 +1542,17 @@ function UI.StartViewBuild()
         and not UI.economicsByItemID then
         StartEconomicsIndex()
         return
+    end
+    local perfSourceSeconds = perfEnabled and math.max(0, Now() - perfStartedAt) or 0
+    if perfEnabled then
+        local record = GetTabPerfRecord(perfTab)
+        record.builds = record.builds + 1
+        record.sourceRows = record.sourceRows + #(source or {})
+        record.lastSourceRows = #(source or {})
+        perf.activeBuild = {
+            tab = perfTab, startedAt = perfStartedAt,
+            sourceSeconds = perfSourceSeconds, processedRows = 0,
+        }
     end
     UI.viewBuild = {
         generation = UI.searchGeneration,
@@ -1511,6 +1583,7 @@ function UI.StartViewBuild()
         },
         source = source or {}, total = #(source or {}), startedAt = Now(), pendingTooltipIDs = {},
         includeTooltip = UI.tooltipSearchMode == true,
+        tabPerfEnabled = perfEnabled,
     }
     if UI.scroll then
         UI.scroll:SetVerticalScroll(0)
@@ -1687,6 +1760,12 @@ local function StepView()
             end
         end
         build.index = build.index + 1
+        if build.tabPerfEnabled and UI.tabPerfDiagnostics.enabled then
+            local active = UI.tabPerfDiagnostics.activeBuild
+            if active and active.tab == build.tab then
+                active.processedRows = active.processedRows + 1
+            end
+        end
     end
     if build.index <= build.total then
         if UI.resultCount then
@@ -1838,6 +1917,21 @@ local function UpdateResultRange()
 end
 
 function UI.FinishView(rows)
+    local diagnostics = UI.tabPerfDiagnostics
+    local active = diagnostics and diagnostics.enabled and diagnostics.activeBuild or nil
+    if active then
+        local record = GetTabPerfRecord(active.tab)
+        local elapsed = math.max(0, Now() - (active.startedAt or Now()))
+        record.completed = record.completed + 1
+        record.processedRows = record.processedRows + (active.processedRows or 0)
+        record.resultRows = record.resultRows + #(rows or {})
+        record.sourceSeconds = record.sourceSeconds + (active.sourceSeconds or 0)
+        record.elapsedSeconds = record.elapsedSeconds + elapsed
+        record.lastProcessedRows = active.processedRows or 0
+        record.lastResultRows = #(rows or {})
+        record.lastElapsedSeconds = elapsed
+        diagnostics.activeBuild = nil
+    end
     UI.viewRevision = (UI.viewRevision or 0) + 1
     UI.viewRows = rows
     UI.rankSort = nil
@@ -2899,78 +2993,10 @@ end
 local vendorInfoEvents = CreateFrame("Frame")
 vendorInfoEvents:RegisterEvent("GET_ITEM_INFO_RECEIVED")
 pcall(vendorInfoEvents.RegisterEvent, vendorInfoEvents, "ITEM_DATA_LOAD_RESULT")
-
-local function IsMarketPresentationVisible()
-    local modernActive = MM.Theme and MM.Theme.GetTheme
-        and MM.Theme.GetTheme() == "modern"
-    if modernActive then
-        return MM.ModernUI and MM.ModernUI.IsShown and MM.ModernUI.IsShown() == true
-    end
-    return UI.blizzlikeVisible == true and UI.frame
-        and UI.frame.IsShown and UI.frame:IsShown() == true
-end
-
-local function FlushVendorInfoRefresh()
-    vendorInfoEvents:SetScript("OnUpdate", nil)
-    local pending = vendorInfoEvents.pendingRefresh
-    vendorInfoEvents.pendingRefresh = nil
-    if not pending or not IsMarketPresentationVisible() then return end
-
-    -- Resolve each completed item once per burst, even when the client emits both
-    -- legacy and modern item-data notifications for the same ID.
-    for itemID, success in pairs(pending.items or {}) do
-        if success ~= false then
-            local sellPrice = ReadVendorInfo(itemID)
-            local classID = GetItemClassID(itemID, false)
-            if classID == nil then UI.itemClassFailed[itemID] = true end
-            if UI.itemTypeFilter and UI.itemTypeFilter ~= "all" and UI.activeTab == "market"
-                and classID ~= nil then
-                UI.itemTypeRefreshDueAt = Now() + 0.25
-            end
-            if sellPrice == nil then
-                UI.vendorPriceFailed[itemID] = true
-            end
-        end
-    end
-
-    local modernActive = MM.Theme and MM.Theme.GetTheme
-        and MM.Theme.GetTheme() == "modern"
-    if modernActive then
-        if MM.ModernUI and MM.ModernUI.RenderRows then MM.ModernUI.RenderRows() end
-    elseif pending.selectedItemID and UI.selectedItem
-        and tonumber(UI.selectedItem.itemID) == pending.selectedItemID then
-        SelectItem(UI.selectedItem)
-    else
-        UI.RenderRows()
-    end
-end
-
-local function QueueVendorInfoRefresh(itemID, success)
-    if not IsMarketPresentationVisible() then return end
-    local pending = vendorInfoEvents.pendingRefresh or {
-        dueAt = Now() + 0.12, items = {},
-    }
-    -- A successful notification wins over a duplicate failure notification.
-    if pending.items[itemID] ~= true then pending.items[itemID] = success ~= false end
-    pending.dueAt = Now() + 0.12
-    if UI.selectedItem and tonumber(UI.selectedItem.itemID) == itemID then
-        pending.selectedItemID = itemID
-    end
-    vendorInfoEvents.pendingRefresh = pending
-    vendorInfoEvents:SetScript("OnUpdate", function(self)
-        if Now() >= (self.pendingRefresh and self.pendingRefresh.dueAt or 0) then
-            FlushVendorInfoRefresh()
-        end
-    end)
-end
-
 vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
     itemID = tonumber(itemID)
     if not itemID then return end
-
-    -- Item cache completion can resolve icons and metadata for virtualized rows.
-    -- Keep these cheap cache updates even when Market is closed; only presentation
-    -- work is deferred until a relevant window is actually visible.
+    -- Item cache completion can also resolve the real icon for virtualized rows.
     itemIconCache[itemID] = nil
     itemQualityCache[itemID] = nil
     UI.itemClassCache[itemID] = nil
@@ -2984,9 +3010,28 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
         UI.itemClassFailed[itemID] = true
     else
         UI.vendorPriceFailed[itemID] = nil
+        local sellPrice = ReadVendorInfo(itemID)
+        local classID = GetItemClassID(itemID, false)
+        if classID == nil then UI.itemClassFailed[itemID] = true end
+        if UI.itemTypeFilter and UI.itemTypeFilter ~= "all" and UI.activeTab == "market"
+            and classID ~= nil then
+            UI.itemTypeRefreshDueAt = Now() + 0.25
+        end
+        if sellPrice == nil then
+            -- The client completed its item-data notification but still exposes no
+            -- vendor value. Avoid repeatedly requesting the same unavailable item.
+            UI.vendorPriceFailed[itemID] = true
+        end
     end
-
-    QueueVendorInfoRefresh(itemID, success)
+    local modernActive = MM.Theme and MM.Theme.GetTheme
+        and MM.Theme.GetTheme() == "modern"
+    if modernActive then
+        if MM.ModernUI and MM.ModernUI.RenderRows then MM.ModernUI.RenderRows() end
+    elseif UI.selectedItem and tonumber(UI.selectedItem.itemID) == itemID then
+        SelectItem(UI.selectedItem)
+    else
+        UI.RenderRows()
+    end
 end)
 
 local function NormalizeBuildKey(value)
@@ -3225,6 +3270,13 @@ local function AttachFilterTooltip(region, title, body)
 end
 
 local function SetTab(tab)
+    if UI.tabPerfDiagnostics and UI.tabPerfDiagnostics.enabled then
+        local diagnostics = UI.tabPerfDiagnostics
+        diagnostics.tabSelections = diagnostics.tabSelections + 1
+        if UI.activeTab == tab then
+            diagnostics.sameTabSelections = diagnostics.sameTabSelections + 1
+        end
+    end
     local previousTab = UI.activeTab
     UI.tabFilterState[previousTab] = UI.tabFilterState[previousTab] or {}
     UI.tabFilterState[previousTab].search = UI.search and UI.search:GetText() or ""
@@ -4617,9 +4669,8 @@ local function CreateUI()
         -- Run the warmup watchdog independently of other work queues so a stale
         -- catalogue/economics task cannot starve its hard timeout.
         if UI.tooltipSearchWarmup then StepTooltipSearchWarmup() end
-        if IsMarketPresentationVisible() then StepItemClassWarmup() end
+        StepItemClassWarmup()
         if UI.itemTypeRefreshDueAt and now >= UI.itemTypeRefreshDueAt
-            and IsMarketPresentationVisible()
             and not UI.catalogBuild and not UI.economicsIndexBuild
             and not UI.viewBuild and not UI.rankSort then
             UI.itemTypeRefreshDueAt = nil

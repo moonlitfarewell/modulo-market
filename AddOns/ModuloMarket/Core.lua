@@ -3,7 +3,7 @@ local MM = _G.ModuloMarket or {}
 _G.ModuloMarket = MM
 
 MM.name = ADDON_NAME or "ModuloMarket"
-MM.version = "0.12.14"
+MM.version = "0.12.15"
 MM.debugPrefix = "|cff66ccffModuloMarket:|r "
 
 local function Print(message)
@@ -90,6 +90,45 @@ loader:SetScript("OnEvent", function(_, event, loadedName)
                 MM.Diagnostics.Toggle()
             else
                 Print("Diagnostics UI is not ready.")
+            end
+        end
+        SLASH_MODULOMARKETTABPERF1 = "/mmtabperf"
+        SlashCmdList.MODULOMARKETTABPERF = function(message)
+            local command = tostring(message or ""):lower():match("^%s*(.-)%s*$")
+            local ui = MM.MarketUI
+            if not ui or not ui.GetTabPerfDiagnostics then
+                Print("Tab performance diagnostics are unavailable.")
+                return
+            end
+            if command == "on" then
+                ui.SetTabPerfDiagnostics(true)
+                Print("Tab performance diagnostics enabled. Reproduce tab switching, then run /mmtabperf.")
+                return
+            elseif command == "off" then
+                ui.SetTabPerfDiagnostics(false)
+                Print("Tab performance diagnostics disabled.")
+                return
+            elseif command == "reset" then
+                ui.ResetTabPerfDiagnostics()
+                Print("Tab performance counters reset.")
+                return
+            end
+            local d = ui.GetTabPerfDiagnostics()
+            Print(string.format("Tab perf enabled=%s selections=%d sameTab=%d cancelledBuilds=%d",
+                tostring(d.enabled), d.tabSelections, d.sameTabSelections, d.cancelledBuilds))
+            local tabs = {}
+            for tab in pairs(d.tabs or {}) do tabs[#tabs + 1] = tab end
+            table.sort(tabs)
+            if #tabs == 0 then
+                Print("No tab build samples yet. Use /mmtabperf on, switch tabs, then run /mmtabperf.")
+                return
+            end
+            for _, tab in ipairs(tabs) do
+                local r = d.tabs[tab]
+                Print(string.format("%s req=%d builds=%d done=%d cancelled=%d sourceRows=%d processed=%d results=%d source=%.3fs elapsed=%.3fs last=%.3fs",
+                    tab, r.requests, r.builds, r.completed, r.cancelled,
+                    r.sourceRows, r.processedRows, r.resultRows,
+                    r.sourceSeconds, r.elapsedSeconds, r.lastElapsedSeconds))
             end
         end
         SLASH_MODULOMARKETSEARCHDEBUG1 = "/mmsearchdebug"
