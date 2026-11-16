@@ -98,15 +98,16 @@ def test_release_manifest_matches_local_package_inventory_and_hashes():
         p.relative_to(ROOT).as_posix()
         for p in ROOT.rglob("*")
         if p.is_file()
+        and ".git" not in p.parts
         and "__pycache__" not in p.parts
         and ".pytest_cache" not in p.parts
         and p.suffix != ".pyc"
     }
     repository_only = actual - declared
     assert declared <= actual
-    assert all(path.startswith("tests/") or path == "MODULOMARKET-RUNTIME-AUDIT-0.7.9.md"
+    assert all(path.startswith("tests/") or path in {"MODULOMARKET-RUNTIME-AUDIT-0.7.9.md", "MODULOMARKET-RUNTIME-AUDIT-0.12.12.md", "MODULOMARKET-RUNTIME-AUDIT-0.12.14.md"}
                for path in repository_only)
-    assert len(repository_only) == 73
+    assert len(repository_only) == 10
     assert manifest["file_count"] == len(declared)
     assert "MANIFEST.json" in declared
     assert set(manifest["git_blob_sha1"]) == declared - {"MANIFEST.json"}

@@ -14,9 +14,9 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_are_0_11_7():
-    assert 'MM.version = "0.12.9"' in CORE
-    assert "## Version: 0.12.9" in TOC
-    assert MANIFEST["version"] == "0.12.9"
+    assert 'MM.version = "1.0.2"' in CORE
+    assert "## Version: 1.0.2" in TOC
+    assert MANIFEST["version"] == "1.0.2"
 
 
 def test_history_uses_exactly_the_latest_three_snapshots():

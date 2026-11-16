@@ -684,8 +684,14 @@ local function CreateUI()
     update:SetPoint("TOPLEFT", frame, "TOPLEFT", 28, -86)
     AddButtonIcon(update, "Interface\\AddOns\\ModuloMarket\\Textures\\refresh.tga", 17, "LEFT")
     Modern.updateButton = update
+    local refreshSnapshot = FlatButton(frame, "Refresh", 120, 32, function()
+        UI.RefreshSavedSnapshot()
+    end)
+    refreshSnapshot:SetPoint("TOPLEFT", frame, "TOPLEFT", 250, -86)
+    AddButtonIcon(refreshSnapshot, "Interface\\AddOns\\ModuloMarket\\Textures\\refresh.tga", 16, "LEFT")
+    Modern.refreshSnapshotButton = refreshSnapshot
     local cancel = FlatButton(frame, "Cancel", 92, 32, function() UI.TriggerCancelScan() end)
-    cancel:SetPoint("TOPLEFT", frame, "TOPLEFT", 250, -86)
+    cancel:SetPoint("TOPLEFT", frame, "TOPLEFT", 380, -86)
     AddButtonIcon(cancel, "Interface\\AddOns\\ModuloMarket\\Textures\\cancel.tga", 14, "LEFT")
     cancel:Hide()
     Modern.cancelButton = cancel
@@ -1049,6 +1055,14 @@ function Modern.RefreshScanActions(state)
         Modern.scanState:SetText("Scan: Cooldown")
     else
         Modern.scanState:SetText("Scan: Idle")
+    end
+    local last = type(MM.db) == "table" and MM.db.lastReplicateTargetDiagnostics or nil
+    if type(last) == "table" and tonumber(last.completedAt or last.timestamp)
+        and not state.active and not state.pendingConfirmation then
+        local stamp = tonumber(last.completedAt or last.timestamp)
+        local when = type(_G.date) == "function" and _G.date("%H:%M", stamp) or tostring(stamp)
+        local outcome = tostring(last.outcome or "unknown"):match("^complete") and "complete" or "aborted"
+        Modern.scanState:SetText(Modern.scanState:GetText() .. (outcome == "complete" and " · OK " or " · Failed ") .. when)
     end
 end
 

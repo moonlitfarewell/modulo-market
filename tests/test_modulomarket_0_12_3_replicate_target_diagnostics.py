@@ -14,7 +14,7 @@ def test_targeted_replicate_diagnostics_follow_item_through_pipeline():
     assert "targetDiagnostic.itemDataSuccess" in source
     assert "targetDiagnostic.itemDataFailure" in source
     assert "targetDiagnostic.aggregatedRecords" in source
-    assert "SaveTargetDiagnostics(scan, \"complete\")" in source
+    assert 'SaveTargetDiagnostics(scan, "complete", snapshot, previousSnapshot)' in source
     assert "SaveTargetDiagnostics(scan, \"aborted:" in source
 
 
@@ -29,6 +29,6 @@ def test_version_agreement():
     toc = (ADDON / "ModuloMarket.toc").read_text()
     core = (ADDON / "Core.lua").read_text()
     manifest = json.loads((ROOT / "MANIFEST.json").read_text())
-    assert re.search(r"^## Version: 0\.12\.9$", toc, re.M)
-    assert 'MM.version = "0.12.9"' in core
-    assert manifest["version"] == "0.12.9"
+    assert re.search(r"^## Version: 1\.0\.2$", toc, re.M)
+    assert 'MM.version = "1.0.2"' in core
+    assert manifest["version"] == "1.0.2"

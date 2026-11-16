@@ -24,8 +24,8 @@ def test_release_versions_agree():
     turnins = (ADDON / "TurnInData.lua").read_text()
     writs = (ADDON / "WritData.lua").read_text()
     manifest = json.loads((ROOT / "MANIFEST.json").read_text())
-    assert re.search(r"^## Version: 0\.12\.9$", toc, re.M)
-    assert 'MM.version = "0.12.9"' in core
-    assert 'version = "0.12.9"' in turnins
+    assert re.search(r"^## Version: 1\.0\.2$", toc, re.M)
+    assert 'MM.version = "1.0.2"' in core
+    assert 'version = "1.0.2"' in turnins
     assert 'version = "0.12.9"' in writs
-    assert manifest["version"] == "0.12.9"
+    assert manifest["version"] == "1.0.2"

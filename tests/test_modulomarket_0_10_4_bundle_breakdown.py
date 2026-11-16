@@ -11,10 +11,10 @@ MANIFEST = json.loads((ROOT / "MANIFEST.json").read_text(encoding="utf-8"))
 
 
 def test_release_versions_and_load_order_align():
-    assert 'MM.version = "0.12.9"' in CORE
-    assert "## Version: 0.12.9" in TOC
-    assert 'version = "0.12.9"' in DATA
-    assert MANIFEST["version"] == "0.12.9"
+    assert 'MM.version = "1.0.2"' in CORE
+    assert "## Version: 1.0.2" in TOC
+    assert 'version = "1.0.2"' in DATA
+    assert MANIFEST["version"] == "1.0.2"
     assert TOC.index("TurnInData.lua") < TOC.index("TurnInEngine.lua") < TOC.index("MarketUI.lua")
 
 
@@ -88,5 +88,5 @@ def test_release_manifest_excludes_repository_only_test_history():
     declared = set(MANIFEST["files"])
     assert declared <= actual
     repository_only = actual - declared
-    assert all(path.startswith("tests/") or path == "MODULOMARKET-RUNTIME-AUDIT-0.7.9.md"
+    assert all(path.startswith("tests/") or path in {"MODULOMARKET-RUNTIME-AUDIT-0.7.9.md", "MODULOMARKET-RUNTIME-AUDIT-0.12.12.md", "MODULOMARKET-RUNTIME-AUDIT-0.12.14.md"}
                for path in repository_only)

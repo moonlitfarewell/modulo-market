@@ -228,6 +228,28 @@ local function AddCompatibilityReport(lines)
         Add(lines, "Snapshot compatible with current client", false)
     end
 
+    local lastScan = type(MM.db) == "table" and MM.db.lastReplicateTargetDiagnostics or nil
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "LAST FULL MARKET SCAN / COMMIT"
+    if type(lastScan) == "table" then
+        Add(lines, "Outcome", lastScan.outcome)
+        Add(lines, "Scan started (Unix time)", lastScan.scanStartedAt)
+        Add(lines, "Scan completed (Unix time)", lastScan.completedAt or lastScan.timestamp)
+        Add(lines, "Snapshot commit confirmed", lastScan.commitConfirmed)
+        Add(lines, "Previous snapshot timestamp", lastScan.previousSnapshotTimestamp)
+        Add(lines, "Committed snapshot timestamp", lastScan.snapshotTimestamp)
+        Add(lines, "Committed snapshot display time", lastScan.snapshotTimestampText)
+        Add(lines, "Committed snapshot auctions", lastScan.snapshotAuctionCount)
+        Add(lines, "Processed auctions", lastScan.snapshotProcessedAuctionCount)
+        local target = lastScan.target or {}
+        Add(lines, "Enchantresses' Spire snapshot variants", target.snapshotVariants)
+        Add(lines, "Enchantresses' Spire minimum copper", target.snapshotMinPriceCopper)
+        Add(lines, "Enchantresses' Spire total quantity", target.snapshotTotalQuantity)
+        Add(lines, "Enchantresses' Spire auction count", target.snapshotAuctionCount)
+    else
+        lines[#lines + 1] = "No saved Full Market scan diagnostic."
+    end
+
     local provider
     if MM.ProfessionData and type(MM.ProfessionData.GetFutureProviderStatus) == "function" then
         local ok, value = pcall(MM.ProfessionData.GetFutureProviderStatus)

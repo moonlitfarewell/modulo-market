@@ -3342,17 +3342,26 @@ function UI.RefreshActions()
     local state = MM.Replicate and MM.Replicate.GetState and MM.Replicate.GetState() or {}
     local remaining = math.max(0, tonumber(state.cooldownRemaining) or 0)
     if UI.scanStateLabel then
+        local stateText, color
         if state.pendingConfirmation then
-            UI.scanStateLabel:SetText("|cffffc04dScan: Confirmation required|r")
+            stateText, color = "Scan: Confirmation required", "|cffffc04d"
         elseif state.active then
-            UI.scanStateLabel:SetText("|cff55dd77Scan: Active|r")
+            stateText, color = "Scan: Active", "|cff55dd77"
         elseif state.attemptedThisSession then
-            UI.scanStateLabel:SetText("|cffffaa44Scan: Used this session|r")
+            stateText, color = "Scan: Used this session", "|cffffaa44"
         elseif remaining > 0 then
-            UI.scanStateLabel:SetText("|cffaaaaaaScan: Cooldown|r")
+            stateText, color = "Scan: Cooldown", "|cffaaaaaa"
         else
-            UI.scanStateLabel:SetText("|cff55dd77Scan: Idle|r")
+            stateText, color = "Scan: Idle", "|cff55dd77"
         end
+        local last = type(MM.db) == "table" and MM.db.lastReplicateTargetDiagnostics or nil
+        if type(last) == "table" and tonumber(last.completedAt or last.timestamp) then
+            local stamp = tonumber(last.completedAt or last.timestamp)
+            local when = type(_G.date) == "function" and _G.date("%H:%M", stamp) or tostring(stamp)
+            local outcome = tostring(last.outcome or "unknown"):match("^complete") and "complete" or "aborted"
+            stateText = stateText .. (outcome == "complete" and " · OK " or " · Failed ") .. when
+        end
+        UI.scanStateLabel:SetText(color .. stateText .. "|r")
     end
     if UI.cancelButton then
         if state.pendingConfirmation or state.active then UI.cancelButton:Show() else UI.cancelButton:Hide() end
@@ -3376,11 +3385,6 @@ function UI.RefreshActions()
     else
         UI.scanButton:SetText("Scan Market")
         UI.scanButton:SetEnabled(true)
-    end
-    if UI.closeAction then
-        UI.closeAction:ClearAllPoints()
-        UI.closeAction:SetPoint("TOPLEFT", UI.frame, "TOPLEFT",
-            (state.pendingConfirmation or state.active) and 320 or 230, -62)
     end
     if MM.ModernUI and MM.ModernUI.RefreshScanActions then
         MM.ModernUI.RefreshScanActions(state)
@@ -3409,6 +3413,23 @@ function UI.Refresh()
         UI.StartViewBuild()
     end
     UI.RefreshActions()
+end
+
+-- Rebuild the current presentation from the already-saved Full Market
+-- snapshot. This never contacts the Auction House and never changes cooldown.
+function UI.RefreshSavedSnapshot()
+    local snapshot = GetSnapshot()
+    if type(snapshot) ~= "table" or snapshot.complete ~= true then
+        SetStatus("Refresh unavailable — no complete saved Market snapshot exists.")
+        return false
+    end
+    UI.pendingSnapshotRefresh = true
+    UI.catalogSnapshot = nil
+    SetStatus(string.format("Refreshing saved snapshot from %s (%d auctions); no new scan requested.",
+        tostring(snapshot.timestampText or snapshot.timestamp or "unknown"),
+        tonumber(snapshot.auctionCount) or 0))
+    UI.Refresh()
+    return true
 end
 
 -- Explicit hand-off from the Replicate transaction after a complete snapshot
@@ -4073,14 +4094,16 @@ local function CreateUI()
         end
         UI.RefreshActions()
     end)
-    UI.cancelButton = AddButton(frame, "Cancel", 80, 230, -62, function()
+    UI.cancelButton = AddButton(frame, "Cancel", 80, 320, -62, function()
         if MM.Replicate then MM.Replicate.Cancel() end
         UI.RefreshActions()
     end)
     UI.cancelButton:Hide()
+    UI.refreshSnapshotButton = AddButton(frame, "Refresh", 80, 230, -62, function()
+        UI.RefreshSavedSnapshot()
+    end)
     -- Compatibility alias: confirmation is now the same primary scan button.
     UI.confirmButton = UI.scanButton
-    UI.closeAction = AddButton(frame, "Close", 80, 230, -62, function() frame:Hide() end)
     -- Retain a hidden programmatic Browse Scan entry point for older integrations;
     -- the player-facing launcher now lives only in the addon settings page.
     UI.browseButton = AddButton(frame, "Browse Scan", 150, 485, -62, function()

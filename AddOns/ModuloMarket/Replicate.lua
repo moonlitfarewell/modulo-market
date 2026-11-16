@@ -238,20 +238,59 @@ local function TargetSample(scan, index)
     return sample
 end
 
-local function SaveTargetDiagnostics(scan, outcome)
+local function SaveTargetDiagnostics(scan, outcome, committedSnapshot, previousSnapshot)
     if type(MM.db) ~= "table" or type(scan) ~= "table" then return end
     local target = scan.targetDiagnostic or {}
-    local samples = {}
+    local samples, snapshotRows = {}, {}
+    local targetMinPrice, targetQuantity, targetAuctions, targetVariants
+    targetVariants = 0
     for i = 1, #(target.samples or {}) do
         local source = target.samples[i]
         local copy = {}
         for key, value in pairs(source) do copy[key] = value end
         samples[i] = copy
     end
+    if type(committedSnapshot) == "table" and type(committedSnapshot.rows) == "table" then
+        for _, row in ipairs(committedSnapshot.rows) do
+            if tonumber(row.itemID) == TARGET_DIAGNOSTIC_ITEM_ID then
+                targetVariants = targetVariants + 1
+                local price = tonumber(row.minPriceCopper)
+                if price and price > 0 and (not targetMinPrice or price < targetMinPrice) then
+                    targetMinPrice = price
+                end
+                targetQuantity = (targetQuantity or 0) + (tonumber(row.totalQuantity) or 0)
+                targetAuctions = (targetAuctions or 0) + (tonumber(row.auctionCount) or 0)
+                snapshotRows[#snapshotRows + 1] = {
+                    itemLevel = tonumber(row.itemLevel),
+                    minPriceCopper = price,
+                    minPriceQuantity = tonumber(row.minPriceQuantity) or 0,
+                    totalQuantity = tonumber(row.totalQuantity) or 0,
+                    auctionCount = tonumber(row.auctionCount) or 0,
+                    pricedQuantity = tonumber(row.pricedQuantity) or 0,
+                    unpricedQuantity = tonumber(row.unpricedQuantity) or 0,
+                }
+            end
+        end
+    end
+    local recordedAt = WallTime()
+    local snapshot = committedSnapshot or MM.db.lastMarketSnapshot
+    local snapshotTimestamp = type(snapshot) == "table" and tonumber(snapshot.timestamp) or nil
     MM.db.lastReplicateTargetDiagnostics = {
         itemID = TARGET_DIAGNOSTIC_ITEM_ID,
         outcome = tostring(outcome or "unknown"),
-        timestamp = WallTime(),
+        timestamp = recordedAt,
+        scanStartedAt = tonumber(scan.timestamp),
+        scanStartedAtText = type(_G.date) == "function" and _G.date("%Y-%m-%d %H:%M:%S", tonumber(scan.timestamp) or recordedAt) or nil,
+        completedAt = recordedAt,
+        completedAtText = type(_G.date) == "function" and _G.date("%Y-%m-%d %H:%M:%S", recordedAt) or nil,
+        commitConfirmed = type(committedSnapshot) == "table"
+            and MM.db.lastMarketSnapshot == committedSnapshot or false,
+        previousSnapshotTimestamp = type(previousSnapshot) == "table" and tonumber(previousSnapshot.timestamp) or nil,
+        snapshotTimestamp = snapshotTimestamp,
+        snapshotTimestampText = type(snapshot) == "table" and snapshot.timestampText or nil,
+        snapshotAgeAtDiagnosticSeconds = snapshotTimestamp and math.max(0, recordedAt - snapshotTimestamp) or nil,
+        snapshotAuctionCount = type(snapshot) == "table" and tonumber(snapshot.auctionCount) or nil,
+        snapshotProcessedAuctionCount = type(snapshot) == "table" and tonumber(snapshot.processedAuctionCount) or nil,
         auctionCount = scan.total,
         processed = scan.processed,
         aggregateCount = scan.aggregateCount,
@@ -268,6 +307,11 @@ local function SaveTargetDiagnostics(scan, outcome)
             itemDataFailure = target.itemDataFailure or 0,
             retryAttempts = target.retryAttempts or 0,
             aggregatedRecords = target.aggregatedRecords or 0,
+            snapshotVariants = targetVariants,
+            snapshotMinPriceCopper = targetMinPrice,
+            snapshotTotalQuantity = targetQuantity or 0,
+            snapshotAuctionCount = targetAuctions or 0,
+            snapshotRows = snapshotRows,
             samples = samples,
         },
     }
@@ -526,11 +570,28 @@ local function Abort(reason)
     Replicate.stage = "idle"
     Replicate.scan = nil
     if scan then
-        SaveTargetDiagnostics(scan, "aborted: " .. tostring(reason))
+        SaveTargetDiagnostics(scan, "aborted: " .. tostring(reason), nil, MM.db and MM.db.lastMarketSnapshot)
         SetStatus(string.format(
             "Full Market scan stopped — %s. Previous saved market data is unchanged. Processed %d/%d auctions; %d variants built; %d records unresolved.",
             tostring(reason), scan.processed, scan.total, scan.aggregateCount, scan.unresolvedAuctionCount))
     else
+        if type(MM.db) == "table" then
+            local snapshot = MM.db.lastMarketSnapshot
+            local recordedAt = WallTime()
+            MM.db.lastReplicateTargetDiagnostics = {
+                itemID = TARGET_DIAGNOSTIC_ITEM_ID,
+                outcome = "aborted: " .. tostring(reason),
+                timestamp = recordedAt,
+                completedAt = recordedAt,
+                completedAtText = type(_G.date) == "function" and _G.date("%Y-%m-%d %H:%M:%S", recordedAt) or nil,
+                commitConfirmed = false,
+                snapshotTimestamp = type(snapshot) == "table" and tonumber(snapshot.timestamp) or nil,
+                snapshotTimestampText = type(snapshot) == "table" and snapshot.timestampText or nil,
+                snapshotAuctionCount = type(snapshot) == "table" and tonumber(snapshot.auctionCount) or nil,
+                snapshotProcessedAuctionCount = type(snapshot) == "table" and tonumber(snapshot.processedAuctionCount) or nil,
+                target = { snapshotVariants = 0, snapshotTotalQuantity = 0, snapshotAuctionCount = 0, snapshotRows = {}, samples = {} },
+            }
+        end
         SetStatus("Full Market scan stopped — " .. tostring(reason) .. ". Previous saved market data is unchanged; no retry will occur.")
     end
     if MM.MarketUI and MM.MarketUI.RefreshActions then MM.MarketUI.RefreshActions() end
@@ -627,11 +688,14 @@ local function Finish(scan)
     end
 
     -- Transactional last-known-good replacement: only this complete, fully
-    -- identified dataset replaces the prior Market snapshot.
-    SaveTargetDiagnostics(scan, "complete")
+    -- identified dataset replaces the prior Market snapshot. Record the prior
+    -- and committed timestamps after assignment so diagnostics prove which
+    -- exact snapshot the UI should now be displaying.
+    local previousSnapshot = MM.db.lastMarketSnapshot
     SaveHistoryPoint(snapshot)
     MM.db.lastMarketSnapshot = snapshot
     MM.db.lastMarketScanAt = snapshot.timestamp
+    SaveTargetDiagnostics(scan, "complete", snapshot, previousSnapshot)
     Replicate.active = false
     Replicate.stage = "idle"
     Replicate.scan = nil
@@ -883,8 +947,16 @@ function Replicate.PrintTargetDiagnostics()
     end
     local t = d.target or {}
     if MM.Print then
-        MM.Print(string.format("Replicate target %d: outcome=%s auctions=%d processed=%d variants=%d unresolved=%d",
+        MM.Print(string.format("Replicate target %d: outcome=%s started=%s completed=%s committed=%s",
             tonumber(d.itemID) or TARGET_DIAGNOSTIC_ITEM_ID, tostring(d.outcome),
+            tostring(d.scanStartedAt or "unknown"), tostring(d.completedAt or d.timestamp or "unknown"),
+            tostring(d.commitConfirmed == nil and "unknown" or d.commitConfirmed == true)))
+        MM.Print(string.format("Snapshot: savedAt=%s (%s) auctions=%s processed=%s previousSavedAt=%s",
+            tostring(d.snapshotTimestampText or d.snapshotTimestamp or "unknown"),
+            tostring(d.snapshotTimestamp or "unknown"), tostring(d.snapshotAuctionCount or "unknown"),
+            tostring(d.snapshotProcessedAuctionCount or "unknown"),
+            tostring(d.previousSnapshotTimestamp or "none")))
+        MM.Print(string.format("Replicate totals: auctions=%d processed=%d variants=%d unresolved=%d",
             tonumber(d.auctionCount) or 0, tonumber(d.processed) or 0,
             tonumber(d.aggregateCount) or 0, tonumber(d.unresolvedAuctionCount) or 0))
         MM.Print(string.format("Target records=%d queued=%d requests=%d loadOK=%d loadFailed=%d retries=%d aggregated=%d",
@@ -892,6 +964,16 @@ function Replicate.PrintTargetDiagnostics()
             tonumber(t.itemDataRequests) or 0, tonumber(t.itemDataSuccess) or 0,
             tonumber(t.itemDataFailure) or 0, tonumber(t.retryAttempts) or 0,
             tonumber(t.aggregatedRecords) or 0))
+        MM.Print(string.format("Target saved snapshot: variants=%d minPriceCopper=%s quantity=%d auctions=%d",
+            tonumber(t.snapshotVariants) or 0, tostring(t.snapshotMinPriceCopper or "none"),
+            tonumber(t.snapshotTotalQuantity) or 0, tonumber(t.snapshotAuctionCount) or 0))
+        for i = 1, #(t.snapshotRows or {}) do
+            local row = t.snapshotRows[i]
+            MM.Print(string.format("Target snapshot row=%d itemLevel=%s minPriceCopper=%s minPriceQuantity=%d totalQuantity=%d auctions=%d",
+                i, tostring(row.itemLevel or "unknown"), tostring(row.minPriceCopper or "none"),
+                tonumber(row.minPriceQuantity) or 0, tonumber(row.totalQuantity) or 0,
+                tonumber(row.auctionCount) or 0))
+        end
         for i = 1, #(t.samples or {}) do
             local row = t.samples[i]
             MM.Print(string.format("Target row index=%s name=%s hasAllInfo=%s parsedID=%s itemLevel=%s needsLoad=%s parseError=%s link=%s",
