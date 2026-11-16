@@ -8,7 +8,7 @@ TOC = ROOT / "AddOns/ModuloMarket/ModuloMarket.toc"
 
 def test_tab_perf_diagnostics_are_opt_in_and_exposed():
     source = MARKET_UI.read_text(encoding="utf-8")
-    assert "tabPerfDiagnostics = { enabled = false" in source
+    assert "tabPerfDiagnostics = {" in source and "enabled = false" in source
     assert "function UI.SetTabPerfDiagnostics(enabled)" in source
     assert "function UI.ResetTabPerfDiagnostics()" in source
     assert "function UI.GetTabPerfDiagnostics()" in source
@@ -42,6 +42,6 @@ def test_version_metadata_is_consistent():
     toc = TOC.read_text(encoding="utf-8")
     core = CORE.read_text(encoding="utf-8")
     turnin = (ROOT / "AddOns/ModuloMarket/TurnInData.lua").read_text(encoding="utf-8")
-    assert "## Version: 0.12.15" in toc
-    assert 'MM.version = "0.12.15"' in core
-    assert "0.12.15" in turnin
+    assert "## Version: 0.12.16" in toc
+    assert 'MM.version = "0.12.16"' in core
+    assert "0.12.16" in turnin

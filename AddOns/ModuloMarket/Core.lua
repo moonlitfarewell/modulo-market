@@ -3,7 +3,7 @@ local MM = _G.ModuloMarket or {}
 _G.ModuloMarket = MM
 
 MM.name = ADDON_NAME or "ModuloMarket"
-MM.version = "0.12.15"
+MM.version = "0.12.16"
 MM.debugPrefix = "|cff66ccffModuloMarket:|r "
 
 local function Print(message)
@@ -130,6 +130,15 @@ loader:SetScript("OnEvent", function(_, event, loadedName)
                     r.sourceRows, r.processedRows, r.resultRows,
                     r.sourceSeconds, r.elapsedSeconds, r.lastElapsedSeconds))
             end
+            local e, sort = d.itemEvents or {}, d.sorts or {}
+            Print(string.format("Item events total=%d getInfo=%d loadResult=%d unique=%d classResolved=%d refreshScheduled=%d rescheduled=%d triggered=%d last=%s:%d filter=%s",
+                e.total or 0, e.getItemInfo or 0, e.itemDataLoad or 0, e.uniqueItems or 0,
+                e.resolvedClass or 0, e.refreshScheduled or 0, e.refreshRescheduled or 0,
+                e.refreshTriggered or 0, e.lastEvent or "none", e.lastItemID or 0, e.lastFilter or "all"))
+            Print(string.format("Sort started=%d completed=%d restarted=%d compares=%d lastTab=%s filter=%s rows=%d elapsed=%.3fs",
+                sort.started or 0, sort.completed or 0, sort.restarted or 0,
+                sort.comparatorCalls or 0, sort.lastTab or "none", sort.lastFilter or "all",
+                sort.lastRows or 0, sort.lastElapsedSeconds or 0))
         end
         SLASH_MODULOMARKETSEARCHDEBUG1 = "/mmsearchdebug"
         SlashCmdList.MODULOMARKETSEARCHDEBUG = function()

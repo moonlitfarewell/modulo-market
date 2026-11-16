@@ -78,7 +78,7 @@
     "Modulo"
   ],
   "developer_tools_version": "Standalone ForeverDB importer 0.2.3; new distribution projection tool tools/foreverdb_importer/sanitize_distribution.py; compile-runtime used to regenerate filtered runtime data.",
-  "file_count": 376,
+  "file_count": 378,
   "files": [
     ".gitignore",
     "ASSET-PROVENANCE.md",
@@ -455,7 +455,9 @@
     "tools/foreverdb_importer/sanitize_distribution.py",
     "tools/verify_repository_tree.py",
     "tests/test_modulomarket_0_12_15_tab_perf_diagnostics.py",
-    "MODULOMARKET-TAB-BUILD-DIAGNOSTICS-AUDIT-2026-11-15.md"
+    "MODULOMARKET-TAB-BUILD-DIAGNOSTICS-AUDIT-2026-11-15.md",
+    "tests/test_modulomarket_0_12_16_item_refresh_sort_diagnostics.py",
+    "MODULOMARKET-ITEM-REFRESH-SORT-LOOP-AUDIT-2026-11-16.md"
   ],
   "folder": "ModuloMarket",
   "group": "Modulo",
@@ -745,17 +747,17 @@
   "supersedesChildBundle": "ModuloMarket-GitHub-Update-0.12.7-ORIGINAL-UI-ASSETS.zip",
   "supersedesChildBytes": 2725824,
   "supersedesChildSha256": "4f550d9fbb9b388d2f81750d531efbe8a430e3dfc9a72125b632e21e7cba6896",
-  "version": "0.12.15",
+  "version": "0.12.16",
   "git_blob_sha1": {
     ".gitignore": "43d932f969775c57035c9d4828e732543ddc5498",
     "ASSET-PROVENANCE.md": "7de4559cea49e3efad26b0deabffebea416afbc2",
-    "AddOns/ModuloMarket/Core.lua": "71f878058ac3032d00831e32557924785a305d53",
+    "AddOns/ModuloMarket/Core.lua": "09eb3835fd65bec507b4f217641320b9219c2f40",
     "AddOns/ModuloMarket/Diagnostics.lua": "330b5bc65e38581f072914bdd2d02e5f97e4f470",
     "AddOns/ModuloMarket/ForeverDBData.lua": "70aea6692ecd5e62e734ca97afc7dc6b80858143",
     "AddOns/ModuloMarket/GatheringItems.lua": "981963175d18fb71e002056546cf9fd93ee553b7",
-    "AddOns/ModuloMarket/MarketUI.lua": "b2bec1d3fea9b9e2f53695a5d7f5733d1549d498",
+    "AddOns/ModuloMarket/MarketUI.lua": "faf9b89643cb78d4035f34e63934e4528dc42dec",
     "AddOns/ModuloMarket/ModernUI.lua": "b348ac7e33ba977fb4dfff9fdd54fbaedb3eebd7",
-    "AddOns/ModuloMarket/ModuloMarket.toc": "49ce016fbd7cbd2ec617b18f144f5b0fb65e98ec",
+    "AddOns/ModuloMarket/ModuloMarket.toc": "d8a54e2fdf6c7c40198aac413a899bf626f0c32d",
     "AddOns/ModuloMarket/ProfessionData.lua": "d617a61991558cf4679b54a002376263f10b1a50",
     "AddOns/ModuloMarket/RecipeEngine.lua": "f1143485a4acc07eec883c5b63a95a7f56bb905b",
     "AddOns/ModuloMarket/Replicate.lua": "c0dcaef646db59fe8178d1c6dd2560286634cde0",
@@ -767,7 +769,7 @@
     "AddOns/ModuloMarket/Textures/refresh.tga": "6fc8c1a566063d36a9ca7b0905b4b8a7bf1f235d",
     "AddOns/ModuloMarket/Textures/search.tga": "ae14191d27ba723f70358eb54ecce5ac1aeb6da5",
     "AddOns/ModuloMarket/Theme.lua": "6afe210519cfe73253a984c4e7aa1a2157cbdf7b",
-    "AddOns/ModuloMarket/TurnInData.lua": "b614ab803b733313aa8b0dd90de9ebe55313d35f",
+    "AddOns/ModuloMarket/TurnInData.lua": "10cd85bbe8b88d192a363dee4525d38547359228",
     "AddOns/ModuloMarket/TurnInEngine.lua": "80646b5bad0d5a7d326e55fcac0b6f15a97d1edb",
     "AddOns/ModuloMarket/WritData.lua": "2b0cce994ae5076214340f336697a4b2cab1a834",
     "LICENSE": "c91dd3afd89f69ca67b14c1169541e59872c7fe4",
@@ -871,7 +873,7 @@
     "MODULOMARKET-RUNTIME-AUDIT-0.9.7.md": "1d2cd1d5e0246742e453270744c1ebc60ac4eebb",
     "MODULOMARKET-RUNTIME-AUDIT-0.9.8.md": "58a6a8658b6f42858701c697737bd4ba50eeb70e",
     "MODULOMARKET-RUNTIME-AUDIT-0.9.9.md": "556273d92f7cba038dc603722085d4485b87f5ff",
-    "README.md": "32bf2425fdd8b38bdb4449ca1875f6144babaf59",
+    "README.md": "2692640135bf669a82285f62bbe319c60f5f6105",
     "THIRD-PARTY-NOTICES.md": "fe1816241d5c6b7c23b6515d1696e4e4625d0d66",
     "assets/ui-icons/cancel.svg": "e8e1afa2480f73643c217b3bd5aa72581c4a7eab",
     "assets/ui-icons/check.svg": "adfff23017d51ca33ccca570cee4620ef93989e2",
@@ -1030,7 +1032,7 @@
     "tests/test_modulomarket_0_11_9_passive_rarity.py": "565907ad5d9b54d1cc1581a26867b28d9c57fdcc",
     "tests/test_modulomarket_0_12_0_search_compat.py": "6b925efc162083c66a442f85cdf473e57c2b28da",
     "tests/test_modulomarket_0_12_11_settings.py": "fafae4f9cc291fb2db12b56d813e1a10898f399d",
-    "tests/test_modulomarket_0_12_13_settings_label.py": "94cdc61d8273b5bcf1e9f66d8b22c3e99c39b600",
+    "tests/test_modulomarket_0_12_13_settings_label.py": "973cb80753c7f887d925d734d7d882607add2ac9",
     "tests/test_modulomarket_0_12_1_rarity_markup.py": "8d04434603d8a1a6046675352506c7284e33cf93",
     "tests/test_modulomarket_0_12_2_search_scroll.py": "a838ac5bf292d6bbadb8d1df90d73824fb1244b7",
     "tests/test_modulomarket_0_12_3_replicate_target_diagnostics.py": "765d76b7c1ade7722422ea0df4d4ff5b38f32944",
@@ -1120,8 +1122,10 @@
     "tools/foreverdb_importer/recipe-data-v1.schema.json": "3c3a9085be9ef01a303a932c4feaf575a435b6f8",
     "tools/foreverdb_importer/sanitize_distribution.py": "1f3b99f4b6f679a6fd9082d3bb1b6057b2b8f447",
     "tools/verify_repository_tree.py": "6b45e630ff3e88500e318f95b6f88e4d637fb4a3",
-    "tests/test_modulomarket_0_12_15_tab_perf_diagnostics.py": "cb10f986e9920faa5579f962ffa5421dee91abc3",
-    "MODULOMARKET-TAB-BUILD-DIAGNOSTICS-AUDIT-2026-11-15.md": "42f4c1138c2bbfce47e2185fb7db2745a0519867"
+    "tests/test_modulomarket_0_12_15_tab_perf_diagnostics.py": "c749c176c5f6201578f5825433ee1e4fd8599f3a",
+    "MODULOMARKET-TAB-BUILD-DIAGNOSTICS-AUDIT-2026-11-15.md": "42f4c1138c2bbfce47e2185fb7db2745a0519867",
+    "tests/test_modulomarket_0_12_16_item_refresh_sort_diagnostics.py": "f8664f587c01d6b3101423fe59e126f5e5babf7f",
+    "MODULOMARKET-ITEM-REFRESH-SORT-LOOP-AUDIT-2026-11-16.md": "9ef00a59306d21a3d1530ea5cc4f885a56a283d5"
   },
   "git_blob_sha1_excludes": [
     "MANIFEST.json"

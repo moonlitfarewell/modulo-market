@@ -67,7 +67,14 @@ local UI = {
     tooltipSearchWarmup = nil,
     tooltipSearchMode = false,
     tooltipSearchDiagnostics = { searches = 0, requests = 0, cacheHits = 0, events = 0, failures = 0, timeouts = 0, completed = 0, structuredReads = 0, legacyFallbacks = 0, emptyResults = 0, lastItemID = nil, lastSource = "none", lastLineCount = 0, lastState = "idle" },
-    tabPerfDiagnostics = { enabled = false, tabs = {}, tabSelections = 0, sameTabSelections = 0, cancelledBuilds = 0 },
+    tabPerfDiagnostics = {
+        enabled = false, tabs = {}, tabSelections = 0, sameTabSelections = 0, cancelledBuilds = 0,
+        itemEvents = { total = 0, getItemInfo = 0, itemDataLoad = 0, uniqueItems = 0,
+            resolvedClass = 0, refreshScheduled = 0, refreshRescheduled = 0, refreshTriggered = 0,
+            seenItems = {}, lastItemID = 0, lastEvent = "none", lastFilter = "all" },
+        sorts = { started = 0, completed = 0, restarted = 0, comparatorCalls = 0,
+            lastTab = "none", lastFilter = "all", lastRows = 0, lastElapsedSeconds = 0 },
+    },
 }
 MM.MarketUI = UI
 
@@ -1484,6 +1491,11 @@ function UI.ResetTabPerfDiagnostics()
     diagnostics.sameTabSelections = 0
     diagnostics.cancelledBuilds = 0
     diagnostics.activeBuild = nil
+    diagnostics.itemEvents = { total = 0, getItemInfo = 0, itemDataLoad = 0, uniqueItems = 0,
+        resolvedClass = 0, refreshScheduled = 0, refreshRescheduled = 0, refreshTriggered = 0,
+        seenItems = {}, lastItemID = 0, lastEvent = "none", lastFilter = "all" }
+    diagnostics.sorts = { started = 0, completed = 0, restarted = 0, comparatorCalls = 0,
+        lastTab = "none", lastFilter = "all", lastRows = 0, lastElapsedSeconds = 0 }
 end
 
 function UI.GetTabPerfDiagnostics()
@@ -1494,7 +1506,13 @@ function UI.GetTabPerfDiagnostics()
         sameTabSelections = diagnostics.sameTabSelections or 0,
         cancelledBuilds = diagnostics.cancelledBuilds or 0,
         tabs = {},
+        itemEvents = {},
+        sorts = {},
     }
+    for key, value in pairs(diagnostics.itemEvents or {}) do
+        if key ~= "seenItems" then result.itemEvents[key] = value end
+    end
+    for key, value in pairs(diagnostics.sorts or {}) do result.sorts[key] = value end
     for tab, record in pairs(diagnostics.tabs or {}) do
         result.tabs[tab] = {}
         for key, value in pairs(record) do result.tabs[tab][key] = value end
@@ -1524,6 +1542,9 @@ function UI.StartViewBuild()
     local query = NormalizeSearchText(UI.search:GetText() or "")
     UI.listOffset = 0
     UI.viewRows = {}
+    if perfEnabled and UI.rankSort then
+        perf.sorts.restarted = perf.sorts.restarted + 1
+    end
     UI.rankSort = nil
     local isCrafting = UI.activeTab == "crafts"
     local source
@@ -1808,7 +1829,18 @@ local function StepView()
             right = math.min(3, #build.rows + 1),
             mid = 2,
             count = #build.rows,
+            startedAt = Now(),
+            tab = build.tab,
+            filter = tostring(build.itemTypeFilter or "all"),
+            perfEnabled = UI.tabPerfDiagnostics and UI.tabPerfDiagnostics.enabled == true,
         }
+        if UI.rankSort.perfEnabled then
+            local sortDiagnostics = UI.tabPerfDiagnostics.sorts
+            sortDiagnostics.started = sortDiagnostics.started + 1
+            sortDiagnostics.lastTab = build.tab
+            sortDiagnostics.lastFilter = tostring(build.itemTypeFilter or "all")
+            sortDiagnostics.lastRows = #build.rows
+        end
         local sortLabel = sort.key == "name" and "name"
             or (sort.key == "price" and (build.tab == "market" and "cheapest price" or "sale price")
             or (sort.key == "completion" and "completion cost"
@@ -2061,6 +2093,11 @@ local function StepRankSort()
     local budget = 500
     while budget > 0 do
         if state.width >= state.count then
+            if state.perfEnabled and UI.tabPerfDiagnostics and UI.tabPerfDiagnostics.enabled then
+                local sortDiagnostics = UI.tabPerfDiagnostics.sorts
+                sortDiagnostics.completed = sortDiagnostics.completed + 1
+                sortDiagnostics.lastElapsedSeconds = math.max(0, Now() - (state.startedAt or Now()))
+            end
             UI.FinishView(state.source)
             return
         end
@@ -2088,6 +2125,10 @@ local function StepRankSort()
             elseif state.j >= state.right then
                 takeLeft = true
             else
+                if state.perfEnabled and UI.tabPerfDiagnostics and UI.tabPerfDiagnostics.enabled then
+                    UI.tabPerfDiagnostics.sorts.comparatorCalls =
+                        UI.tabPerfDiagnostics.sorts.comparatorCalls + 1
+                end
                 takeLeft = ComesBefore(state.source[state.i], state.source[state.j], state.key, state.ascending)
             end
             if takeLeft then
@@ -2996,6 +3037,23 @@ pcall(vendorInfoEvents.RegisterEvent, vendorInfoEvents, "ITEM_DATA_LOAD_RESULT")
 vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
     itemID = tonumber(itemID)
     if not itemID then return end
+    local perf = UI.tabPerfDiagnostics
+    if perf and perf.enabled then
+        local events = perf.itemEvents
+        events.total = events.total + 1
+        if event == "GET_ITEM_INFO_RECEIVED" then
+            events.getItemInfo = events.getItemInfo + 1
+        elseif event == "ITEM_DATA_LOAD_RESULT" then
+            events.itemDataLoad = events.itemDataLoad + 1
+        end
+        if not events.seenItems[itemID] then
+            events.seenItems[itemID] = true
+            events.uniqueItems = events.uniqueItems + 1
+        end
+        events.lastItemID = itemID
+        events.lastEvent = tostring(event)
+        events.lastFilter = tostring(UI.itemTypeFilter or "all")
+    end
     -- Item cache completion can also resolve the real icon for virtualized rows.
     itemIconCache[itemID] = nil
     itemQualityCache[itemID] = nil
@@ -3015,6 +3073,14 @@ vendorInfoEvents:SetScript("OnEvent", function(_, event, itemID, success)
         if classID == nil then UI.itemClassFailed[itemID] = true end
         if UI.itemTypeFilter and UI.itemTypeFilter ~= "all" and UI.activeTab == "market"
             and classID ~= nil then
+            if perf and perf.enabled then
+                local events = perf.itemEvents
+                events.resolvedClass = events.resolvedClass + 1
+                events.refreshScheduled = events.refreshScheduled + 1
+                if UI.itemTypeRefreshDueAt then
+                    events.refreshRescheduled = events.refreshRescheduled + 1
+                end
+            end
             UI.itemTypeRefreshDueAt = Now() + 0.25
         end
         if sellPrice == nil then
@@ -4674,6 +4740,10 @@ local function CreateUI()
             and not UI.catalogBuild and not UI.economicsIndexBuild
             and not UI.viewBuild and not UI.rankSort then
             UI.itemTypeRefreshDueAt = nil
+            if UI.tabPerfDiagnostics and UI.tabPerfDiagnostics.enabled then
+                UI.tabPerfDiagnostics.itemEvents.refreshTriggered =
+                    UI.tabPerfDiagnostics.itemEvents.refreshTriggered + 1
+            end
             UI.StartViewBuild()
         end
         if UI.catalogBuild then StepCatalog()
